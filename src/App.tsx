@@ -43,11 +43,11 @@ const INITIAL_PRESALES: Presale[] = [
     totalSupply: '1,000,000,000',
     distribution: {
       development: 5,
-      marketing: 0,
-      airdrop: 0,
-      mining: 0,
-      melt: 0,
-      presale: 95,
+      marketing: 3,
+      airdrop: 1,
+      mining: 10,
+      melt: 5,
+      presale: 76,
     },
     social: {
       x: 'https://x.com/GlyphSwap',
@@ -131,9 +131,9 @@ function App() {
             <PyramidPadLogo className="mb-6" />
             <button
               onClick={() => setShowAddPresale(!showAddPresale)}
-              className="flex items-center gap-2 bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 hover:from-yellow-500 hover:to-amber-700 transition-all"
+              className="flex items-center gap-2 bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 text-lg hover:from-yellow-500 hover:to-amber-700 transition-all"
             >
-              <Plus size={20} />
+              <Plus size={24} />
               {showAddPresale ? 'Hide Form' : 'Add Presale'}
             </button>
           </div>

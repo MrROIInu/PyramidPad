@@ -154,7 +154,7 @@ export const PresaleCard: React.FC<PresaleCardProps> = ({
           <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800">
             {title}
           </h2>
-          <p className="text-sm text-yellow-600/80 mt-2">{description}</p>
+          <p className="text-base sm:text-lg text-yellow-600/80 mt-2">{description}</p>
           <div className="flex gap-2 mt-4 justify-center sm:justify-start">
             <SocialIcon href={social.x} svgPath={true} />
             <SocialIcon href={social.website} icon={Globe} />
@@ -165,11 +165,11 @@ export const PresaleCard: React.FC<PresaleCardProps> = ({
 
       <div className="mb-6">
         <ProgressPyramid progress={progress} />
-        <p className="text-center text-yellow-600 mt-2">
+        <p className="text-center text-yellow-600 text-lg mt-2">
           {progress.toFixed(2)}% Complete
           {progress < 100 && ". Unsold tokens going to be Melted."}
         </p>
-        <p className="text-center text-yellow-600/80 text-sm mt-1">
+        <p className="text-center text-yellow-600/80 text-base mt-1">
           {remainingTokens.toLocaleString()} of {presaleTokens.toLocaleString()} {symbol} remaining for presale
         </p>
       </div>
@@ -199,49 +199,49 @@ export const PresaleCard: React.FC<PresaleCardProps> = ({
       {!isCompleted && new Date() < endDate && (
         <div className="space-y-6">
           <div>
-            <label className="block text-yellow-600 mb-2">Enter RXD Amount:</label>
+            <label className="block text-yellow-600 text-lg mb-2">Enter RXD Amount:</label>
             <div className="flex gap-4">
               <input
                 type="number"
                 value={rxdAmount}
                 onChange={(e) => setRxdAmount(e.target.value)}
-                className="bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 w-full focus:outline-none focus:border-yellow-600"
+                className="bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 w-full focus:outline-none focus:border-yellow-600 text-lg"
                 placeholder="Amount of RXD"
                 max={remainingTokens}
               />
-              <div className="bg-yellow-900/20 rounded-lg px-4 py-2">
+              <div className="bg-yellow-900/20 rounded-lg px-4 py-2 text-lg whitespace-nowrap">
                 = {rxdAmount || '0'} {symbol}
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="bg-white p-2 rounded-lg shrink-0">
+          <div className="flex flex-col sm:flex-row gap-6">
+            <div className="bg-white p-2 rounded-lg w-[150px] mx-auto sm:mx-0">
               <QRCode
                 value={walletAddress}
-                size={100}
+                size={150}
                 style={{ height: "auto", maxWidth: "100%", width: "100%" }}
               />
             </div>
             
-            <div className="flex-1 min-w-0">
-              <p className="text-yellow-600 mb-2">
+            <div className="flex-1">
+              <p className="text-yellow-600 text-lg mb-2">
                 {rxdAmount ? `Send ${rxdAmount} RXD from ` : 'Send RXD from '}
                 <a href="https://photonic.radiant4people.com/" target="_blank" rel="noopener noreferrer" className="hover:text-yellow-500">Photonic Wallet</a> to:
               </p>
-              <div className="flex items-center gap-2 bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 overflow-hidden">
-                <code className="flex-1 text-sm truncate">{walletAddress}</code>
+              <div className="flex items-center gap-2 bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-3">
+                <code className="flex-1 text-base sm:text-lg break-all">{walletAddress}</code>
                 <button
                   onClick={handleCopy}
-                  className="text-yellow-600 hover:text-yellow-500 shrink-0"
+                  className="text-yellow-600 hover:text-yellow-500 ml-2"
                 >
-                  <Copy size={16} />
+                  <Copy size={20} />
                 </button>
               </div>
               {copied && (
-                <p className="text-green-500 text-sm mt-1">Address copied!</p>
+                <p className="text-green-500 text-base mt-1">Address copied!</p>
               )}
-              <p className="text-amber-200/80 text-sm mt-2">
+              <p className="text-amber-200/80 text-base mt-2">
                 You will receive your {symbol} when presale has ended.
               </p>
             </div>
@@ -250,7 +250,7 @@ export const PresaleCard: React.FC<PresaleCardProps> = ({
           {rxdAmount && parseFloat(rxdAmount) <= remainingTokens && (
             <button
               onClick={handleVerify}
-              className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all"
+              className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 text-lg font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all"
             >
               Verify you have sent {rxdAmount} RXD
             </button>
