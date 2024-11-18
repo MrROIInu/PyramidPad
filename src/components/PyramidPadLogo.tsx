@@ -6,17 +6,17 @@ interface PyramidPadLogoProps {
 
 export const PyramidPadLogo: React.FC<PyramidPadLogoProps> = ({ className = '' }) => {
   return (
-    <div className={`flex items-center ${className}`}>
+    <div className={`flex flex-col items-center ${className}`}>
       <img 
-        src="https://static.wixstatic.com/media/c0fd9f_cf507bbf62e14773804d8c2538090fdd~mv2.png"
+        src="https://static.wixstatic.com/media/c0fd9f_6435470665d74bd6ac00d9b3ce1473e9~mv2.png"
         alt="PyramidPad Logo"
-        className="w-32 h-32 object-contain"
+        className="w-48 h-48 object-contain"
       />
-      <div className="flex items-center font-red-hat text-white ml-1">
-        <span className="text-4xl font-bold">
+      <div className="flex items-center font-red-hat text-white mt-2">
+        <span className="text-5xl font-bold">
           Pyramid
         </span>
-        <span className="text-4xl font-normal italic">
+        <span className="text-5xl font-normal italic">
           Pad
         </span>
       </div>
