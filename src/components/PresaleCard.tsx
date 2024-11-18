@@ -215,8 +215,8 @@ export const PresaleCard: React.FC<PresaleCardProps> = ({
             </div>
           </div>
 
-          <div className="flex gap-6 items-center">
-            <div className="bg-white p-2 rounded-lg">
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="bg-white p-2 rounded-lg shrink-0">
               <QRCode
                 value={walletAddress}
                 size={100}
@@ -224,16 +224,16 @@ export const PresaleCard: React.FC<PresaleCardProps> = ({
               />
             </div>
             
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <p className="text-yellow-600 mb-2">
                 {rxdAmount ? `Send ${rxdAmount} RXD from ` : 'Send RXD from '}
                 <a href="https://photonic.radiant4people.com/" target="_blank" rel="noopener noreferrer" className="hover:text-yellow-500">Photonic Wallet</a> to:
               </p>
-              <div className="flex items-center gap-2 bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2">
-                <code className="flex-1 text-sm">{walletAddress}</code>
+              <div className="flex items-center gap-2 bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 overflow-hidden">
+                <code className="flex-1 text-sm truncate">{walletAddress}</code>
                 <button
                   onClick={handleCopy}
-                  className="text-yellow-600 hover:text-yellow-500"
+                  className="text-yellow-600 hover:text-yellow-500 shrink-0"
                 >
                   <Copy size={16} />
                 </button>
