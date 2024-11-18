@@ -127,11 +127,11 @@ function App() {
       <div className="min-h-screen backdrop-blur-sm bg-black/50">
         {/* Header */}
         <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col items-center gap-4">
             <PyramidPadLogo />
             <button
               onClick={() => setShowAddPresale(!showAddPresale)}
-              className="flex items-center gap-2 bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-4 py-2 hover:from-yellow-500 hover:to-amber-700 transition-all"
+              className="flex items-center gap-2 bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 hover:from-yellow-500 hover:to-amber-700 transition-all"
             >
               <Plus size={20} />
               {showAddPresale ? 'Hide Form' : 'Add Presale'}
