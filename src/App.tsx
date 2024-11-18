@@ -126,9 +126,9 @@ function App() {
     <div className="min-h-screen bg-[#1a1a1a] bg-[url('https://static.wixstatic.com/media/c0fd9f_7a29e6d3a40f4821a14dbe8f93b9d069~mv2.jpg')] bg-cover bg-center bg-fixed">
       <div className="min-h-screen backdrop-blur-sm bg-black/50">
         {/* Header */}
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col items-center">
-            <PyramidPadLogo className="mb-8" />
+            <PyramidPadLogo className="mb-6" />
             <button
               onClick={() => setShowAddPresale(!showAddPresale)}
               className="flex items-center gap-2 bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 hover:from-yellow-500 hover:to-amber-700 transition-all"

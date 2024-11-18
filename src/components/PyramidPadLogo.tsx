@@ -10,13 +10,13 @@ export const PyramidPadLogo: React.FC<PyramidPadLogoProps> = ({ className = '' }
       <img 
         src="https://static.wixstatic.com/media/c0fd9f_6435470665d74bd6ac00d9b3ce1473e9~mv2.png"
         alt="PyramidPad Logo"
-        className="w-48 h-48 object-contain"
+        className="w-32 h-32 md:w-40 md:h-40 object-contain"
       />
       <div className="flex items-center font-red-hat text-white mt-2">
-        <span className="text-5xl font-bold">
+        <span className="text-3xl md:text-4xl font-bold">
           Pyramid
         </span>
-        <span className="text-5xl font-normal italic">
+        <span className="text-3xl md:text-4xl font-normal italic">
           Pad
         </span>
       </div>
