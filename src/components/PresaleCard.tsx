@@ -132,7 +132,7 @@ export const PresaleCard: React.FC<PresaleCardProps> = ({
 
   if (showSuccess) {
     return (
-      <div className="bg-gradient-to-r from-amber-900/10 to-yellow-900/10 rounded-xl p-6 backdrop-blur-sm">
+      <div className="bg-gradient-to-r from-amber-900/10 to-yellow-900/10 rounded-xl p-6 backdrop-blur-sm w-full">
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
             <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -147,7 +147,7 @@ export const PresaleCard: React.FC<PresaleCardProps> = ({
   }
 
   return (
-    <div className="bg-gradient-to-r from-amber-900/10 to-yellow-900/10 rounded-xl p-6 backdrop-blur-sm">
+    <div className="bg-gradient-to-r from-amber-900/10 to-yellow-900/10 rounded-xl p-6 backdrop-blur-sm w-full">
       <div className="flex flex-col sm:flex-row items-center gap-6 mb-6">
         <TokenLogo symbol={symbol} imageUrl={imageUrl} />
         <div className="text-center sm:text-left flex-1">

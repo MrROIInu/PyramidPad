@@ -39,7 +39,7 @@ const INITIAL_PRESALES: Presale[] = [
     progress: 5,
     endDate: new Date('2024-12-15T23:59:59'),
     walletAddress: '1CiKtAE6Zf3tniKmPBhv1e7pBRezZM433N',
-    description: 'Decentralized governance token inspired by ancient Egyptian leadership principles. Made for testing and to demostrate PyramidPad',
+    description: 'Decentralized governance token inspired by ancient Egyptian leadership principles. Made for testing and to demonstrate PyramidPad',
     totalSupply: '1,000,000,000',
     distribution: {
       development: 5,
@@ -124,9 +124,10 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] bg-[url('https://static.wixstatic.com/media/c0fd9f_7a29e6d3a40f4821a14dbe8f93b9d069~mv2.jpg')] bg-cover bg-center bg-fixed">
-      <div className="min-h-screen backdrop-blur-sm bg-black/50 py-12 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-12">
+      <div className="min-h-screen backdrop-blur-sm bg-black/50">
+        {/* Header */}
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-between items-center">
             <PyramidPadLogo />
             <button
               onClick={() => setShowAddPresale(!showAddPresale)}
@@ -136,42 +137,49 @@ function App() {
               {showAddPresale ? 'Hide Form' : 'Add Presale'}
             </button>
           </div>
+        </div>
 
-          {showAddPresale && (
-            <div className="mb-12">
-              <AddPresale onSubmit={handlePresaleSubmit} />
-            </div>
-          )}
-          
-          <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-8">
-            Active Presales
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-16">
-            {presales.map((presale) => (
-              <PresaleCard
-                key={presale.id}
-                {...presale}
-                onComplete={handlePresaleComplete}
-              />
-            ))}
-          </div>
-
-          {completedPresales.length > 0 && (
-            <>
-              <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-8">
-                Completed Presales
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {completedPresales.map((presale) => (
-                  <PresaleCard
-                    key={presale.id}
-                    {...presale}
-                  />
-                ))}
+        {/* Main Content */}
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex flex-col items-center">
+            {showAddPresale && (
+              <div className="w-full max-w-4xl mb-12">
+                <AddPresale onSubmit={handlePresaleSubmit} />
               </div>
-            </>
-          )}
+            )}
+            
+            <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-8 text-center">
+              Active Presales
+            </h2>
+            
+            <div className="w-full flex flex-wrap justify-center gap-6 mb-16">
+              {presales.map((presale) => (
+                <div key={presale.id} className="w-full md:w-[600px] flex-shrink-0">
+                  <PresaleCard
+                    {...presale}
+                    onComplete={handlePresaleComplete}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {completedPresales.length > 0 && (
+              <>
+                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-8 text-center">
+                  Completed Presales
+                </h2>
+                <div className="w-full flex flex-wrap justify-center gap-6">
+                  {completedPresales.map((presale) => (
+                    <div key={presale.id} className="w-full md:w-[600px] flex-shrink-0">
+                      <PresaleCard
+                        {...presale}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
