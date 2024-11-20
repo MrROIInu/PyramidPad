@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, RefreshCw } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { TOKENS } from '../data/tokens';
 import { TokenSelect } from './TokenSelect';
@@ -14,20 +14,21 @@ export const P2PSwap: React.FC = () => {
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
   const [swapTx, setSwapTx] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [importedTx, setImportedTx] = useState('');
+  const [showCopyMessage, setShowCopyMessage] = useState(false);
 
-  const calculateRatio = () => {
-    if (!fromAmount || !toAmount) return null;
-    const ratio = (parseInt(fromAmount) / fromToken.totalSupply) / (parseInt(toAmount) / toToken.totalSupply);
-    return ratio > 1 ? `1:${ratio.toFixed(2)}` : `${(1/ratio).toFixed(2)}:1`;
-  };
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
-  const getRatioColor = (ratio: number) => {
-    if (ratio >= 0.1 && ratio <= 6) return 'text-green-500';
-    if (ratio > 6 && ratio <= 10) return 'text-yellow-500';
-    return 'text-red-500';
-  };
+  useEffect(() => {
+    if (fromAmount && fromToken && toToken) {
+      const ratio = fromToken.totalSupply / toToken.totalSupply;
+      setToAmount((parseFloat(fromAmount) / ratio).toFixed(6));
+    } else {
+      setToAmount('');
+    }
+  }, [fromAmount, fromToken, toToken]);
 
   const fetchOrders = async () => {
     const { data, error } = await supabase
@@ -37,30 +38,22 @@ export const P2PSwap: React.FC = () => {
 
     if (error) {
       console.error('Error fetching orders:', error);
-      return;
+    } else {
+      setOrders(data || []);
     }
-
-    setOrders(data || []);
-  };
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await fetchOrders();
-    setTimeout(() => setIsRefreshing(false), 1000);
   };
 
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fromAmount || !toAmount || !swapTx) return;
+    if (!fromToken || !toToken || !fromAmount || !toAmount || !swapTx) return;
 
-    setIsSubmitting(true);
     const { error } = await supabase
       .from('orders')
       .insert([{
         from_token: fromToken.symbol,
         to_token: toToken.symbol,
-        from_amount: parseInt(fromAmount),
-        to_amount: parseInt(toAmount),
+        from_amount: parseFloat(fromAmount),
+        to_amount: parseFloat(toAmount),
         swap_tx: swapTx,
         claimed: false,
         claim_count: 0
@@ -68,51 +61,31 @@ export const P2PSwap: React.FC = () => {
 
     if (error) {
       console.error('Error creating order:', error);
+      alert('Failed to create order. Please try again.');
     } else {
       setFromAmount('');
       setToAmount('');
       setSwapTx('');
-      fetchOrders(); // Refresh orders after creating new one
+      setImportedTx('');
+      fetchOrders();
     }
-    setIsSubmitting(false);
   };
 
-  useEffect(() => {
-    fetchOrders();
-
-    const channel = supabase
-      .channel('any')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders'
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setOrders(prev => [payload.new as Order, ...prev]);
-          } else if (payload.eventType === 'UPDATE') {
-            setOrders(prev => 
-              prev.map(order => 
-                order.id === payload.new.id ? payload.new as Order : order
-              )
-            );
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const activeOrders = orders.filter(order => !order.claimed);
-  const claimedOrders = orders.filter(order => order.claimed);
-
-  const ratio = fromAmount && toAmount ? 
-    (parseInt(fromAmount) / fromToken.totalSupply) / (parseInt(toAmount) / toToken.totalSupply) : null;
+  const parseImportedTx = (text: string) => {
+    const match = text.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([\w\d]+)/);
+    if (match) {
+      const [, amount, fromSymbol, toAmt, toSymbol, tx] = match;
+      const foundFromToken = TOKENS.find(t => t.symbol === fromSymbol);
+      const foundToToken = TOKENS.find(t => t.symbol === toSymbol);
+      
+      if (foundFromToken && foundToToken) {
+        setFromToken(foundFromToken);
+        setToToken(foundToToken);
+        setFromAmount(amount);
+        setSwapTx(tx);
+      }
+    }
+  };
 
   return (
     <div className="container mx-auto px-4">
@@ -123,52 +96,45 @@ export const P2PSwap: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="block text-yellow-600 mb-2">From Token</label>
-              <div className="flex gap-4">
-                <TokenSelect
-                  tokens={TOKENS}
-                  selectedToken={fromToken}
-                  onChange={setFromToken}
-                  className="flex-1"
-                />
-                <input
-                  type="number"
-                  value={fromAmount}
-                  onChange={(e) => setFromAmount(e.target.value)}
-                  className="bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 w-32 focus:outline-none focus:border-yellow-600"
-                  placeholder="Amount"
-                  min="1"
-                  required
-                />
-              </div>
+              <TokenSelect
+                tokens={TOKENS}
+                selectedToken={fromToken}
+                onChange={setFromToken}
+              />
             </div>
-
             <div>
-              <label className="block text-yellow-600 mb-2">To Token</label>
-              <div className="flex gap-4">
-                <TokenSelect
-                  tokens={TOKENS}
-                  selectedToken={toToken}
-                  onChange={setToToken}
-                  className="flex-1"
-                />
-                <input
-                  type="number"
-                  value={toAmount}
-                  onChange={(e) => setToAmount(e.target.value)}
-                  className="bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 w-32 focus:outline-none focus:border-yellow-600"
-                  placeholder="Amount"
-                  min="1"
-                  required
-                />
-              </div>
+              <label className="block text-yellow-600 mb-2">Amount</label>
+              <input
+                type="number"
+                value={fromAmount}
+                onChange={(e) => setFromAmount(e.target.value)}
+                className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+                placeholder="Enter amount"
+                min="1"
+                required
+              />
             </div>
           </div>
 
-          {ratio !== null && (
-            <p className={`mb-4 ${getRatioColor(ratio)}`}>
-              Trade Ratio: {calculateRatio()} (compared with tokens total supply)
-            </p>
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label className="block text-yellow-600 mb-2">To Token</label>
+              <TokenSelect
+                tokens={TOKENS}
+                selectedToken={toToken}
+                onChange={setToToken}
+              />
+            </div>
+            <div>
+              <label className="block text-yellow-600 mb-2">You Will Receive</label>
+              <input
+                type="text"
+                value={toAmount}
+                readOnly
+                className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+              />
+            </div>
+          </div>
 
           <div className="mb-6">
             <p className="text-yellow-600 mb-2">
@@ -185,54 +151,65 @@ export const P2PSwap: React.FC = () => {
               type="text"
               value={swapTx}
               onChange={(e) => setSwapTx(e.target.value)}
-              className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+              className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-2"
               placeholder="Enter your swap transaction"
               required
             />
+            <div>
+              <label className="block text-yellow-600 mb-2">
+                Import full Transaction text from Photonic Wallet to fill input form:
+              </label>
+              <textarea
+                value={importedTx}
+                onChange={(e) => {
+                  setImportedTx(e.target.value);
+                  parseImportedTx(e.target.value);
+                }}
+                className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+                placeholder="Example: 🔁 Swap: 1000 RXD ➔ 1000 POW 📋01000000015c943f068b829d3e00c0638948303463f74aa6839fea2ee5698b712061a8482a000000006a47304402203eef3431f97c5ad0f59bcc5198747771a85dc3d9513d3594c8b042a943e872c302201f332de8b6349831ed01dc530f339fb42f0017e9a30ccfdecfe22ba31f26e2aac32102a86b11635102f4e0f74f2cba09c8db13363ad25e5b656380d8fe271ffb769473ffffffff01e8030000000000004b76a9142b91c3856057c3fc1526bad0ed2069421782a73b88acbdd0b01b97916dd47320f939b42eb0f51709928d874dfd773dd6e92166afc5db190500000000dec0e9aa76e378e4a269e69d00000000🟦"
+                rows={3}
+                style={{ color: 'rgba(255, 255, 255, 0.5)' }}
+              />
+            </div>
           </div>
 
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all"
           >
-            {isSubmitting ? 'Creating...' : 'Create Swap Order'}
+            Create Swap Order
           </button>
         </div>
       </form>
 
       <div className="space-y-6">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800">
-            Active Orders
-          </h2>
-          <button
-            onClick={handleRefresh}
-            className="flex items-center gap-2 px-4 py-2 bg-yellow-600/10 hover:bg-yellow-600/20 rounded-lg text-yellow-600 hover:text-yellow-500 transition-colors"
-            disabled={isRefreshing}
-          >
-            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
+        <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800">
+          Active Orders
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {orders.filter(order => !order.claimed).map(order => (
+            <OrderCard
+              key={order.id}
+              order={order}
+              onClaim={fetchOrders}
+            />
+          ))}
         </div>
-
-        {activeOrders.length > 0 ? (
-          activeOrders.map((order) => (
-            <OrderCard key={order.id} order={order} />
-          ))
-        ) : (
-          <p className="text-center text-yellow-600/80">No active orders</p>
-        )}
       </div>
 
-      {claimedOrders.length > 0 && (
-        <div className="mt-12 space-y-6">
-          <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-8 text-center">
+      {orders.some(order => order.claimed) && (
+        <div className="space-y-6 mt-12">
+          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800">
             Claimed Orders
           </h2>
-          {claimedOrders.map((order) => (
-            <OrderCard key={order.id} order={order} />
-          ))}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {orders.filter(order => order.claimed).map(order => (
+              <OrderCard
+                key={order.id}
+                order={order}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
