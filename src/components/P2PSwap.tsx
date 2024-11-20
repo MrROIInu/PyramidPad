@@ -17,6 +17,18 @@ export const P2PSwap: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const calculateRatio = () => {
+    if (!fromAmount || !toAmount) return null;
+    const ratio = (parseInt(fromAmount) / fromToken.totalSupply) / (parseInt(toAmount) / toToken.totalSupply);
+    return ratio > 1 ? `1:${ratio.toFixed(2)}` : `${(1/ratio).toFixed(2)}:1`;
+  };
+
+  const getRatioColor = (ratio: number) => {
+    if (ratio >= 0.1 && ratio <= 6) return 'text-green-500';
+    if (ratio > 6 && ratio <= 10) return 'text-yellow-500';
+    return 'text-red-500';
+  };
+
   const fetchOrders = async () => {
     const { data, error } = await supabase
       .from('orders')
@@ -99,6 +111,9 @@ export const P2PSwap: React.FC = () => {
   const activeOrders = orders.filter(order => !order.claimed);
   const claimedOrders = orders.filter(order => order.claimed);
 
+  const ratio = fromAmount && toAmount ? 
+    (parseInt(fromAmount) / fromToken.totalSupply) / (parseInt(toAmount) / toToken.totalSupply) : null;
+
   return (
     <div className="container mx-auto px-4">
       <P2PSwapLogo className="mb-6" />
@@ -148,6 +163,12 @@ export const P2PSwap: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {ratio !== null && (
+            <p className={`mb-4 ${getRatioColor(ratio)}`}>
+              Trade Ratio: {calculateRatio()} (compared with tokens total supply)
+            </p>
+          )}
 
           <div className="mb-6">
             <p className="text-yellow-600 mb-2">
