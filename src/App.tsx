@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PresaleCard } from './components/PresaleCard';
 import { AddPresale } from './components/AddPresale';
+import { P2PSwap } from './components/P2PSwap';
 import { Plus } from 'lucide-react';
 import { PyramidPadLogo } from './components/PyramidPadLogo';
 
@@ -90,6 +91,7 @@ function App() {
   const [showAddPresale, setShowAddPresale] = useState(false);
   const [presales, setPresales] = useState<Presale[]>(INITIAL_PRESALES);
   const [completedPresales, setCompletedPresales] = useState<Presale[]>(COMPLETED_PRESALES);
+  const [currentPage, setCurrentPage] = useState<'presale' | 'p2p'>('presale');
 
   const handlePresaleSubmit = (newPresale: Omit<Presale, 'id' | 'progress' | 'endDate'> & { presaleDays: number }) => {
     const presale: Presale = {
@@ -128,56 +130,92 @@ function App() {
         {/* Header */}
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col items-center">
-            <PyramidPadLogo className="mb-6" />
-            <button
-              onClick={() => setShowAddPresale(!showAddPresale)}
-              className="flex items-center gap-2 bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 text-lg hover:from-yellow-500 hover:to-amber-700 transition-all"
-            >
-              <Plus size={24} />
-              {showAddPresale ? 'Hide Form' : 'Add Presale'}
-            </button>
+            {/* Navigation */}
+            <div className="flex gap-4 mb-6">
+              <button
+                onClick={() => setCurrentPage('presale')}
+                className={`px-6 py-2 rounded-lg transition-all ${
+                  currentPage === 'presale'
+                    ? 'bg-gradient-to-r from-yellow-600 to-amber-800 text-white'
+                    : 'text-yellow-600 hover:bg-yellow-600/10'
+                }`}
+              >
+                PyramidPad
+              </button>
+              <button
+                onClick={() => setCurrentPage('p2p')}
+                className={`px-6 py-2 rounded-lg transition-all ${
+                  currentPage === 'p2p'
+                    ? 'bg-gradient-to-r from-yellow-600 to-amber-800 text-white'
+                    : 'text-yellow-600 hover:bg-yellow-600/10'
+                }`}
+              >
+                P2PSwap
+              </button>
+            </div>
+
+            {/* Logo */}
+            {currentPage === 'presale' ? (
+              <PyramidPadLogo className="mb-6" />
+            ) : null}
+
+            {currentPage === 'presale' && (
+              <button
+                onClick={() => setShowAddPresale(!showAddPresale)}
+                className="flex items-center gap-2 bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 text-lg hover:from-yellow-500 hover:to-amber-700 transition-all"
+              >
+                <Plus size={24} />
+                {showAddPresale ? 'Hide Form' : 'Add Presale'}
+              </button>
+            )}
           </div>
         </div>
 
         {/* Main Content */}
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col items-center">
-            {showAddPresale && (
-              <div className="w-full max-w-4xl mb-12">
-                <AddPresale onSubmit={handlePresaleSubmit} />
-              </div>
-            )}
-            
-            <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-8 text-center">
-              Active Presales
-            </h2>
-            
-            <div className="w-full flex flex-wrap justify-center gap-6 mb-16">
-              {presales.map((presale) => (
-                <div key={presale.id} className="w-full md:w-[600px] flex-shrink-0">
-                  <PresaleCard
-                    {...presale}
-                    onComplete={handlePresaleComplete}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {completedPresales.length > 0 && (
+            {currentPage === 'presale' ? (
               <>
+                {showAddPresale && (
+                  <div className="w-full max-w-4xl mb-12">
+                    <AddPresale onSubmit={handlePresaleSubmit} />
+                  </div>
+                )}
+                
                 <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-8 text-center">
-                  Completed Presales
+                  Active Presales
                 </h2>
-                <div className="w-full flex flex-wrap justify-center gap-6">
-                  {completedPresales.map((presale) => (
+                
+                <div className="w-full flex flex-wrap justify-center gap-6 mb-16">
+                  {presales.map((presale) => (
                     <div key={presale.id} className="w-full md:w-[600px] flex-shrink-0">
                       <PresaleCard
                         {...presale}
+                        onComplete={handlePresaleComplete}
                       />
                     </div>
                   ))}
                 </div>
+
+                {completedPresales.length > 0 && (
+                  <>
+                    <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-8 text-center">
+                      Completed Presales
+                    </h2>
+                    <div className="w-full flex flex-wrap justify-center gap-6">
+                      {completedPresales.map((presale) => (
+                        <div key={presale.id} className="w-full md:w-[600px] flex-shrink-0">
+                          <PresaleCard
+                            {...presale}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </>
+            ) : (
+              <P2PSwap />
             )}
           </div>
         </div>
