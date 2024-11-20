@@ -26,10 +26,14 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
     return 'text-red-500';
   };
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(order.swap_tx);
-    setShowCopyMessage(true);
-    setTimeout(() => setShowCopyMessage(false), 10000);
+  const handleCopy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setShowCopyMessage(true);
+      setTimeout(() => setShowCopyMessage(false), 10000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
   };
 
   const handleClaim = async () => {
@@ -77,20 +81,24 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
             Swap in Photonic Wallet
           </a> with TX:
         </p>
-        <div className="flex items-start gap-2 bg-black/30 border border-yellow-600/30 rounded-lg p-4">
-          <code className="flex-1 text-sm break-all">{order.swap_tx}</code>
-          <button
-            onClick={handleCopy}
-            className="text-yellow-600 hover:text-yellow-500 p-1"
+        <div className="relative">
+          <div 
+            className="flex items-start gap-2 bg-black/30 border border-yellow-600/30 rounded-lg p-4 cursor-pointer group"
+            onClick={() => handleCopy(order.swap_tx)}
           >
-            <Copy size={20} />
-          </button>
+            <code className="flex-1 text-sm break-all">{order.swap_tx}</code>
+            <button className="text-yellow-600 hover:text-yellow-500 p-1">
+              <Copy size={20} />
+            </button>
+          </div>
+          {showCopyMessage && (
+            <div className="absolute top-full left-0 right-0 mt-2 text-center">
+              <p className="text-green-500 text-sm bg-black/80 rounded-lg py-2 px-4 inline-block">
+                Copied to clipboard. Use it in Photonic Wallet to make the swap.
+              </p>
+            </div>
+          )}
         </div>
-        {showCopyMessage && (
-          <p className="text-green-500 text-sm mt-1">
-            Copied to clipboard. Use it in Photonic Wallet to make the swap.
-          </p>
-        )}
       </div>
 
       {!order.claimed ? (
