@@ -10,104 +10,19 @@ interface OrderCardProps {
   order: Order;
   fromTokenData: typeof TOKENS[0];
   toTokenData: typeof TOKENS[0];
-  ratio: number;
+  ratio: string;
   onCopy: (tx: string) => void;
   copiedTx: string;
-  onClaim: (id: number) => void;
+  onClaim: (id: number) => Promise<void>;
+  getRatioColor: (ratio: string) => string;
 }
 
-const OrderCard: React.FC<OrderCardProps> = ({
-  order,
-  fromTokenData,
-  toTokenData,
-  ratio,
-  onCopy,
-  copiedTx,
-  onClaim
-}) => {
-  const getRatioColor = (ratio: number) => {
-    if (ratio <= 6) return 'text-green-500';
-    if (ratio <= 10) return 'text-yellow-500';
-    return 'text-red-500';
-  };
-
-  return (
-    <div className="bg-gradient-to-r from-amber-900/10 to-yellow-900/10 rounded-xl p-6 backdrop-blur-sm">
-      <div className="flex items-center gap-4 mb-4">
-        <div className="flex items-center gap-2">
-          <img
-            src={fromTokenData.imageUrl}
-            alt={fromTokenData.symbol}
-            className="w-8 h-8 rounded-full"
-          />
-          <span className="text-2xl font-bold text-white">{order.from_amount}</span>
-          <span className="text-xl text-yellow-600">{fromTokenData.symbol}</span>
-        </div>
-
-        <div className="text-yellow-600 text-xl">↔</div>
-
-        <div className="flex items-center gap-2">
-          <img
-            src={toTokenData.imageUrl}
-            alt={toTokenData.symbol}
-            className="w-8 h-8 rounded-full"
-          />
-          <span className="text-2xl font-bold text-white">{order.to_amount}</span>
-          <span className="text-xl text-yellow-600">{toTokenData.symbol}</span>
-        </div>
-      </div>
-
-      <p className={`${getRatioColor(ratio)} text-lg mb-4`}>
-        Trade Ratio: 1:{ratio.toFixed(2)} (compared with tokens total supply)
-      </p>
-
-      <div className="mb-4">
-        <div className="flex items-center gap-2 mb-2">
-          <a 
-            href="https://photonic-test.radiant4people.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-amber-500 text-lg hover:text-amber-400 transition-colors no-underline"
-          >
-            Swap in Photonic Wallet
-          </a>
-          <span className="text-amber-500 text-lg">with TX:</span>
-        </div>
-        <div className="flex items-center gap-2 bg-black/20 rounded-lg p-4 font-mono text-sm">
-          <code 
-            className="flex-1 break-all cursor-pointer hover:text-yellow-500 transition-colors"
-            onClick={() => onCopy(order.swap_tx)}
-          >
-            {order.swap_tx}
-          </code>
-          <button
-            onClick={() => onCopy(order.swap_tx)}
-            className="text-yellow-600 hover:text-yellow-500 p-1"
-          >
-            <Copy size={20} />
-          </button>
-        </div>
-        {copiedTx === order.swap_tx && (
-          <p className="text-green-500 text-sm mt-2">
-            Copied to clipboard. Use it in Photonic Wallet to make the swap.
-          </p>
-        )}
-      </div>
-
-      {!order.claimed ? (
-        <button
-          onClick={() => onClaim(order.id)}
-          className="bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-8 py-3 text-lg font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all"
-        >
-          Claim
-        </button>
-      ) : (
-        <p className="text-yellow-600 text-lg font-semibold">
-          Claimed
-        </p>
-      )}
-    </div>
-  );
+const getRatioColor = (ratio: string) => {
+  if (!ratio) return '';
+  const ratioNum = parseFloat(ratio.split(':')[1]);
+  if (ratioNum <= 6) return 'text-green-500';
+  if (ratioNum <= 10) return 'text-yellow-500';
+  return 'text-red-500';
 };
 
 export const P2PSwap: React.FC = () => {
@@ -118,7 +33,6 @@ export const P2PSwap: React.FC = () => {
   const [swapTx, setSwapTx] = useState('');
   const [orders, setOrders] = useState<Order[]>([]);
   const [copiedTx, setCopiedTx] = useState('');
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchOrders();
@@ -139,23 +53,20 @@ export const P2PSwap: React.FC = () => {
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false });
-
+    
     if (error) {
       console.error('Error fetching orders:', error);
       return;
     }
-
+    
     setOrders(data || []);
-    setLoading(false);
   };
 
-  const calculateRatio = (
-    fromAmount: number,
-    fromSupply: number,
-    toAmount: number,
-    toSupply: number
-  ) => {
-    return (fromAmount / fromSupply) / (toAmount / toSupply);
+  const calculateRatio = (fromToken: typeof TOKENS[0], toToken: typeof TOKENS[0], fromAmt: string, toAmt: string) => {
+    if (!fromAmt || !toAmt) return '';
+    
+    const ratio = (Number(fromAmt) * toToken.totalSupply) / (Number(toAmt) * fromToken.totalSupply);
+    return `1:${ratio.toFixed(2)}`;
   };
 
   const handleCreateOrder = async () => {
@@ -183,12 +94,6 @@ export const P2PSwap: React.FC = () => {
     setSwapTx('');
   };
 
-  const handleCopyTx = async (tx: string) => {
-    await navigator.clipboard.writeText(tx);
-    setCopiedTx(tx);
-    setTimeout(() => setCopiedTx(''), 10000);
-  };
-
   const handleClaim = async (id: number) => {
     const { error } = await supabase
       .from('orders')
@@ -197,22 +102,33 @@ export const P2PSwap: React.FC = () => {
 
     if (error) {
       console.error('Error claiming order:', error);
+      return;
+    }
+
+    await fetchOrders();
+  };
+
+  const handleCopyTx = async (tx: string) => {
+    try {
+      await navigator.clipboard.writeText(tx);
+      setCopiedTx(tx);
+      setTimeout(() => setCopiedTx(''), 10000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
     }
   };
+
+  const activeOrders = orders.filter(order => !order.claimed);
+  const claimedOrders = orders.filter(order => order.claimed);
 
   return (
     <div className="container mx-auto px-4">
       <P2PSwapLogo className="mb-6" />
-
-      {/* Create Order Form */}
+      
       <div className="bg-gradient-to-r from-amber-900/10 to-yellow-900/10 rounded-xl p-6 backdrop-blur-sm mb-8">
-        <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-          Create Swap Order
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-yellow-600 mb-2">From</label>
+            <label className="block text-yellow-600 mb-2">From Token</label>
             <div className="flex gap-4">
               <TokenSelect
                 tokens={TOKENS}
@@ -224,16 +140,16 @@ export const P2PSwap: React.FC = () => {
                 type="number"
                 value={fromAmount}
                 onChange={(e) => setFromAmount(e.target.value)}
-                className="flex-1 bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+                className="bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 w-32 focus:outline-none focus:border-yellow-600"
                 placeholder="Amount"
                 min="1"
                 step="1"
               />
             </div>
           </div>
-
+          
           <div>
-            <label className="block text-yellow-600 mb-2">To</label>
+            <label className="block text-yellow-600 mb-2">To Token</label>
             <div className="flex gap-4">
               <TokenSelect
                 tokens={TOKENS}
@@ -245,7 +161,7 @@ export const P2PSwap: React.FC = () => {
                 type="number"
                 value={toAmount}
                 onChange={(e) => setToAmount(e.target.value)}
-                className="flex-1 bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+                className="bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 w-32 focus:outline-none focus:border-yellow-600"
                 placeholder="Amount"
                 min="1"
                 step="1"
@@ -255,48 +171,29 @@ export const P2PSwap: React.FC = () => {
         </div>
 
         {fromAmount && toAmount && (
-          <div className="mb-6">
-            <p className={`text-lg ${
-              calculateRatio(
-                parseInt(fromAmount),
-                fromToken.totalSupply,
-                parseInt(toAmount),
-                toToken.totalSupply
-              ) <= 6 ? 'text-green-500' : 
-              calculateRatio(
-                parseInt(fromAmount),
-                fromToken.totalSupply,
-                parseInt(toAmount),
-                toToken.totalSupply
-              ) <= 10 ? 'text-yellow-500' : 'text-red-500'
-            }`}>
-              Trade Ratio: 1:{calculateRatio(
-                parseInt(fromAmount),
-                fromToken.totalSupply,
-                parseInt(toAmount),
-                toToken.totalSupply
-              ).toFixed(2)} (compared with tokens total supply)
+          <div className="mt-4">
+            <p className={`text-lg ${getRatioColor(calculateRatio(fromToken, toToken, fromAmount, toAmount))}`}>
+              Trade Ratio: {calculateRatio(fromToken, toToken, fromAmount, toAmount)} (compared with tokens total supply)
             </p>
           </div>
         )}
 
-        <div className="mb-6">
-          <label className="block text-yellow-600 mb-2">
+        <div className="mt-6">
+          <p className="text-yellow-600 mb-2">
             <a 
               href="https://photonic-test.radiant4people.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-yellow-600 hover:text-yellow-500 transition-colors no-underline"
+              className="hover:text-yellow-500 transition-colors no-underline"
             >
               Swap in Photonic Wallet
-            </a>
-            {' '}with TX:
-          </label>
+            </a> with TX:
+          </p>
           <input
             type="text"
             value={swapTx}
             onChange={(e) => setSwapTx(e.target.value)}
-            className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 font-mono"
+            className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 font-mono text-sm focus:outline-none focus:border-yellow-600"
             placeholder="Enter your swap transaction"
           />
         </div>
@@ -304,51 +201,182 @@ export const P2PSwap: React.FC = () => {
         <button
           onClick={handleCreateOrder}
           disabled={!fromAmount || !toAmount || !swapTx}
-          className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="mt-6 w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all disabled:opacity-50"
         >
           Create Swap Order
         </button>
       </div>
 
-      {/* Orders */}
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-          Active Orders
-        </h2>
+      {activeOrders.length > 0 && (
+        <>
+          <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-8 text-center">
+            Active Orders
+          </h2>
+          <div className="grid grid-cols-1 gap-6 mb-16">
+            {activeOrders.map(order => {
+              const fromTokenData = TOKENS.find(t => t.symbol === order.from_token)!;
+              const toTokenData = TOKENS.find(t => t.symbol === order.to_token)!;
+              const ratio = calculateRatio(
+                fromTokenData,
+                toTokenData,
+                order.from_amount.toString(),
+                order.to_amount.toString()
+              );
 
-        {loading ? (
-          <div className="text-center text-yellow-600">Loading orders...</div>
-        ) : orders.length === 0 ? (
-          <div className="text-center text-yellow-600">No active orders</div>
-        ) : (
-          orders.map((order) => {
-            const fromTokenData = TOKENS.find(t => t.symbol === order.from_token);
-            const toTokenData = TOKENS.find(t => t.symbol === order.to_token);
-            
-            if (!fromTokenData || !toTokenData) return null;
+              return (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  fromTokenData={fromTokenData}
+                  toTokenData={toTokenData}
+                  ratio={ratio}
+                  onCopy={handleCopyTx}
+                  copiedTx={copiedTx}
+                  onClaim={handleClaim}
+                  getRatioColor={getRatioColor}
+                />
+              );
+            })}
+          </div>
+        </>
+      )}
 
-            const ratio = calculateRatio(
-              order.from_amount,
-              fromTokenData.totalSupply,
-              order.to_amount,
-              toTokenData.totalSupply
-            );
+      {claimedOrders.length > 0 && (
+        <>
+          <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-8 text-center">
+            Claimed Orders
+          </h2>
+          <div className="grid grid-cols-1 gap-6">
+            {claimedOrders.map(order => {
+              const fromTokenData = TOKENS.find(t => t.symbol === order.from_token)!;
+              const toTokenData = TOKENS.find(t => t.symbol === order.to_token)!;
+              const ratio = calculateRatio(
+                fromTokenData,
+                toTokenData,
+                order.from_amount.toString(),
+                order.to_amount.toString()
+              );
 
-            return (
-              <OrderCard
-                key={order.id}
-                order={order}
-                fromTokenData={fromTokenData}
-                toTokenData={toTokenData}
-                ratio={ratio}
-                onCopy={handleCopyTx}
-                copiedTx={copiedTx}
-                onClaim={handleClaim}
-              />
-            );
-          })
+              return (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  fromTokenData={fromTokenData}
+                  toTokenData={toTokenData}
+                  ratio={ratio}
+                  onCopy={handleCopyTx}
+                  copiedTx={copiedTx}
+                  onClaim={handleClaim}
+                  getRatioColor={getRatioColor}
+                />
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+const OrderCard: React.FC<OrderCardProps> = ({
+  order,
+  fromTokenData,
+  toTokenData,
+  ratio,
+  onCopy,
+  copiedTx,
+  onClaim,
+  getRatioColor
+}) => {
+  const [isClaiming, setIsClaiming] = useState(false);
+
+  const handleClaim = async () => {
+    setIsClaiming(true);
+    await onClaim(order.id);
+    setIsClaiming(false);
+  };
+
+  const handleCopyClick = async (tx: string) => {
+    try {
+      await navigator.clipboard.writeText(tx);
+      onCopy(tx);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  return (
+    <div className="bg-gradient-to-r from-amber-900/10 to-yellow-900/10 rounded-xl p-6 backdrop-blur-sm">
+      <div className="flex items-center gap-4 mb-4">
+        <div className="flex items-center gap-2">
+          <img
+            src={fromTokenData.imageUrl}
+            alt={fromTokenData.symbol}
+            className="w-8 h-8 rounded-full"
+          />
+          <span className="text-lg">{order.from_amount} {fromTokenData.symbol}</span>
+        </div>
+        <ArrowLeftRight className="text-yellow-600" />
+        <div className="flex items-center gap-2">
+          <img
+            src={toTokenData.imageUrl}
+            alt={toTokenData.symbol}
+            className="w-8 h-8 rounded-full"
+          />
+          <span className="text-lg">{order.to_amount} {toTokenData.symbol}</span>
+        </div>
+      </div>
+
+      <p className={`text-lg mb-4 ${getRatioColor(ratio)}`}>
+        Trade Ratio: {ratio} (compared with tokens total supply)
+      </p>
+
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <a 
+            href="https://photonic-test.radiant4people.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-amber-500 text-lg hover:text-amber-400 transition-colors no-underline"
+          >
+            Swap in Photonic Wallet
+          </a>
+          <span className="text-amber-500 text-lg">with TX:</span>
+        </div>
+        <div className="flex items-center gap-2 bg-black/20 rounded-lg p-4 font-mono text-sm">
+          <code 
+            className="flex-1 break-all cursor-pointer hover:text-yellow-500 transition-colors"
+            onClick={() => handleCopyClick(order.swap_tx)}
+          >
+            {order.swap_tx}
+          </code>
+          <button
+            onClick={() => handleCopyClick(order.swap_tx)}
+            className="text-yellow-600 hover:text-yellow-500 p-1"
+          >
+            <Copy size={20} />
+          </button>
+        </div>
+        {copiedTx === order.swap_tx && (
+          <p className="text-green-500 text-sm mt-2">
+            Copied to clipboard. Use it in Photonic Wallet to make the swap.
+          </p>
         )}
       </div>
+
+      {!order.claimed ? (
+        <button
+          onClick={handleClaim}
+          disabled={isClaiming}
+          className="bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-8 py-3 text-lg font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all disabled:opacity-50"
+        >
+          {isClaiming ? 'Claiming...' : 'Claim'}
+        </button>
+      ) : (
+        <p className="text-yellow-600 text-lg font-semibold">
+          Claimed
+        </p>
+      )}
     </div>
   );
 };
