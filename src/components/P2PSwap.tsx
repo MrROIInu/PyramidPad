@@ -10,10 +10,9 @@ interface SwapOrder {
   toToken: string;
   fromAmount: number;
   toAmount: number;
-  swapTx: string;
-  claimed: boolean;
   fromTokenImage: string;
   toTokenImage: string;
+  swapTx: string;
 }
 
 export const P2PSwap: React.FC = () => {
@@ -28,14 +27,22 @@ export const P2PSwap: React.FC = () => {
 
   const handleFromAmountChange = (value: string) => {
     // Only allow whole numbers
-    const intValue = value.replace(/\D/g, '');
-    setFromAmount(intValue);
+    if (/^\d*$/.test(value)) {
+      setFromAmount(value);
+    }
   };
 
   const handleToAmountChange = (value: string) => {
     // Only allow whole numbers
-    const intValue = value.replace(/\D/g, '');
-    setToAmount(intValue);
+    if (/^\d*$/.test(value)) {
+      setToAmount(value);
+    }
+  };
+
+  const handleCopyTx = async (tx: string) => {
+    await navigator.clipboard.writeText(tx);
+    setCopiedTx(tx);
+    setTimeout(() => setCopiedTx(''), 3000);
   };
 
   const handleCreateOrder = () => {
@@ -47,13 +54,12 @@ export const P2PSwap: React.FC = () => {
       toToken: toToken.symbol,
       fromAmount: Number(fromAmount),
       toAmount: Number(toAmount),
-      swapTx,
-      claimed: false,
       fromTokenImage: fromToken.imageUrl,
-      toTokenImage: toToken.imageUrl
+      toTokenImage: toToken.imageUrl,
+      swapTx
     };
 
-    setOrders([newOrder, ...orders]);
+    setOrders([...orders, newOrder]);
     setFromAmount('');
     setToAmount('');
     setSwapTx('');
@@ -62,20 +68,18 @@ export const P2PSwap: React.FC = () => {
   const handleClaim = (orderId: number) => {
     const order = orders.find(o => o.id === orderId);
     if (order) {
-      const updatedOrder = { ...order, claimed: true };
-      setClaimedOrders([updatedOrder, ...claimedOrders]);
       setOrders(orders.filter(o => o.id !== orderId));
+      setClaimedOrders([order, ...claimedOrders]);
     }
   };
 
-  const handleCopyTx = async (tx: string) => {
-    try {
-      await navigator.clipboard.writeText(tx);
-      setCopiedTx(tx);
-      setTimeout(() => setCopiedTx(''), 3000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
+  const calculateRatio = (amount1: number, supply1: number, amount2: number, supply2: number) => {
+    // Calculate the percentage of total supply for each amount
+    const percent1 = (amount1 / supply1);
+    const percent2 = (amount2 / supply2);
+    
+    // Calculate the ratio between these percentages
+    return percent2 / percent1;
   };
 
   const getSwapRatioColor = (ratio: number) => {
@@ -84,8 +88,35 @@ export const P2PSwap: React.FC = () => {
     return 'text-red-500';
   };
 
+  const formatRatio = (ratio: number) => {
+    if (ratio < 1) {
+      return `${(1 / ratio).toFixed(2)}:1`;
+    }
+    return `1:${ratio.toFixed(2)}`;
+  };
+
+  const swapRatio = fromAmount && toAmount 
+    ? calculateRatio(
+        Number(fromAmount), 
+        fromToken.totalSupply,
+        Number(toAmount), 
+        toToken.totalSupply
+      )
+    : null;
+
   const OrderCard = ({ order, showClaimButton = false }: { order: SwapOrder, showClaimButton?: boolean }) => {
-    const ratio = order.toAmount / order.fromAmount;
+    const fromToken = TOKENS.find(t => t.symbol === order.fromToken);
+    const toToken = TOKENS.find(t => t.symbol === order.toToken);
+    
+    const ratio = fromToken && toToken 
+      ? calculateRatio(
+          order.fromAmount,
+          fromToken.totalSupply,
+          order.toAmount,
+          toToken.totalSupply
+        )
+      : 1;
+      
     const ratioColor = getSwapRatioColor(ratio);
 
     return (
@@ -105,7 +136,7 @@ export const P2PSwap: React.FC = () => {
 
           <div>
             <p className={`text-sm ${ratioColor}`}>
-              Trade Ratio: 1:{ratio.toFixed(2)} (compared with tokens total supply)
+              Trade Ratio: {formatRatio(ratio)} (compared with tokens total supply)
             </p>
             <p className="text-sm text-yellow-600/80 mt-2">
               <a href="https://photonic-test.radiant4people.com/" target="_blank" rel="noopener noreferrer" className="hover:text-yellow-500 no-underline">
@@ -151,10 +182,6 @@ export const P2PSwap: React.FC = () => {
       </div>
     );
   };
-
-  const swapRatio = fromAmount && toAmount 
-    ? Number(toAmount) / Number(fromAmount)
-    : null;
 
   return (
     <div className="container mx-auto px-4">
@@ -202,7 +229,7 @@ export const P2PSwap: React.FC = () => {
 
             {swapRatio && (
               <div className={`text-center ${getSwapRatioColor(swapRatio)}`}>
-                Swap Ratio: 1:{swapRatio.toFixed(2)} (compared with tokens total supply)
+                Swap Ratio: {formatRatio(swapRatio)} (compared with tokens total supply)
               </div>
             )}
 
