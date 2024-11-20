@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowRightLeft, Copy } from 'lucide-react';
 import { TokenSelect } from './TokenSelect';
 import { TOKENS } from '../data/tokens';
@@ -15,6 +15,17 @@ interface SwapOrder {
   swapTx: string;
 }
 
+// Load orders from localStorage
+const loadOrders = () => {
+  const savedOrders = localStorage.getItem('p2pswap_orders');
+  return savedOrders ? JSON.parse(savedOrders) : [];
+};
+
+const loadClaimedOrders = () => {
+  const savedOrders = localStorage.getItem('p2pswap_claimed_orders');
+  return savedOrders ? JSON.parse(savedOrders) : [];
+};
+
 export const P2PSwap: React.FC = () => {
   const [fromToken, setFromToken] = useState(TOKENS[0]);
   const [toToken, setToToken] = useState(TOKENS[1]);
@@ -22,8 +33,17 @@ export const P2PSwap: React.FC = () => {
   const [toAmount, setToAmount] = useState('');
   const [swapTx, setSwapTx] = useState('');
   const [copiedTx, setCopiedTx] = useState('');
-  const [orders, setOrders] = useState<SwapOrder[]>([]);
-  const [claimedOrders, setClaimedOrders] = useState<SwapOrder[]>([]);
+  const [orders, setOrders] = useState<SwapOrder[]>(loadOrders());
+  const [claimedOrders, setClaimedOrders] = useState<SwapOrder[]>(loadClaimedOrders());
+
+  // Save orders to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('p2pswap_orders', JSON.stringify(orders));
+  }, [orders]);
+
+  useEffect(() => {
+    localStorage.setItem('p2pswap_claimed_orders', JSON.stringify(claimedOrders));
+  }, [claimedOrders]);
 
   const handleFromAmountChange = (value: string) => {
     // Only allow whole numbers
