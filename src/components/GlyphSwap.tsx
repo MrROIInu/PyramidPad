@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import QRCode from 'react-qr-code';
 import { Copy } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -29,16 +29,22 @@ export const GlyphSwap: React.FC = () => {
     showSuccess: false
   });
 
-  useEffect(() => {
-    if (fromAmount) {
-      const ratio = fromToken.totalSupply / toToken.totalSupply;
-      const baseAmount = parseFloat(fromAmount) / ratio;
-      const taxAmount = baseAmount * (TAX_PERCENTAGE / 100);
-      setToAmount((baseAmount - taxAmount).toFixed(6));
-    } else {
-      setToAmount('');
-    }
-  }, [fromAmount, fromToken, toToken]);
+  const calculateToAmount = (amount: string) => {
+    if (!amount) return '';
+    const value = parseFloat(amount);
+    const ratio = fromToken.totalSupply / toToken.totalSupply;
+    const baseAmount = value / ratio;
+    const taxAmount = baseAmount * (TAX_PERCENTAGE / 100);
+    return (baseAmount - taxAmount).toFixed(6);
+  };
+
+  const calculateFromAmount = (amount: string) => {
+    if (!amount) return '';
+    const value = parseFloat(amount);
+    const taxMultiplier = 1 + (TAX_PERCENTAGE / 100);
+    const ratio = toToken.totalSupply / fromToken.totalSupply;
+    return (value * taxMultiplier * ratio).toFixed(6);
+  };
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(SWAP_WALLET);
@@ -199,16 +205,26 @@ export const GlyphSwap: React.FC = () => {
                 <TokenSelect
                   tokens={TOKENS}
                   selectedToken={fromToken}
-                  onChange={setFromToken}
+                  onChange={(token) => {
+                    setFromToken(token);
+                    if (fromAmount) {
+                      setToAmount(calculateToAmount(fromAmount));
+                    }
+                  }}
                   className="flex-1"
                 />
                 <input
                   type="number"
                   value={fromAmount}
-                  onChange={(e) => setFromAmount(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFromAmount(value);
+                    setToAmount(calculateToAmount(value));
+                  }}
                   className="bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 w-32 focus:outline-none focus:border-yellow-600"
                   placeholder="Amount"
-                  min="1"
+                  min="0.000001"
+                  step="0.000001"
                   required
                 />
               </div>
@@ -220,14 +236,27 @@ export const GlyphSwap: React.FC = () => {
                 <TokenSelect
                   tokens={TOKENS}
                   selectedToken={toToken}
-                  onChange={setToToken}
+                  onChange={(token) => {
+                    setToToken(token);
+                    if (toAmount) {
+                      setFromAmount(calculateFromAmount(toAmount));
+                    }
+                  }}
                   className="flex-1"
                 />
                 <input
-                  type="text"
+                  type="number"
                   value={toAmount}
-                  readOnly
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setToAmount(value);
+                    setFromAmount(calculateFromAmount(value));
+                  }}
                   className="bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 w-32 focus:outline-none focus:border-yellow-600"
+                  placeholder="Amount"
+                  min="0.000001"
+                  step="0.000001"
+                  required
                 />
               </div>
             </div>

@@ -21,15 +21,6 @@ export const P2PSwap: React.FC = () => {
     fetchOrders();
   }, []);
 
-  useEffect(() => {
-    if (fromAmount && fromToken && toToken) {
-      const ratio = fromToken.totalSupply / toToken.totalSupply;
-      setToAmount((parseFloat(fromAmount) / ratio).toFixed(6));
-    } else {
-      setToAmount('');
-    }
-  }, [fromAmount, fromToken, toToken]);
-
   const fetchOrders = async () => {
     const { data, error } = await supabase
       .from('orders')
@@ -74,7 +65,7 @@ export const P2PSwap: React.FC = () => {
   const parseImportedTx = (text: string) => {
     const match = text.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([\w\d]+)/);
     if (match) {
-      const [, amount, fromSymbol, toAmt, toSymbol, tx] = match;
+      const [, amount, fromSymbol, , toSymbol, tx] = match;
       const foundFromToken = TOKENS.find(t => t.symbol === fromSymbol);
       const foundToToken = TOKENS.find(t => t.symbol === toSymbol);
       
@@ -107,10 +98,19 @@ export const P2PSwap: React.FC = () => {
               <input
                 type="number"
                 value={fromAmount}
-                onChange={(e) => setFromAmount(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFromAmount(value);
+                  // Calculate toAmount based on token ratio
+                  if (value && fromToken && toToken) {
+                    const ratio = fromToken.totalSupply / toToken.totalSupply;
+                    setToAmount((parseFloat(value) / ratio).toFixed(6));
+                  }
+                }}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
                 placeholder="Enter amount"
-                min="1"
+                min="0.000001"
+                step="0.000001"
                 required
               />
             </div>
@@ -122,16 +122,35 @@ export const P2PSwap: React.FC = () => {
               <TokenSelect
                 tokens={TOKENS}
                 selectedToken={toToken}
-                onChange={setToToken}
+                onChange={(token) => {
+                  setToToken(token);
+                  // Recalculate toAmount when token changes
+                  if (fromAmount && fromToken && token) {
+                    const ratio = fromToken.totalSupply / token.totalSupply;
+                    setToAmount((parseFloat(fromAmount) / ratio).toFixed(6));
+                  }
+                }}
               />
             </div>
             <div>
               <label className="block text-yellow-600 mb-2">You Will Receive</label>
               <input
-                type="text"
+                type="number"
                 value={toAmount}
-                readOnly
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setToAmount(value);
+                  // Calculate fromAmount based on token ratio
+                  if (value && fromToken && toToken) {
+                    const ratio = toToken.totalSupply / fromToken.totalSupply;
+                    setFromAmount((parseFloat(value) * ratio).toFixed(6));
+                  }
+                }}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+                placeholder="Enter amount"
+                min="0.000001"
+                step="0.000001"
+                required
               />
             </div>
           </div>
