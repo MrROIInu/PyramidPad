@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Copy } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { TOKENS } from '../data/tokens';
@@ -16,6 +16,10 @@ export const P2PSwap: React.FC = () => {
   const [swapTx, setSwapTx] = useState('');
   const [importedTx, setImportedTx] = useState('');
   const [showCopyMessage, setShowCopyMessage] = useState(false);
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
 
   const fetchOrders = async () => {
     const { data, error } = await supabase
@@ -61,7 +65,7 @@ export const P2PSwap: React.FC = () => {
   const parseImportedTx = (text: string) => {
     const match = text.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([\w\d]+)/);
     if (match) {
-      const [, amount, fromSymbol, toAmt, toSymbol, tx] = match;
+      const [, amount, fromSymbol, , toSymbol, tx] = match;
       const foundFromToken = TOKENS.find(t => t.symbol === fromSymbol);
       const foundToToken = TOKENS.find(t => t.symbol === toSymbol);
       
@@ -69,7 +73,6 @@ export const P2PSwap: React.FC = () => {
         setFromToken(foundFromToken);
         setToToken(foundToToken);
         setFromAmount(amount);
-        setToAmount(toAmt);
         setSwapTx(tx);
       }
     }
@@ -95,7 +98,15 @@ export const P2PSwap: React.FC = () => {
               <input
                 type="number"
                 value={fromAmount}
-                onChange={(e) => setFromAmount(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFromAmount(value);
+                  // Calculate toAmount based on token ratio
+                  if (value && fromToken && toToken) {
+                    const ratio = fromToken.totalSupply / toToken.totalSupply;
+                    setToAmount((parseFloat(value) / ratio).toFixed(6));
+                  }
+                }}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
                 placeholder="Enter amount"
                 min="0.000001"
@@ -111,7 +122,14 @@ export const P2PSwap: React.FC = () => {
               <TokenSelect
                 tokens={TOKENS}
                 selectedToken={toToken}
-                onChange={setToToken}
+                onChange={(token) => {
+                  setToToken(token);
+                  // Recalculate toAmount when token changes
+                  if (fromAmount && fromToken && token) {
+                    const ratio = fromToken.totalSupply / token.totalSupply;
+                    setToAmount((parseFloat(fromAmount) / ratio).toFixed(6));
+                  }
+                }}
               />
             </div>
             <div>
@@ -119,7 +137,15 @@ export const P2PSwap: React.FC = () => {
               <input
                 type="number"
                 value={toAmount}
-                onChange={(e) => setToAmount(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setToAmount(value);
+                  // Calculate fromAmount based on token ratio
+                  if (value && fromToken && toToken) {
+                    const ratio = toToken.totalSupply / fromToken.totalSupply;
+                    setFromAmount((parseFloat(value) * ratio).toFixed(6));
+                  }
+                }}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
                 placeholder="Enter amount"
                 min="0.000001"
@@ -161,7 +187,7 @@ export const P2PSwap: React.FC = () => {
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
                 placeholder="Example: 🔁 Swap: 1000 RXD ➔ 1000 POW 📋01000000015c943f068b829d3e00c0638948303463f74aa6839fea2ee5698b712061a8482a000000006a47304402203eef3431f97c5ad0f59bcc5198747771a85dc3d9513d3594c8b042a943e872c302201f332de8b6349831ed01dc530f339fb42f0017e9a30ccfdecfe22ba31f26e2aac32102a86b11635102f4e0f74f2cba09c8db13363ad25e5b656380d8fe271ffb769473ffffffff01e8030000000000004b76a9142b91c3856057c3fc1526bad0ed2069421782a73b88acbdd0b01b97916dd47320f939b42eb0f51709928d874dfd773dd6e92166afc5db190500000000dec0e9aa76e378e4a269e69d00000000🟦"
                 rows={3}
-                style={{ color: 'rgba(255, 255, 255, 0.3)' }}
+                style={{ color: 'rgba(255, 255, 255, 0.5)' }}
               />
             </div>
           </div>

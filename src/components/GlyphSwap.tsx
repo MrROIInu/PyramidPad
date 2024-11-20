@@ -29,6 +29,23 @@ export const GlyphSwap: React.FC = () => {
     showSuccess: false
   });
 
+  const calculateToAmount = (amount: string) => {
+    if (!amount) return '';
+    const value = parseFloat(amount);
+    const ratio = fromToken.totalSupply / toToken.totalSupply;
+    const baseAmount = value / ratio;
+    const taxAmount = baseAmount * (TAX_PERCENTAGE / 100);
+    return (baseAmount - taxAmount).toFixed(6);
+  };
+
+  const calculateFromAmount = (amount: string) => {
+    if (!amount) return '';
+    const value = parseFloat(amount);
+    const taxMultiplier = 1 + (TAX_PERCENTAGE / 100);
+    const ratio = toToken.totalSupply / fromToken.totalSupply;
+    return (value * taxMultiplier * ratio).toFixed(6);
+  };
+
   const handleCopy = async () => {
     await navigator.clipboard.writeText(SWAP_WALLET);
     setShowCopyMessage(true);
@@ -188,13 +205,22 @@ export const GlyphSwap: React.FC = () => {
                 <TokenSelect
                   tokens={TOKENS}
                   selectedToken={fromToken}
-                  onChange={setFromToken}
+                  onChange={(token) => {
+                    setFromToken(token);
+                    if (fromAmount) {
+                      setToAmount(calculateToAmount(fromAmount));
+                    }
+                  }}
                   className="flex-1"
                 />
                 <input
                   type="number"
                   value={fromAmount}
-                  onChange={(e) => setFromAmount(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFromAmount(value);
+                    setToAmount(calculateToAmount(value));
+                  }}
                   className="bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 w-32 focus:outline-none focus:border-yellow-600"
                   placeholder="Amount"
                   min="0.000001"
@@ -210,13 +236,22 @@ export const GlyphSwap: React.FC = () => {
                 <TokenSelect
                   tokens={TOKENS}
                   selectedToken={toToken}
-                  onChange={setToToken}
+                  onChange={(token) => {
+                    setToToken(token);
+                    if (toAmount) {
+                      setFromAmount(calculateFromAmount(toAmount));
+                    }
+                  }}
                   className="flex-1"
                 />
                 <input
                   type="number"
                   value={toAmount}
-                  onChange={(e) => setToAmount(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setToAmount(value);
+                    setFromAmount(calculateFromAmount(value));
+                  }}
                   className="bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 w-32 focus:outline-none focus:border-yellow-600"
                   placeholder="Amount"
                   min="0.000001"
