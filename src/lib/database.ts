@@ -1,6 +1,5 @@
 import { supabase } from './supabase';
 import { INITIAL_LIQUIDITY } from '../data/liquidityPool';
-import { INITIAL_ORDERS } from '../data/orders';
 
 interface SwapData {
   from_token: string;
@@ -37,13 +36,6 @@ export async function initializeDatabase() {
       .upsert(updates, { onConflict: 'token' });
 
     if (liquidityError) throw liquidityError;
-
-    // Initialize orders with initial data
-    const { error: ordersError } = await supabase
-      .from('orders')
-      .upsert(INITIAL_ORDERS, { onConflict: 'id' });
-
-    if (ordersError) throw ordersError;
 
     return true;
   } catch (error) {
@@ -84,6 +76,39 @@ export async function saveOrder(data: OrderData) {
     return true;
   } catch (error) {
     console.error('Error saving order:', error);
+    throw error;
+  }
+}
+
+export async function getOrders() {
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    return [];
+  }
+}
+
+export async function updateOrderStatus(orderId: number, claimed: boolean) {
+  try {
+    const { error } = await supabase
+      .from('orders')
+      .update({ 
+        claimed,
+        claim_count: claimed ? supabase.rpc('increment_claim_count') : undefined
+      })
+      .eq('id', orderId);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error updating order status:', error);
     throw error;
   }
 }
