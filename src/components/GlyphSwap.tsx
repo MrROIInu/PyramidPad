@@ -5,11 +5,11 @@ import { TOKENS } from '../data/tokens';
 import { TokenSelect } from './TokenSelect';
 import { GlyphSwapLogo } from './GlyphSwapLogo';
 import { saveSwap, getLiquidity } from '../lib/database';
-import { INITIAL_LIQUIDITY } from '../data/liquidityPool';
 
 const SWAP_WALLET = '1CiKtAE6Zf3tniKmPBhv1e7pBRezZM433N';
 const TAX_PERCENTAGE = 3;
 const MIN_AMOUNT = 2;
+const MIN_LIQUIDITY = 1000000; // 1 million tokens minimum liquidity
 
 interface SwapState {
   showForm: boolean;
@@ -25,12 +25,12 @@ export const GlyphSwap: React.FC = () => {
   const [walletAddress, setWalletAddress] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [showCopyMessage, setShowCopyMessage] = useState(false);
+  const [liquidity, setLiquidity] = useState<Record<string, number>>({});
   const [swapState, setSwapState] = useState<SwapState>({
     showForm: true,
     showVerification: false,
     showSuccess: false
   });
-  const [liquidity, setLiquidity] = useState<Record<string, number>>(INITIAL_LIQUIDITY);
 
   useEffect(() => {
     fetchLiquidity();
@@ -71,7 +71,7 @@ export const GlyphSwap: React.FC = () => {
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(SWAP_WALLET);
-    setShowCopyMessage(true);
+    setCopied(true);
     setTimeout(() => setShowCopyMessage(false), 2000);
   };
 
@@ -144,7 +144,7 @@ export const GlyphSwap: React.FC = () => {
 
   const filteredToTokens = TOKENS.filter(token => {
     const tokenLiquidity = liquidity[token.symbol] || 0;
-    return tokenLiquidity >= 2;
+    return tokenLiquidity >= MIN_LIQUIDITY;
   });
 
   if (swapState.showSuccess) {
