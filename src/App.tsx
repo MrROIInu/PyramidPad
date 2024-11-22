@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { GlyphSwap } from './components/GlyphSwap';
 import { P2PSwap } from './components/P2PSwap';
 import { PyramidPad } from './components/PyramidPad';
+import { OrderBookDemo } from './components/OrderBookDemo';
 import { BetaLogo } from './components/BetaLogo';
 import { initializeDatabase, updateLiquidityPool } from './lib/database';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<'glyphswap' | 'p2pswap' | 'pyramidpad'>('glyphswap');
+  const [currentPage, setCurrentPage] = useState<'glyphswap' | 'p2pswap' | 'pyramidpad' | 'orderbookdemo'>('glyphswap');
 
   useEffect(() => {
     // Initialize database and update liquidity pool
@@ -54,6 +55,16 @@ const App: React.FC = () => {
               >
                 PyramidPad
               </button>
+              <button
+                onClick={() => setCurrentPage('orderbookdemo')}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  currentPage === 'orderbookdemo' 
+                    ? 'bg-yellow-600 text-white' 
+                    : 'text-yellow-600 hover:bg-yellow-600/10'
+                }`}
+              >
+                OrderBookDemo
+              </button>
             </div>
           </div>
         </nav>
@@ -63,6 +74,7 @@ const App: React.FC = () => {
           {currentPage === 'glyphswap' && <GlyphSwap />}
           {currentPage === 'p2pswap' && <P2PSwap />}
           {currentPage === 'pyramidpad' && <PyramidPad />}
+          {currentPage === 'orderbookdemo' && <OrderBookDemo />}
         </main>
       </div>
     </div>
