@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Copy, RotateCw } from 'lucide-react';
-import QRCode from 'react-qr-code';
+import { supabase } from '../lib/supabase';
 import { TOKENS } from '../data/tokens';
 import { TokenSelect } from './TokenSelect';
 import { P2PSwapLogo } from './P2PSwapLogo';
 import { OrderCard } from './OrderCard';
 import { Order } from '../types';
-import { getOrders, saveOrder } from '../lib/database';
 
 export const P2PSwap: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -23,23 +22,20 @@ export const P2PSwap: React.FC = () => {
   }, []);
 
   const fetchOrders = async () => {
-    const data = await getOrders();
-    setOrders(data);
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching orders:', error);
+    } else {
+      setOrders(data || []);
+    }
   };
 
   const handleRefresh = () => {
     fetchOrders();
-  };
-
-  const calculateRatio = () => {
-    if (!fromToken || !toToken || !fromAmount || !toAmount) return 0;
-    return (parseFloat(fromAmount) / fromToken.totalSupply) / (parseFloat(toAmount) / toToken.totalSupply);
-  };
-
-  const getRatioColor = (ratio: number) => {
-    if (ratio >= 0.1 && ratio <= 5) return 'text-green-500';
-    if (ratio > 5 && ratio <= 9) return 'text-yellow-500';
-    return 'text-red-500';
   };
 
   const handleCreateOrder = async (e: React.FormEvent) => {
@@ -47,13 +43,19 @@ export const P2PSwap: React.FC = () => {
     if (!fromToken || !toToken || !fromAmount || !toAmount || !swapTx) return;
 
     try {
-      await saveOrder({
-        from_token: fromToken.symbol,
-        to_token: toToken.symbol,
-        from_amount: parseFloat(fromAmount),
-        to_amount: parseFloat(toAmount),
-        swap_tx: swapTx
-      });
+      const { error } = await supabase
+        .from('orders')
+        .insert([{
+          from_token: fromToken.symbol,
+          to_token: toToken.symbol,
+          from_amount: parseFloat(fromAmount),
+          to_amount: parseFloat(toAmount),
+          swap_tx: swapTx,
+          claimed: false,
+          claim_count: 0
+        }]);
+
+      if (error) throw error;
 
       setFromAmount('');
       setToAmount('');
@@ -67,18 +69,16 @@ export const P2PSwap: React.FC = () => {
   };
 
   const parseImportedTx = (text: string) => {
-    // Match pattern: 🔁 Swap: 1000 RXD ➔ 1000 POW 📋<tx_hash>
-    const match = text.match(/🔁 Swap: (\d+(?:\.\d+)?) ([A-Za-z0-9]+) ➔ (\d+(?:\.\d+)?) ([A-Za-z0-9]+) 📋([a-zA-Z0-9]+)/);
-    
+    const match = text.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([\w\d]+)/);
     if (match) {
-      const [, fromAmt, fromSymbol, toAmt, toSymbol, tx] = match;
+      const [, amount, fromSymbol, toAmt, toSymbol, tx] = match;
       const foundFromToken = TOKENS.find(t => t.symbol === fromSymbol);
       const foundToToken = TOKENS.find(t => t.symbol === toSymbol);
       
       if (foundFromToken && foundToToken) {
         setFromToken(foundFromToken);
         setToToken(foundToToken);
-        setFromAmount(fromAmt);
+        setFromAmount(amount);
         setToAmount(toAmt);
         setSwapTx(tx);
       }
@@ -87,21 +87,19 @@ export const P2PSwap: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4">
-      <P2PSwapLogo className="mb-8" />
+      <div className="flex items-center justify-between mb-8">
+        <P2PSwapLogo />
+        <button
+          onClick={handleRefresh}
+          className="text-yellow-600 hover:text-yellow-500 p-2"
+          title="Refresh"
+        >
+          <RotateCw size={20} />
+        </button>
+      </div>
 
       <form onSubmit={handleCreateOrder} className="mb-12">
-        <div className="bg-gradient-to-r from-amber-900/10 to-yellow-900/10 rounded-xl p-6 backdrop-blur-sm">
-          <div className="flex justify-end mb-4">
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="text-yellow-600 hover:text-yellow-500 p-1"
-              title="Reload"
-            >
-              <RotateCw size={16} />
-            </button>
-          </div>
-
+        <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="block text-yellow-600 mb-2">From Token</label>
@@ -144,11 +142,6 @@ export const P2PSwap: React.FC = () => {
                 placeholder="Enter amount"
                 required
               />
-              {fromAmount && toAmount && (
-                <p className={`text-sm mt-1 ${getRatioColor(calculateRatio())}`}>
-                  Trade Ratio: {calculateRatio().toFixed(2)}:1
-                </p>
-              )}
             </div>
           </div>
 
@@ -173,7 +166,7 @@ export const P2PSwap: React.FC = () => {
             />
             <div>
               <label className="block text-yellow-600 mb-2">
-                Import full Transaction text from Photonic Wallet to fill input form:
+                Import Transaction Text:
               </label>
               <textarea
                 value={importedTx}
