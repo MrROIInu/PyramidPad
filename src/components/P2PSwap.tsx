@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Copy } from 'lucide-react';
+import { Copy, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { TOKENS } from '../data/tokens';
 import { TokenSelect } from './TokenSelect';
 import { P2PSwapLogo } from './P2PSwapLogo';
 import { OrderCard } from './OrderCard';
 import { Order } from '../types';
+import { saveOrder } from '../lib/database';
+
+const MIN_TOKENS = 2;
 
 export const P2PSwap: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [fromToken, setFromToken] = useState(TOKENS[0]);
-  const [toToken, setToToken] = useState(TOKENS[1]);
+  const [fromToken, setFromToken] = useState<typeof TOKENS[0]>(TOKENS[0]);
+  const [toToken, setToToken] = useState<typeof TOKENS[0]>(TOKENS[1]);
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
   const [swapTx, setSwapTx] = useState('');
@@ -34,38 +37,47 @@ export const P2PSwap: React.FC = () => {
     }
   };
 
+  const handleRefresh = () => {
+    fetchOrders();
+    setFromToken(TOKENS[0]);
+    setToToken(TOKENS[1]);
+    setFromAmount('');
+    setToAmount('');
+    setSwapTx('');
+    setImportedTx('');
+  };
+
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fromToken || !toToken || !fromAmount || !toAmount || !swapTx) return;
+    if (parseFloat(fromAmount) < MIN_TOKENS || parseFloat(toAmount) < MIN_TOKENS) return;
 
-    const { error } = await supabase
-      .from('orders')
-      .insert([{
+    try {
+      await saveOrder({
         from_token: fromToken.symbol,
         to_token: toToken.symbol,
         from_amount: parseFloat(fromAmount),
         to_amount: parseFloat(toAmount),
-        swap_tx: swapTx,
-        claimed: false,
-        claim_count: 0
-      }]);
+        swap_tx: swapTx
+      });
 
-    if (error) {
-      console.error('Error creating order:', error);
-      alert('Failed to create order. Please try again.');
-    } else {
+      setFromToken(TOKENS[0]);
+      setToToken(TOKENS[1]);
       setFromAmount('');
       setToAmount('');
       setSwapTx('');
       setImportedTx('');
-      fetchOrders();
+      await fetchOrders();
+    } catch (error) {
+      console.error('Error creating order:', error);
+      alert('Failed to create order. Please try again.');
     }
   };
 
   const parseImportedTx = (text: string) => {
     const match = text.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([\w\d]+)/);
     if (match) {
-      const [, amount, fromSymbol, , toSymbol, tx] = match;
+      const [, amount, fromSymbol, toAmt, toSymbol, tx] = match;
       const foundFromToken = TOKENS.find(t => t.symbol === fromSymbol);
       const foundToToken = TOKENS.find(t => t.symbol === toSymbol);
       
@@ -73,14 +85,42 @@ export const P2PSwap: React.FC = () => {
         setFromToken(foundFromToken);
         setToToken(foundToToken);
         setFromAmount(amount);
+        setToAmount(toAmt);
         setSwapTx(tx);
       }
     }
   };
 
+  const getRatioColor = (ratio: number) => {
+    // Convert ratio to always be >= 1 by taking the larger number as numerator
+    const normalizedRatio = ratio >= 1 ? ratio : 1 / ratio;
+    
+    if (normalizedRatio <= 5) return 'text-green-500';  // 1:1 to 1:5 (or 5:1)
+    if (normalizedRatio <= 9) return 'text-yellow-500'; // 1:6 to 1:9 (or 6:1 to 9:1)
+    return 'text-red-500';                              // 1:10+ (or 10:1+)
+  };
+
+  const calculateRatio = () => {
+    if (!fromToken || !toToken || !fromAmount || !toAmount || 
+        parseFloat(fromAmount) < MIN_TOKENS || parseFloat(toAmount) < MIN_TOKENS) {
+      return null;
+    }
+
+    const ratio = parseFloat(fromAmount) / parseFloat(toAmount);
+    return ratio;
+  };
+
   return (
     <div className="container mx-auto px-4">
-      <P2PSwapLogo className="mb-6" />
+      <div className="flex justify-between items-center mb-8">
+        <P2PSwapLogo />
+        <button
+          onClick={handleRefresh}
+          className="p-2 rounded-lg bg-yellow-600/10 text-yellow-600 hover:bg-yellow-600/20 transition-colors"
+        >
+          <RefreshCw size={24} />
+        </button>
+      </div>
 
       <form onSubmit={handleCreateOrder} className="mb-12">
         <div className="bg-gradient-to-r from-amber-900/10 to-yellow-900/10 rounded-xl p-6 backdrop-blur-sm">
@@ -91,6 +131,7 @@ export const P2PSwap: React.FC = () => {
                 tokens={TOKENS}
                 selectedToken={fromToken}
                 onChange={setFromToken}
+                placeholder="Select token"
               />
             </div>
             <div>
@@ -98,19 +139,10 @@ export const P2PSwap: React.FC = () => {
               <input
                 type="number"
                 value={fromAmount}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setFromAmount(value);
-                  // Calculate toAmount based on token ratio
-                  if (value && fromToken && toToken) {
-                    const ratio = fromToken.totalSupply / toToken.totalSupply;
-                    setToAmount((parseFloat(value) / ratio).toFixed(6));
-                  }
-                }}
+                onChange={(e) => setFromAmount(e.target.value)}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
                 placeholder="Enter amount"
-                min="0.000001"
-                step="0.000001"
+                min={MIN_TOKENS}
                 required
               />
             </div>
@@ -122,14 +154,8 @@ export const P2PSwap: React.FC = () => {
               <TokenSelect
                 tokens={TOKENS}
                 selectedToken={toToken}
-                onChange={(token) => {
-                  setToToken(token);
-                  // Recalculate toAmount when token changes
-                  if (fromAmount && fromToken && token) {
-                    const ratio = fromToken.totalSupply / token.totalSupply;
-                    setToAmount((parseFloat(fromAmount) / ratio).toFixed(6));
-                  }
-                }}
+                onChange={setToToken}
+                placeholder="Select token"
               />
             </div>
             <div>
@@ -137,23 +163,34 @@ export const P2PSwap: React.FC = () => {
               <input
                 type="number"
                 value={toAmount}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setToAmount(value);
-                  // Calculate fromAmount based on token ratio
-                  if (value && fromToken && toToken) {
-                    const ratio = toToken.totalSupply / fromToken.totalSupply;
-                    setFromAmount((parseFloat(value) * ratio).toFixed(6));
-                  }
-                }}
+                onChange={(e) => setToAmount(e.target.value)}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
                 placeholder="Enter amount"
-                min="0.000001"
-                step="0.000001"
+                min={MIN_TOKENS}
                 required
               />
             </div>
           </div>
+
+          {fromToken && toToken && fromAmount && toAmount && 
+           parseFloat(fromAmount) >= MIN_TOKENS && parseFloat(toAmount) >= MIN_TOKENS && (
+            <div className="mb-6">
+              {(() => {
+                const ratio = calculateRatio();
+                if (!ratio) return null;
+                
+                const displayRatio = ratio >= 1 
+                  ? `${ratio.toFixed(2)}:1`
+                  : `1:${(1/ratio).toFixed(2)}`;
+                
+                return (
+                  <p className={`text-lg ${getRatioColor(ratio)}`}>
+                    Trade Ratio: {displayRatio}
+                  </p>
+                );
+              })()}
+            </div>
+          )}
 
           <div className="mb-6">
             <p className="text-yellow-600 mb-2">
@@ -194,7 +231,9 @@ export const P2PSwap: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all"
+            disabled={!fromToken || !toToken || !fromAmount || !toAmount || 
+                     parseFloat(fromAmount) < MIN_TOKENS || parseFloat(toAmount) < MIN_TOKENS || !swapTx}
+            className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Create Swap Order
           </button>
