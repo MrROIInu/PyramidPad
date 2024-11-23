@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Copy } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
-import { supabase } from '../lib/supabase';
+import { updateOrderStatus } from '../lib/database';
 import { Order } from '../types';
 
 interface OrderCardProps {
@@ -31,7 +31,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onClaim }) => {
     try {
       await navigator.clipboard.writeText(text);
       setShowCopyMessage(true);
-      setTimeout(() => setShowCopyMessage(false), 10000);
+      setTimeout(() => setShowCopyMessage(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
     }
@@ -39,24 +39,19 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onClaim }) => {
 
   const handleClaim = async () => {
     setIsUpdating(true);
-    const { error } = await supabase
-      .from('orders')
-      .update({ 
-        claimed: true,
-        claim_count: (order.claim_count || 0) + 1 
-      })
-      .eq('id', order.id);
-
-    if (error) {
+    try {
+      await updateOrderStatus(order.id, true);
+      if (onClaim) onClaim();
+    } catch (error) {
       console.error('Error claiming order:', error);
-    } else if (onClaim) {
-      onClaim();
+      alert('Failed to claim order. Please try again.');
+    } finally {
+      setIsUpdating(false);
     }
-    setIsUpdating(false);
   };
 
   return (
-    <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
+    <div className="bg-gradient-to-r from-amber-900/10 to-yellow-900/10 rounded-xl p-6 backdrop-blur-sm">
       <div className="flex items-center gap-4 mb-4">
         <div className="flex items-center gap-2">
           <img src={fromToken.imageUrl} alt={fromToken.symbol} className="w-8 h-8 rounded-full" />

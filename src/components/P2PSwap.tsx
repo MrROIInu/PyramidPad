@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Copy, RotateCw } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import QRCode from 'react-qr-code';
 import { TOKENS } from '../data/tokens';
 import { TokenSelect } from './TokenSelect';
 import { P2PSwapLogo } from './P2PSwapLogo';
 import { OrderCard } from './OrderCard';
 import { Order } from '../types';
-import { useClipboard } from '../hooks/useClipboard';
+import { getOrders, saveOrder } from '../lib/database';
 
 export const P2PSwap: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -23,90 +23,82 @@ export const P2PSwap: React.FC = () => {
   }, []);
 
   const fetchOrders = async () => {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching orders:', error);
-    } else {
-      setOrders(data || []);
-    }
+    const data = await getOrders();
+    setOrders(data);
   };
 
   const handleRefresh = () => {
     fetchOrders();
   };
 
+  const calculateRatio = () => {
+    if (!fromToken || !toToken || !fromAmount || !toAmount) return 0;
+    return (parseFloat(fromAmount) / fromToken.totalSupply) / (parseFloat(toAmount) / toToken.totalSupply);
+  };
+
+  const getRatioColor = (ratio: number) => {
+    if (ratio >= 0.1 && ratio <= 5) return 'text-green-500';
+    if (ratio > 5 && ratio <= 9) return 'text-yellow-500';
+    return 'text-red-500';
+  };
+
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fromToken || !toToken || !fromAmount || !toAmount || !swapTx) return;
 
-    const { error } = await supabase
-      .from('orders')
-      .insert([{
+    try {
+      await saveOrder({
         from_token: fromToken.symbol,
         to_token: toToken.symbol,
         from_amount: parseFloat(fromAmount),
         to_amount: parseFloat(toAmount),
-        swap_tx: swapTx,
-        claimed: false,
-        claim_count: 0
-      }]);
+        swap_tx: swapTx
+      });
 
-    if (error) {
-      console.error('Error creating order:', error);
-      alert('Failed to create order. Please try again.');
-    } else {
       setFromAmount('');
       setToAmount('');
       setSwapTx('');
       setImportedTx('');
       fetchOrders();
+    } catch (error) {
+      console.error('Error creating order:', error);
+      alert('Failed to create order. Please try again.');
     }
   };
 
-  useClipboard((text: string) => {
-    const match = text.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([\w\d]+)/);
+  const parseImportedTx = (text: string) => {
+    // Match pattern: 🔁 Swap: 1000 RXD ➔ 1000 POW 📋<tx_hash>
+    const match = text.match(/🔁 Swap: (\d+(?:\.\d+)?) ([A-Za-z0-9]+) ➔ (\d+(?:\.\d+)?) ([A-Za-z0-9]+) 📋([a-zA-Z0-9]+)/);
+    
     if (match) {
-      const [, amount1, token1, amount2, token2, tx] = match;
-      const foundFromToken = TOKENS.find(t => t.symbol === token1);
-      const foundToToken = TOKENS.find(t => t.symbol === token2);
+      const [, fromAmt, fromSymbol, toAmt, toSymbol, tx] = match;
+      const foundFromToken = TOKENS.find(t => t.symbol === fromSymbol);
+      const foundToToken = TOKENS.find(t => t.symbol === toSymbol);
       
       if (foundFromToken && foundToToken) {
         setFromToken(foundFromToken);
         setToToken(foundToToken);
-        setFromAmount(amount1);
-        setToAmount(amount2);
+        setFromAmount(fromAmt);
+        setToAmount(toAmt);
         setSwapTx(tx);
-        setImportedTx(text);
       }
     }
-  });
-
-  const calculateTradeRatio = (fromAmount: number, toAmount: number) => {
-    const ratio = (fromAmount / fromToken.totalSupply) / (toAmount / toToken.totalSupply);
-    return ratio > 1 ? `1:${ratio.toFixed(2)}` : `${(1/ratio).toFixed(2)}:1`;
   };
 
   return (
     <div className="container mx-auto px-4">
-      <div className="flex justify-center mb-8">
-        <P2PSwapLogo />
-      </div>
+      <P2PSwapLogo className="mb-8" />
 
       <form onSubmit={handleCreateOrder} className="mb-12">
-        <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-white">Create Swap Order</h2>
+        <div className="bg-gradient-to-r from-amber-900/10 to-yellow-900/10 rounded-xl p-6 backdrop-blur-sm">
+          <div className="flex justify-end mb-4">
             <button
               type="button"
               onClick={handleRefresh}
-              className="text-yellow-600 hover:text-yellow-500 p-2"
-              title="Refresh"
+              className="text-yellow-600 hover:text-yellow-500 p-1"
+              title="Reload"
             >
-              <RotateCw size={20} />
+              <RotateCw size={16} />
             </button>
           </div>
 
@@ -152,36 +144,56 @@ export const P2PSwap: React.FC = () => {
                 placeholder="Enter amount"
                 required
               />
+              {fromAmount && toAmount && (
+                <p className={`text-sm mt-1 ${getRatioColor(calculateRatio())}`}>
+                  Trade Ratio: {calculateRatio().toFixed(2)}:1
+                </p>
+              )}
             </div>
           </div>
 
           <div className="mb-6">
-            <label className="block text-yellow-600 mb-2">Import Transaction text from Photonic Wallet:</label>
-            <textarea
-              value={importedTx}
-              onChange={(e) => setImportedTx(e.target.value)}
-              className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-2"
-              placeholder="Example: 🔁 Swap: 1000 RXD ➔ 1000 DOGE 📋01000000015c🟦"
-              rows={2}
-              style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.5)' }}
-            />
-          </div>
-
-          <div>
-            <label className="block text-yellow-600 mb-2">TX for Photonic Wallet:</label>
+            <p className="text-yellow-600 mb-2">
+              <a 
+                href="https://photonic-test.radiant4people.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-yellow-500 no-underline"
+              >
+                Swap in Photonic Wallet
+              </a> with TX:
+            </p>
             <input
               type="text"
               value={swapTx}
               onChange={(e) => setSwapTx(e.target.value)}
-              className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
-              placeholder="If using only TX put it here"
+              className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-2"
+              placeholder="Enter your swap transaction"
               required
             />
+            <div>
+              <label className="block text-yellow-600 mb-2">
+                Import full Transaction text from Photonic Wallet to fill input form:
+              </label>
+              <textarea
+                value={importedTx}
+                onChange={(e) => {
+                  setImportedTx(e.target.value);
+                  parseImportedTx(e.target.value);
+                }}
+                className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+                placeholder="Paste transaction text here"
+                rows={3}
+              />
+              <p className="text-xs text-yellow-600/50 mt-1 italic">
+                Example: 🔁 Swap: 1000 RXD ➔ 1000 RADCAT 📋01000000015c🟦
+              </p>
+            </div>
           </div>
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all mt-6"
+            className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all"
           >
             Create Swap Order
           </button>
