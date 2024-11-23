@@ -1,74 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import { Copy, RotateCw, ArrowLeftRight } from 'lucide-react';
+import QRCode from 'react-qr-code';
+import { supabase } from '../lib/supabase';
+import { TOKENS } from '../data/tokens';
+import { TokenSelect } from './TokenSelect';
 import { OrderBookLogo } from './OrderBookLogo';
 import { TestLogo } from './TestLogo';
-import { TOKENS } from '../data/tokens';
-import { supabase } from '../lib/supabase';
-import { TokenSelect } from './TokenSelect';
-import QRCode from 'react-qr-code';
-
-interface Order {
-  id: number;
-  from_token: string;
-  to_token: string;
-  from_amount: number;
-  to_amount: number;
-  price: number;
-  created_at: string;
-}
-
-interface Trade {
-  id: number;
-  from_token: string;
-  to_token: string;
-  from_amount: number;
-  to_amount: number;
-  price: number;
-  created_at: string;
-}
+import { PriceChart } from './PriceChart';
 
 const SWAP_WALLET = '1CiKtAE6Zf3tniKmPBhv1e7pBRezZM433N';
+const RXD_TOKEN = TOKENS.find(t => t.symbol === "RXD")!;
+const DOGE_TOKEN = TOKENS.find(t => t.symbol === "DOGE")!;
 
 export const OrderBookDemo: React.FC = () => {
-  const [fromToken, setFromToken] = useState(TOKENS.find(t => t.symbol === "RXD") || TOKENS[0]);
-  const [toToken, setToToken] = useState(TOKENS.find(t => t.symbol === "DOGE") || TOKENS[1]);
+  const [fromToken, setFromToken] = useState(RXD_TOKEN);
+  const [toToken, setToToken] = useState(DOGE_TOKEN);
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
-  const [swapTx, setSwapTx] = useState('');
-  const [importedTx, setImportedTx] = useState('');
-  const [isRxdToDoge, setIsRxdToDoge] = useState(true);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [timeframe, setTimeframe] = useState<'1d' | '7d'>('1d');
+  const [tradeRatio, setTradeRatio] = useState('');
+  const [walletAddress, setWalletAddress] = useState('');
+  const [transactionId, setTransactionId] = useState('');
   const [showCopyMessage, setShowCopyMessage] = useState(false);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [trades, setTrades] = useState<any[]>([]);
+  const [timeframe, setTimeframe] = useState<'1d' | '7d'>('1d');
 
   useEffect(() => {
     fetchOrders();
     fetchTrades();
 
-    const ordersSubscription = supabase
+    const subscription = supabase
       .channel('orderbook_changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'orderbook' }, 
         () => {
           fetchOrders();
-        }
-      )
-      .subscribe();
-
-    const tradesSubscription = supabase
-      .channel('trades_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'trades' }, 
-        () => {
           fetchTrades();
         }
       )
       .subscribe();
 
     return () => {
-      ordersSubscription.unsubscribe();
-      tradesSubscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -77,6 +50,7 @@ export const OrderBookDemo: React.FC = () => {
       const { data, error } = await supabase
         .from('orderbook')
         .select('*')
+        .eq('status', 'active')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -105,14 +79,41 @@ export const OrderBookDemo: React.FC = () => {
     fetchTrades();
   };
 
-  const handleSwitch = () => {
-    setIsRxdToDoge(!isRxdToDoge);
-    const newFromToken = isRxdToDoge ? toToken : fromToken;
-    const newToToken = isRxdToDoge ? fromToken : toToken;
-    setFromToken(newFromToken);
-    setToToken(newToToken);
-    setFromAmount('');
-    setToAmount('');
+  const calculateTradeRatio = (fromAmt: number, toAmt: number) => {
+    const ratio = fromAmt / toAmt;
+    return ratio > 1 ? `1:${ratio.toFixed(2)}` : `${(1/ratio).toFixed(2)}:1`;
+  };
+
+  const handleAmountChange = (value: string, isFromAmount: boolean) => {
+    if (isFromAmount) {
+      setFromAmount(value);
+      if (value && fromToken && toToken) {
+        setTradeRatio(calculateTradeRatio(parseFloat(value), parseFloat(toAmount) || 0));
+      }
+    } else {
+      setToAmount(value);
+      if (value && fromToken && toToken) {
+        setTradeRatio(calculateTradeRatio(parseFloat(fromAmount) || 0, parseFloat(value)));
+      }
+    }
+  };
+
+  const handleSwitchPair = () => {
+    setFromToken(toToken);
+    setToToken(fromToken);
+    setFromAmount(toAmount);
+    setToAmount(fromAmount);
+    if (fromAmount && toAmount) {
+      setTradeRatio(calculateTradeRatio(parseFloat(toAmount), parseFloat(fromAmount)));
+    }
+  };
+
+  const getRatioColor = (ratio: string) => {
+    if (!ratio) return '';
+    const numericRatio = parseFloat(ratio.split(':')[0]);
+    if (numericRatio >= 0.1 && numericRatio <= 5) return 'text-green-500';
+    if (numericRatio > 5 && numericRatio <= 9) return 'text-yellow-500';
+    return 'text-red-500';
   };
 
   const handleCopy = async () => {
@@ -121,31 +122,11 @@ export const OrderBookDemo: React.FC = () => {
     setTimeout(() => setShowCopyMessage(false), 2000);
   };
 
-  const parseImportedTx = (text: string) => {
-    const match = text.match(/🔁 Swap: (\d+(?:\.\d+)?) ([A-Za-z0-9]+) ➔ (\d+(?:\.\d+)?) ([A-Za-z0-9]+) 📋([a-zA-Z0-9]+)/);
-    
-    if (match) {
-      const [, fromAmt, fromSymbol, toAmt, toSymbol, tx] = match;
-      const foundFromToken = TOKENS.find(t => t.symbol === fromSymbol);
-      const foundToToken = TOKENS.find(t => t.symbol === toSymbol);
-      
-      if (foundFromToken && foundToToken) {
-        setFromToken(foundFromToken);
-        setToToken(foundToToken);
-        setFromAmount(fromAmt);
-        setToAmount(toAmt);
-        setSwapTx(tx);
-      }
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fromToken || !toToken || !fromAmount || !toAmount || !swapTx) return;
+    if (!fromAmount || !toAmount || !transactionId) return;
 
     try {
-      const price = parseFloat(toAmount) / parseFloat(fromAmount);
-      
       const { error } = await supabase
         .from('orderbook')
         .insert([{
@@ -153,72 +134,67 @@ export const OrderBookDemo: React.FC = () => {
           to_token: toToken.symbol,
           from_amount: parseFloat(fromAmount),
           to_amount: parseFloat(toAmount),
-          price,
+          price: parseFloat(toAmount) / parseFloat(fromAmount),
           status: 'active'
         }]);
 
       if (error) throw error;
 
-      const { error: tradeError } = await supabase
-        .from('trades')
-        .insert([{
-          from_token: fromToken.symbol,
-          to_token: toToken.symbol,
-          from_amount: parseFloat(fromAmount),
-          to_amount: parseFloat(toAmount),
-          price
-        }]);
-
-      if (tradeError) throw tradeError;
-
       setFromAmount('');
       setToAmount('');
-      setSwapTx('');
-      setImportedTx('');
+      setTransactionId('');
+      setWalletAddress('');
+      setTradeRatio('');
       
-      await Promise.all([fetchOrders(), fetchTrades()]);
+      await fetchOrders();
     } catch (error) {
       console.error('Error creating order:', error);
       alert('Failed to create order. Please try again.');
     }
   };
 
+  const parseImportedTx = (text: string) => {
+    const match = text.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([\w\d]+)/);
+    if (match) {
+      const [, amount, fromSymbol, toAmt, toSymbol, tx] = match;
+      if ((fromSymbol === 'RXD' && toSymbol === 'DOGE') || 
+          (fromSymbol === 'DOGE' && toSymbol === 'RXD')) {
+        setFromToken(TOKENS.find(t => t.symbol === fromSymbol)!);
+        setToToken(TOKENS.find(t => t.symbol === toSymbol)!);
+        setFromAmount(amount);
+        setToAmount(toAmt);
+        setTransactionId(tx);
+        setTradeRatio(calculateTradeRatio(parseFloat(amount), parseFloat(toAmt)));
+      }
+    }
+  };
+
   return (
     <div className="container mx-auto px-4">
-      <div className="flex items-center justify-center mb-8">
+      <div className="flex justify-center items-center gap-2 mb-8">
         <OrderBookLogo />
-        <TestLogo className="ml-4" size="medium" />
+        <TestLogo size="large" />
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-2xl mx-auto mb-12">
         <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white">Create Swap Order</h2>
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={handleRefresh}
-                className="text-yellow-600 hover:text-yellow-500 p-1"
-                title="Reload"
-              >
-                <RotateCw size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={handleSwitch}
-                className="flex items-center gap-2 text-yellow-600 hover:text-yellow-500 p-2"
-              >
-                <ArrowLeftRight size={20} />
-                Switch Pair
-              </button>
-            </div>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-white">Create Swap Order</h2>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="text-yellow-600 hover:text-yellow-500 p-2"
+              title="Refresh"
+            >
+              <RotateCw size={20} />
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="relative grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="block text-yellow-600 mb-2">From Token</label>
               <TokenSelect
-                tokens={[TOKENS.find(t => t.symbol === "RXD")!, TOKENS.find(t => t.symbol === "DOGE")!]}
+                tokens={[RXD_TOKEN, DOGE_TOKEN]}
                 selectedToken={fromToken}
                 onChange={setFromToken}
               />
@@ -228,20 +204,24 @@ export const OrderBookDemo: React.FC = () => {
               <input
                 type="number"
                 value={fromAmount}
-                onChange={(e) => setFromAmount(e.target.value)}
+                onChange={(e) => handleAmountChange(e.target.value, true)}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
                 placeholder="Enter amount"
                 min="1"
                 required
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <button
+              type="button"
+              onClick={handleSwitchPair}
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-600 p-2 rounded-full transition-colors"
+            >
+              <ArrowLeftRight size={20} />
+            </button>
             <div>
               <label className="block text-yellow-600 mb-2">To Token</label>
               <TokenSelect
-                tokens={[TOKENS.find(t => t.symbol === "RXD")!, TOKENS.find(t => t.symbol === "DOGE")!]}
+                tokens={[RXD_TOKEN, DOGE_TOKEN]}
                 selectedToken={toToken}
                 onChange={setToToken}
               />
@@ -251,7 +231,7 @@ export const OrderBookDemo: React.FC = () => {
               <input
                 type="number"
                 value={toAmount}
-                onChange={(e) => setToAmount(e.target.value)}
+                onChange={(e) => handleAmountChange(e.target.value, false)}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
                 placeholder="Enter amount"
                 required
@@ -259,136 +239,121 @@ export const OrderBookDemo: React.FC = () => {
             </div>
           </div>
 
-          <div className="mb-6">
-            <p className="text-yellow-600 mb-2">
-              <a 
-                href="https://photonic-test.radiant4people.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-yellow-500 no-underline"
-              >
-                Swap in Photonic Wallet
-              </a> with TX:
-            </p>
+          {tradeRatio && (
+            <div className={`text-center mb-6 ${getRatioColor(tradeRatio)}`}>
+              Trade Ratio: {tradeRatio}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-yellow-600 mb-2">Your Photonic Wallet Address</label>
             <input
               type="text"
-              value={swapTx}
-              onChange={(e) => setSwapTx(e.target.value)}
-              className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-2"
-              placeholder="Enter your swap transaction"
+              value={walletAddress}
+              onChange={(e) => setWalletAddress(e.target.value)}
+              className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+              placeholder="Enter your wallet address"
               required
             />
-            <div>
-              <label className="block text-yellow-600 mb-2">
-                Import Transaction Text:
-              </label>
-              <textarea
-                value={importedTx}
-                onChange={(e) => {
-                  setImportedTx(e.target.value);
-                  parseImportedTx(e.target.value);
-                }}
-                className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
-                placeholder="Paste transaction text here"
-                rows={3}
-              />
-              <p className="text-xs text-yellow-600/50 mt-1 italic">
-                Example: 🔁 Swap: 1000 RXD ➔ 1000 DOGE 📋01000000015c🟦
-              </p>
-            </div>
+          </div>
+
+          <div className="mt-6">
+            <label className="block text-yellow-600 mb-2">Import Transaction Text:</label>
+            <textarea
+              value={transactionId}
+              onChange={(e) => {
+                setTransactionId(e.target.value);
+                parseImportedTx(e.target.value);
+              }}
+              className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-1"
+              placeholder="Paste transaction text here"
+              rows={3}
+            />
+            <p className="text-xs text-yellow-600/50 italic">
+              Example: 🔁 Swap: 1000 RXD ➔ 1000 DOGE 📋01000000015c🟦
+            </p>
           </div>
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all"
+            className="w-full mt-6 bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all"
           >
-            Create Swap Order
+            Create Order
           </button>
         </div>
       </form>
 
-      <div className="space-y-12">
-        <div>
-          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-            Order Book for DOGE
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800">
+            Floor Price Chart
           </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {orders.map(order => (
-              <div key={order.id} className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{order.from_amount} {order.from_token}</span>
-                    <span className="text-yellow-600">→</span>
-                    <span className="text-lg">{order.to_amount} {order.to_token}</span>
-                  </div>
-                  <span className="text-yellow-600">
-                    Price: {order.price.toFixed(6)}
-                  </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setTimeframe('1d')}
+              className={`px-3 py-1 rounded-lg transition-colors ${
+                timeframe === '1d'
+                  ? 'bg-yellow-600 text-white'
+                  : 'text-yellow-600 hover:bg-yellow-600/10'
+              }`}
+            >
+              1D
+            </button>
+            <button
+              onClick={() => setTimeframe('7d')}
+              className={`px-3 py-1 rounded-lg transition-colors ${
+                timeframe === '7d'
+                  ? 'bg-yellow-600 text-white'
+                  : 'text-yellow-600 hover:bg-yellow-600/10'
+              }`}
+            >
+              7D
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
+          <PriceChart trades={trades} timeframe={timeframe} />
+        </div>
+
+        <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800">
+          Order Book for DOGE
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {orders.map((order) => (
+            <div key={order.id} className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{order.from_amount} {order.from_token}</span>
+                  <span className="text-yellow-600">→</span>
+                  <span className="text-lg">{order.to_amount} {order.to_token}</span>
                 </div>
-                <div className="text-sm text-yellow-600/80">
-                  {new Date(order.created_at).toLocaleString()}
-                </div>
+                <span className={getRatioColor(calculateTradeRatio(order.from_amount, order.to_amount))}>
+                  {calculateTradeRatio(order.from_amount, order.to_amount)}
+                </span>
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800">
-              Floor Price Chart
-            </h2>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setTimeframe('1d')}
-                className={`px-3 py-1 rounded-lg transition-colors ${
-                  timeframe === '1d' 
-                    ? 'bg-yellow-600 text-white' 
-                    : 'text-yellow-600 hover:bg-yellow-600/10'
-                }`}
-              >
-                1D
-              </button>
-              <button
-                onClick={() => setTimeframe('7d')}
-                className={`px-3 py-1 rounded-lg transition-colors ${
-                  timeframe === '7d' 
-                    ? 'bg-yellow-600 text-white' 
-                    : 'text-yellow-600 hover:bg-yellow-600/10'
-                }`}
-              >
-                7D
-              </button>
             </div>
-          </div>
-          <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm h-64">
-            {/* Chart will be implemented later */}
-            <div className="flex items-center justify-center h-full text-yellow-600">
-              Price chart coming soon
-            </div>
-          </div>
+          ))}
         </div>
+      </div>
 
-        <div>
-          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-            Transaction History
-          </h2>
+      <div className="mt-12">
+        <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
+          Transaction History
+        </h2>
+        <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
           <div className="space-y-4">
-            {trades.map(trade => (
-              <div key={trade.id} className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span>{trade.from_amount} {trade.from_token}</span>
-                    <span className="text-yellow-600">→</span>
-                    <span>{trade.to_amount} {trade.to_token}</span>
-                  </div>
-                  <div className="text-yellow-600">
-                    Price: {trade.price.toFixed(6)}
-                  </div>
+            {trades.map((trade) => (
+              <div key={trade.id} className="flex items-center justify-between py-2 border-b border-yellow-600/20 last:border-0">
+                <div className="flex items-center gap-2">
+                  <span>{trade.from_amount} {trade.from_token}</span>
+                  <span className="text-yellow-600">→</span>
+                  <span>{trade.to_amount} {trade.to_token}</span>
                 </div>
-                <div className="text-sm text-yellow-600/80 mt-2">
+                <span className="text-yellow-600/80">
                   {new Date(trade.created_at).toLocaleString()}
-                </div>
+                </span>
               </div>
             ))}
           </div>
