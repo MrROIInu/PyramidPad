@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { PresaleCard } from './PresaleCard';
 import { AddPresale } from './AddPresale';
-import { Plus } from 'lucide-react';
+import { Plus, RotateCw } from 'lucide-react';
 import { PyramidPadLogo } from './PyramidPadLogo';
 
 interface Presale {
@@ -125,24 +125,24 @@ export const PyramidPad: React.FC = () => {
   return (
     <div className="container mx-auto px-4">
       <div className="flex flex-col items-center">
-        <PyramidPadLogo className="mb-6" />
+        <PyramidPadLogo className="mb-8" />
         <button
           onClick={() => setShowAddPresale(!showAddPresale)}
-          className="flex items-center gap-2 bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 text-lg hover:from-yellow-500 hover:to-amber-700 transition-all"
+          className="flex items-center gap-2 bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 text-lg hover:from-yellow-500 hover:to-amber-700 transition-all mb-6"
         >
           <Plus size={24} />
           {showAddPresale ? 'Hide Form' : 'Add Presale'}
         </button>
       </div>
 
+      {showAddPresale && (
+        <div className="w-full max-w-4xl mb-12">
+          <AddPresale onSubmit={handlePresaleSubmit} />
+        </div>
+      )}
+
       <div className="py-6">
         <div className="flex flex-col items-center">
-          {showAddPresale && (
-            <div className="w-full max-w-4xl mb-12">
-              <AddPresale onSubmit={handlePresaleSubmit} />
-            </div>
-          )}
-          
           <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-8 text-center">
             Active Presales
           </h2>
