@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Copy } from 'lucide-react';
+import { Copy, RotateCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { TOKENS } from '../data/tokens';
 import { TokenSelect } from './TokenSelect';
@@ -34,38 +34,44 @@ export const P2PSwap: React.FC = () => {
     }
   };
 
+  const handleRefresh = () => {
+    fetchOrders();
+  };
+
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fromToken || !toToken || !fromAmount || !toAmount || !swapTx) return;
 
-    const { error } = await supabase
-      .from('orders')
-      .insert([{
-        from_token: fromToken.symbol,
-        to_token: toToken.symbol,
-        from_amount: parseFloat(fromAmount),
-        to_amount: parseFloat(toAmount),
-        swap_tx: swapTx,
-        claimed: false,
-        claim_count: 0
-      }]);
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .insert([{
+          from_token: fromToken.symbol,
+          to_token: toToken.symbol,
+          from_amount: parseFloat(fromAmount),
+          to_amount: parseFloat(toAmount),
+          swap_tx: swapTx,
+          claimed: false,
+          claim_count: 0
+        }]);
 
-    if (error) {
-      console.error('Error creating order:', error);
-      alert('Failed to create order. Please try again.');
-    } else {
+      if (error) throw error;
+
       setFromAmount('');
       setToAmount('');
       setSwapTx('');
       setImportedTx('');
       fetchOrders();
+    } catch (error) {
+      console.error('Error creating order:', error);
+      alert('Failed to create order. Please try again.');
     }
   };
 
   const parseImportedTx = (text: string) => {
     const match = text.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([\w\d]+)/);
     if (match) {
-      const [, amount, fromSymbol, , toSymbol, tx] = match;
+      const [, amount, fromSymbol, toAmt, toSymbol, tx] = match;
       const foundFromToken = TOKENS.find(t => t.symbol === fromSymbol);
       const foundToToken = TOKENS.find(t => t.symbol === toSymbol);
       
@@ -73,6 +79,7 @@ export const P2PSwap: React.FC = () => {
         setFromToken(foundFromToken);
         setToToken(foundToToken);
         setFromAmount(amount);
+        setToAmount(toAmt);
         setSwapTx(tx);
       }
     }
@@ -80,10 +87,24 @@ export const P2PSwap: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4">
-      <P2PSwapLogo className="mb-6" />
+      <div className="flex justify-center mb-8">
+        <P2PSwapLogo />
+      </div>
 
       <form onSubmit={handleCreateOrder} className="mb-12">
-        <div className="bg-gradient-to-r from-amber-900/10 to-yellow-900/10 rounded-xl p-6 backdrop-blur-sm">
+        <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-white">Create Swap Order</h2>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="text-yellow-600 hover:text-yellow-500 p-2"
+              title="Refresh"
+            >
+              <RotateCw size={20} />
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="block text-yellow-600 mb-2">From Token</label>
@@ -98,19 +119,10 @@ export const P2PSwap: React.FC = () => {
               <input
                 type="number"
                 value={fromAmount}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setFromAmount(value);
-                  // Calculate toAmount based on token ratio
-                  if (value && fromToken && toToken) {
-                    const ratio = fromToken.totalSupply / toToken.totalSupply;
-                    setToAmount((parseFloat(value) / ratio).toFixed(6));
-                  }
-                }}
+                onChange={(e) => setFromAmount(e.target.value)}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
                 placeholder="Enter amount"
-                min="0.000001"
-                step="0.000001"
+                min="1"
                 required
               />
             </div>
@@ -122,14 +134,7 @@ export const P2PSwap: React.FC = () => {
               <TokenSelect
                 tokens={TOKENS}
                 selectedToken={toToken}
-                onChange={(token) => {
-                  setToToken(token);
-                  // Recalculate toAmount when token changes
-                  if (fromAmount && fromToken && token) {
-                    const ratio = fromToken.totalSupply / token.totalSupply;
-                    setToAmount((parseFloat(fromAmount) / ratio).toFixed(6));
-                  }
-                }}
+                onChange={setToToken}
               />
             </div>
             <div>
@@ -137,19 +142,9 @@ export const P2PSwap: React.FC = () => {
               <input
                 type="number"
                 value={toAmount}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setToAmount(value);
-                  // Calculate fromAmount based on token ratio
-                  if (value && fromToken && toToken) {
-                    const ratio = toToken.totalSupply / fromToken.totalSupply;
-                    setFromAmount((parseFloat(value) * ratio).toFixed(6));
-                  }
-                }}
+                onChange={(e) => setToAmount(e.target.value)}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
                 placeholder="Enter amount"
-                min="0.000001"
-                step="0.000001"
                 required
               />
             </div>
@@ -176,7 +171,7 @@ export const P2PSwap: React.FC = () => {
             />
             <div>
               <label className="block text-yellow-600 mb-2">
-                Import full Transaction text from Photonic Wallet to fill input form:
+                Import Transaction Text:
               </label>
               <textarea
                 value={importedTx}
@@ -185,10 +180,12 @@ export const P2PSwap: React.FC = () => {
                   parseImportedTx(e.target.value);
                 }}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
-                placeholder="Example: 🔁 Swap: 1000 RXD ➔ 1000 POW 📋01000000015c943f068b829d3e00c0638948303463f74aa6839fea2ee5698b712061a8482a000000006a47304402203eef3431f97c5ad0f59bcc5198747771a85dc3d9513d3594c8b042a943e872c302201f332de8b6349831ed01dc530f339fb42f0017e9a30ccfdecfe22ba31f26e2aac32102a86b11635102f4e0f74f2cba09c8db13363ad25e5b656380d8fe271ffb769473ffffffff01e8030000000000004b76a9142b91c3856057c3fc1526bad0ed2069421782a73b88acbdd0b01b97916dd47320f939b42eb0f51709928d874dfd773dd6e92166afc5db190500000000dec0e9aa76e378e4a269e69d00000000🟦"
+                placeholder="Paste transaction text here"
                 rows={3}
-                style={{ color: 'rgba(255, 255, 255, 0.5)' }}
               />
+              <p className="text-xs text-yellow-600/50 mt-1 italic">
+                Example: 🔁 Swap: 1000 RXD ➔ 1000 RADCAT 📋01000000015c🟦
+              </p>
             </div>
           </div>
 
