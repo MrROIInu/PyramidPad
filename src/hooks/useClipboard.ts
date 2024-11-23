@@ -1,37 +1,42 @@
 import { useEffect, useCallback } from 'react';
 
 export function useClipboard(callback: (text: string) => void) {
-  const handleClipboardChange = useCallback(async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      if (text && text.includes('🔁 Swap:')) {
-        callback(text.trim());
-      }
-    } catch (error) {
-      if (error instanceof Error && error.name !== 'NotAllowedError') {
-        console.error('Failed to read clipboard:', error);
-      }
+  const handleClipboardText = useCallback((text: string) => {
+    if (text && text.includes('🔁 Swap:')) {
+      callback(text.trim());
     }
   }, [callback]);
 
   useEffect(() => {
-    // Check clipboard when component mounts
-    handleClipboardChange();
-
-    // Add paste event listener to document
     const handlePaste = (e: ClipboardEvent) => {
       const text = e.clipboardData?.getData('text');
-      if (text && text.includes('🔁 Swap:')) {
-        callback(text.trim());
+      if (text) {
+        handleClipboardText(text);
       }
     };
 
-    document.addEventListener('paste', handlePaste);
-    document.addEventListener('focus', handleClipboardChange);
+    const handleCopy = async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        handleClipboardText(text);
+      } catch (error) {
+        console.error('Failed to read clipboard:', error);
+      }
+    };
+
+    // Listen for paste events
+    window.addEventListener('paste', handlePaste);
+    
+    // Listen for copy events
+    document.addEventListener('copy', handleCopy);
+    
+    // Listen for clipboard changes
+    navigator.clipboard?.addEventListener?.('clipboardchange', handleCopy);
 
     return () => {
-      document.removeEventListener('paste', handlePaste);
-      document.removeEventListener('focus', handleClipboardChange);
+      window.removeEventListener('paste', handlePaste);
+      document.removeEventListener('copy', handleCopy);
+      navigator.clipboard?.removeEventListener?.('clipboardchange', handleCopy);
     };
-  }, [callback, handleClipboardChange]);
+  }, [handleClipboardText]);
 }

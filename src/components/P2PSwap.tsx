@@ -39,6 +39,28 @@ export const P2PSwap: React.FC = () => {
     fetchOrders();
   };
 
+  const parseImportedTx = (text: string) => {
+    const match = text.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([\w\d]+)/);
+    if (match) {
+      const [, amount1, token1, amount2, token2, tx] = match;
+      const foundFromToken = TOKENS.find(t => t.symbol === token1);
+      const foundToToken = TOKENS.find(t => t.symbol === token2);
+      
+      if (foundFromToken && foundToToken) {
+        setFromToken(foundFromToken);
+        setToToken(foundToToken);
+        setFromAmount(amount1);
+        setToAmount(amount2);
+        setSwapTx(tx);
+      }
+    }
+  };
+
+  useClipboard((text: string) => {
+    setImportedTx(text);
+    parseImportedTx(text);
+  });
+
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fromToken || !toToken || !fromAmount || !toAmount || !swapTx) return;
@@ -65,29 +87,6 @@ export const P2PSwap: React.FC = () => {
       setImportedTx('');
       fetchOrders();
     }
-  };
-
-  useClipboard((text: string) => {
-    const match = text.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([\w\d]+)/);
-    if (match) {
-      const [, amount1, token1, amount2, token2, tx] = match;
-      const foundFromToken = TOKENS.find(t => t.symbol === token1);
-      const foundToToken = TOKENS.find(t => t.symbol === token2);
-      
-      if (foundFromToken && foundToToken) {
-        setFromToken(foundFromToken);
-        setToToken(foundToToken);
-        setFromAmount(amount1);
-        setToAmount(amount2);
-        setSwapTx(tx);
-        setImportedTx(text);
-      }
-    }
-  });
-
-  const calculateTradeRatio = (fromAmount: number, toAmount: number) => {
-    const ratio = (fromAmount / fromToken.totalSupply) / (toAmount / toToken.totalSupply);
-    return ratio > 1 ? `1:${ratio.toFixed(2)}` : `${(1/ratio).toFixed(2)}:1`;
   };
 
   return (
@@ -156,15 +155,22 @@ export const P2PSwap: React.FC = () => {
           </div>
 
           <div className="mb-6">
-            <label className="block text-yellow-600 mb-2">Import Transaction text from Photonic Wallet:</label>
+            <label className="block text-yellow-600 mb-2">
+              Import Transaction text from Photonic Wallet P2PSwap:
+            </label>
             <textarea
               value={importedTx}
-              onChange={(e) => setImportedTx(e.target.value)}
+              onChange={(e) => {
+                setImportedTx(e.target.value);
+                parseImportedTx(e.target.value);
+              }}
               className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-2"
-              placeholder="Example: 🔁 Swap: 1000 RXD ➔ 1000 DOGE 📋01000000015c🟦"
-              rows={2}
-              style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.5)' }}
+              placeholder="Paste transaction text here"
+              rows={3}
             />
+            <div className="text-yellow-600/50 text-sm italic">
+              Example: 🔁 Swap: 1000 RXD ➔ 1000 DOGE 📋01000000015c🟦
+            </div>
           </div>
 
           <div>
@@ -175,7 +181,6 @@ export const P2PSwap: React.FC = () => {
               onChange={(e) => setSwapTx(e.target.value)}
               className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
               placeholder="If using only TX put it here"
-              required
             />
           </div>
 
