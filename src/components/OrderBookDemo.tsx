@@ -1,21 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, RotateCw, ArrowLeftRight } from 'lucide-react';
+import { Copy, RotateCw } from 'lucide-react';
 import QRCode from 'react-qr-code';
-import { OrderBookLogo } from './OrderBookLogo';
-import { TestLogo } from './TestLogo';
-import { TOKENS } from '../data/tokens';
 import { supabase } from '../lib/supabase';
-import { TokenSelect } from './TokenSelect';
+import { OrderBookLogo } from './OrderBookLogo';
+import { PriceChart } from './PriceChart';
 
-interface Order {
-  id: number;
-  from_token: string;
-  to_token: string;
-  from_amount: number;
-  to_amount: number;
-  price: number;
-  created_at: string;
-}
+const SWAP_WALLET = '1CiKtAE6Zf3tniKmPBhv1e7pBRezZM433N';
 
 interface Trade {
   id: number;
@@ -27,38 +17,20 @@ interface Trade {
   created_at: string;
 }
 
-const SWAP_WALLET = '1CiKtAE6Zf3tniKmPBhv1e7pBRezZM433N';
-
 export const OrderBookDemo: React.FC = () => {
-  const [fromToken, setFromToken] = useState(TOKENS.find(t => t.symbol === "RXD") || TOKENS[0]);
-  const [toToken, setToToken] = useState(TOKENS.find(t => t.symbol === "DOGE") || TOKENS[1]);
+  const [isRxdToDoge, setIsRxdToDoge] = useState(true);
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
-  const [swapTx, setSwapTx] = useState('');
+  const [tradeRatio, setTradeRatio] = useState('');
   const [importedTx, setImportedTx] = useState('');
+  const [transactionId, setTransactionId] = useState('');
   const [showCopyMessage, setShowCopyMessage] = useState(false);
-  const [isRxdToDoge, setIsRxdToDoge] = useState(true);
-  const [orders, setOrders] = useState<Order[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [timeframe, setTimeframe] = useState<'1d' | '7d'>('1d');
 
   useEffect(() => {
-    fetchOrders();
     fetchTrades();
   }, []);
-
-  const fetchOrders = async () => {
-    const { data, error } = await supabase
-      .from('orderbook')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching orders:', error);
-    } else {
-      setOrders(data || []);
-    }
-  };
 
   const fetchTrades = async () => {
     const { data, error } = await supabase
@@ -74,18 +46,19 @@ export const OrderBookDemo: React.FC = () => {
   };
 
   const handleRefresh = () => {
-    fetchOrders();
     fetchTrades();
   };
 
-  const handleSwitch = () => {
-    setIsRxdToDoge(!isRxdToDoge);
-    const newFromToken = isRxdToDoge ? toToken : fromToken;
-    const newToToken = isRxdToDoge ? fromToken : toToken;
-    setFromToken(newFromToken);
-    setToToken(newToToken);
-    setFromAmount('');
-    setToAmount('');
+  const calculateTradeRatio = (fromAmt: number, toAmt: number) => {
+    const ratio = fromAmt / toAmt;
+    return ratio > 1 ? `1:${ratio.toFixed(2)}` : `${(1/ratio).toFixed(2)}:1`;
+  };
+
+  const getRatioColor = (ratio: string) => {
+    const numericRatio = parseFloat(ratio.split(':')[0]);
+    if (numericRatio >= 0.1 && numericRatio <= 5) return 'text-green-500';
+    if (numericRatio > 5 && numericRatio <= 9) return 'text-yellow-500';
+    return 'text-red-500';
   };
 
   const handleCopy = async () => {
@@ -94,49 +67,61 @@ export const OrderBookDemo: React.FC = () => {
     setTimeout(() => setShowCopyMessage(false), 2000);
   };
 
+  const handleSwitch = () => {
+    setIsRxdToDoge(!isRxdToDoge);
+    setFromAmount('');
+    setToAmount('');
+    setTradeRatio('');
+  };
+
   const parseImportedTx = (text: string) => {
-    const match = text.match(/🔁 Swap: (\d+(?:\.\d+)?) ([A-Za-z0-9]+) ➔ (\d+(?:\.\d+)?) ([A-Za-z0-9]+) 📋([a-zA-Z0-9]+)/);
-    
+    const match = text.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([\w\d]+)/);
     if (match) {
-      const [, fromAmt, fromSymbol, toAmt, toSymbol, tx] = match;
-      const foundFromToken = TOKENS.find(t => t.symbol === fromSymbol);
-      const foundToToken = TOKENS.find(t => t.symbol === toSymbol);
-      
-      if (foundFromToken && foundToToken) {
-        setFromToken(foundFromToken);
-        setToToken(foundToToken);
-        setFromAmount(fromAmt);
+      const [, amount, fromSymbol, toAmt, toSymbol, tx] = match;
+      if ((fromSymbol === 'RXD' && toSymbol === 'DOGE') || (fromSymbol === 'DOGE' && toSymbol === 'RXD')) {
+        setFromAmount(amount);
         setToAmount(toAmt);
-        setSwapTx(tx);
+        setTransactionId(tx);
+        setTradeRatio(calculateTradeRatio(parseFloat(amount), parseFloat(toAmt)));
+        setIsRxdToDoge(fromSymbol === 'RXD');
       }
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fromToken || !toToken || !fromAmount || !toAmount || !swapTx) return;
+  const handleCreateOrder = async () => {
+    if (!fromAmount || !toAmount || !transactionId) return;
 
     try {
-      const price = parseFloat(toAmount) / parseFloat(fromAmount);
-      
       const { error } = await supabase
         .from('orderbook')
         .insert([{
-          from_token: fromToken.symbol,
-          to_token: toToken.symbol,
+          from_token: isRxdToDoge ? 'RXD' : 'DOGE',
+          to_token: isRxdToDoge ? 'DOGE' : 'RXD',
           from_amount: parseFloat(fromAmount),
           to_amount: parseFloat(toAmount),
-          price,
+          price: parseFloat(toAmount) / parseFloat(fromAmount),
           status: 'active'
         }]);
 
       if (error) throw error;
 
+      // Add to trades history
+      await supabase
+        .from('trades')
+        .insert([{
+          from_token: isRxdToDoge ? 'RXD' : 'DOGE',
+          to_token: isRxdToDoge ? 'DOGE' : 'RXD',
+          from_amount: parseFloat(fromAmount),
+          to_amount: parseFloat(toAmount),
+          price: parseFloat(toAmount) / parseFloat(fromAmount)
+        }]);
+
       setFromAmount('');
       setToAmount('');
-      setSwapTx('');
+      setTransactionId('');
       setImportedTx('');
-      fetchOrders();
+      setTradeRatio('');
+      fetchTrades();
     } catch (error) {
       console.error('Error creating order:', error);
       alert('Failed to create order. Please try again.');
@@ -144,92 +129,90 @@ export const OrderBookDemo: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4">
-      <div className="flex items-center justify-center mb-8">
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-center mb-8">
         <OrderBookLogo />
-        <TestLogo className="ml-4" size="medium" />
       </div>
 
-      <form onSubmit={handleSubmit} className="max-w-2xl mx-auto mb-12">
+      <form className="max-w-md mx-auto">
         <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white">Create Swap Order</h2>
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={handleRefresh}
-                className="text-yellow-600 hover:text-yellow-500 p-1"
-                title="Reload"
-              >
-                <RotateCw size={16} />
-              </button>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-white">Create Swap Order</h2>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="text-yellow-600 hover:text-yellow-500 p-2"
+              title="Refresh"
+            >
+              <RotateCw size={20} />
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            <div>
               <button
                 type="button"
                 onClick={handleSwitch}
-                className="flex items-center gap-2 text-yellow-600 hover:text-yellow-500 p-2"
+                className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 text-yellow-600 hover:bg-black/40 transition-colors mb-4"
               >
-                <ArrowLeftRight size={20} />
-                Switch Pair
+                {isRxdToDoge ? 'RXD → DOGE' : 'DOGE → RXD'} (Click to switch)
               </button>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <label className="block text-yellow-600 mb-2">From</label>
               <div className="flex gap-4">
-                <TokenSelect
-                  tokens={[TOKENS.find(t => t.symbol === "RXD")!, TOKENS.find(t => t.symbol === "DOGE")!]}
-                  selectedToken={fromToken}
-                  onChange={setFromToken}
-                  className="flex-1"
-                />
-                <input
-                  type="number"
-                  value={fromAmount}
-                  onChange={(e) => setFromAmount(e.target.value)}
-                  className="bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 w-32 focus:outline-none focus:border-yellow-600"
-                  placeholder="Amount"
-                  required
-                />
+                <div className="flex-1">
+                  <label className="block text-yellow-600 mb-2">Amount</label>
+                  <input
+                    type="number"
+                    value={fromAmount}
+                    onChange={(e) => {
+                      setFromAmount(e.target.value);
+                      if (e.target.value) {
+                        const ratio = 1; // 1:1 trading
+                        const calculated = parseFloat(e.target.value) * ratio;
+                        setToAmount(calculated.toString());
+                        setTradeRatio(calculateTradeRatio(parseFloat(e.target.value), calculated));
+                      } else {
+                        setToAmount('');
+                        setTradeRatio('');
+                      }
+                    }}
+                    className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+                    placeholder={`Enter ${isRxdToDoge ? 'RXD' : 'DOGE'} amount`}
+                    min="0"
+                    required
+                  />
+                </div>
+
+                <div className="flex-1">
+                  <label className="block text-yellow-600 mb-2">You will receive</label>
+                  <input
+                    type="number"
+                    value={toAmount}
+                    onChange={(e) => {
+                      setToAmount(e.target.value);
+                      if (e.target.value) {
+                        setTradeRatio(calculateTradeRatio(parseFloat(fromAmount), parseFloat(e.target.value)));
+                      } else {
+                        setTradeRatio('');
+                      }
+                    }}
+                    className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+                    placeholder={`Enter ${isRxdToDoge ? 'DOGE' : 'RXD'} amount`}
+                    min="0"
+                    required
+                  />
+                </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-yellow-600 mb-2">To</label>
-              <div className="flex gap-4">
-                <TokenSelect
-                  tokens={[TOKENS.find(t => t.symbol === "RXD")!, TOKENS.find(t => t.symbol === "DOGE")!]}
-                  selectedToken={toToken}
-                  onChange={setToToken}
-                  className="flex-1"
-                />
-                <input
-                  type="number"
-                  value={toAmount}
-                  onChange={(e) => setToAmount(e.target.value)}
-                  className="bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 w-32 focus:outline-none focus:border-yellow-600"
-                  placeholder="Amount"
-                  required
-                />
+            {tradeRatio && (
+              <div className={`text-center ${getRatioColor(tradeRatio)}`}>
+                Trade Ratio: {tradeRatio}
               </div>
-            </div>
-          </div>
+            )}
 
-          <div>
-            <label className="block text-yellow-600 mb-2">Transaction ID</label>
-            <input
-              type="text"
-              value={swapTx}
-              onChange={(e) => setSwapTx(e.target.value)}
-              className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-2"
-              placeholder="Enter your transaction ID"
-              required
-            />
             <div>
-              <label className="block text-yellow-600 mb-2">
-                Import Transaction Text:
-              </label>
+              <label className="block text-yellow-600 mb-2">Import Transaction text from Photonic Wallet:</label>
               <textarea
                 value={importedTx}
                 onChange={(e) => {
@@ -244,96 +227,78 @@ export const OrderBookDemo: React.FC = () => {
                 Example: 🔁 Swap: 1000 RXD ➔ 1000 DOGE 📋01000000015c🟦
               </p>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all mt-6"
-          >
-            Create Order
-          </button>
+            <div>
+              <label className="block text-yellow-600 mb-2">TX for Photonic Wallet:</label>
+              <input
+                type="text"
+                value={transactionId}
+                onChange={(e) => setTransactionId(e.target.value)}
+                className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+                placeholder="If using only TX put it here"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCreateOrder}
+              disabled={!fromAmount || !toAmount || !transactionId}
+              className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all disabled:opacity-50"
+            >
+              Create Order
+            </button>
+          </div>
         </div>
       </form>
 
-      <div className="max-w-2xl mx-auto space-y-8">
-        <div>
-          <h2 className="text-2xl font-bold text-white mb-6">Order Book for DOGE</h2>
-          <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
-            <div className="space-y-4">
-              {orders.map(order => (
-                <div key={order.id} className="flex justify-between items-center p-4 bg-black/20 rounded-lg">
-                  <div>
-                    <p className="text-white">
-                      {order.from_amount} {order.from_token} ➔ {order.to_amount} {order.to_token}
-                    </p>
-                    <p className="text-sm text-yellow-600">
-                      Price: {order.price.toFixed(8)} {order.to_token}/{order.from_token}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {orders.length === 0 && (
-                <p className="text-center text-yellow-600">No active orders</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-white">Floor Price Chart</h2>
-            <div className="flex gap-2">
+      <div className="mt-12">
+        <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
+          <h2 className="text-xl font-semibold text-white mb-6">Order Book for DOGE</h2>
+          
+          <div className="mb-4">
+            <div className="flex gap-4 mb-4">
               <button
                 onClick={() => setTimeframe('1d')}
-                className={`px-3 py-1 rounded-lg ${
-                  timeframe === '1d'
-                    ? 'bg-yellow-600 text-white'
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  timeframe === '1d' 
+                    ? 'bg-yellow-600 text-white' 
                     : 'text-yellow-600 hover:bg-yellow-600/10'
                 }`}
               >
-                1D
+                1 Day
               </button>
               <button
                 onClick={() => setTimeframe('7d')}
-                className={`px-3 py-1 rounded-lg ${
-                  timeframe === '7d'
-                    ? 'bg-yellow-600 text-white'
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  timeframe === '7d' 
+                    ? 'bg-yellow-600 text-white' 
                     : 'text-yellow-600 hover:bg-yellow-600/10'
                 }`}
               >
-                7D
+                7 Days
               </button>
             </div>
+            
+            <PriceChart trades={trades} timeframe={timeframe} />
           </div>
-          <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm h-64">
-            <div className="text-center text-yellow-600">
-              Chart implementation coming soon...
-            </div>
-          </div>
-        </div>
 
-        <div>
-          <h2 className="text-2xl font-bold text-white mb-6">Transaction History</h2>
-          <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
+          <div className="mt-8">
+            <h3 className="text-lg font-semibold text-yellow-600 mb-4">Transaction History</h3>
             <div className="space-y-4">
-              {trades.map(trade => (
-                <div key={trade.id} className="flex justify-between items-center p-4 bg-black/20 rounded-lg">
-                  <div>
-                    <p className="text-white">
-                      {trade.from_amount} {trade.from_token} ➔ {trade.to_amount} {trade.to_token}
-                    </p>
-                    <p className="text-sm text-yellow-600">
-                      Price: {trade.price.toFixed(8)} {trade.to_token}/{trade.from_token}
-                    </p>
-                  </div>
-                  <div className="text-sm text-yellow-600/80">
-                    {new Date(trade.created_at).toLocaleString()}
+              {trades.map((trade) => (
+                <div key={trade.id} className="bg-black/30 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="text-yellow-600">{trade.from_amount} {trade.from_token}</span>
+                      <span className="text-yellow-600/50 mx-2">→</span>
+                      <span className="text-yellow-600">{trade.to_amount} {trade.to_token}</span>
+                    </div>
+                    <div className="text-yellow-600/50 text-sm">
+                      {new Date(trade.created_at).toLocaleString()}
+                    </div>
                   </div>
                 </div>
               ))}
-              {trades.length === 0 && (
-                <p className="text-center text-yellow-600">No transaction history</p>
-              )}
             </div>
           </div>
         </div>
