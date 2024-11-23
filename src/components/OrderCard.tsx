@@ -6,10 +6,9 @@ import { Order } from '../types';
 
 interface OrderCardProps {
   order: Order;
-  onClaim?: () => void;
 }
 
-export const OrderCard: React.FC<OrderCardProps> = ({ order, onClaim }) => {
+export const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
   const [showCopyMessage, setShowCopyMessage] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -39,23 +38,18 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onClaim }) => {
 
   const handleClaim = async () => {
     setIsUpdating(true);
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ 
-          claimed: true,
-          claim_count: (order.claim_count || 0) + 1 
-        })
-        .eq('id', order.id);
+    const { error } = await supabase
+      .from('orders')
+      .update({ 
+        claimed: true,
+        claim_count: (order.claim_count || 0) + 1 
+      })
+      .eq('id', order.id);
 
-      if (error) throw error;
-      if (onClaim) onClaim();
-    } catch (error) {
+    if (error) {
       console.error('Error claiming order:', error);
-      alert('Failed to claim order. Please try again.');
-    } finally {
-      setIsUpdating(false);
     }
+    setIsUpdating(false);
   };
 
   return (
