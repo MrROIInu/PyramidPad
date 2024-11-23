@@ -10,7 +10,7 @@ export const TOKENS: Token[] = [
     symbol: "RXD",
     name: "Radiant",
     imageUrl: "https://static.wixstatic.com/media/c0fd9f_33dd965b95d54dfe9af12ed99fe5c43a~mv2.png",
-    totalSupply: 21000000000
+    totalSupply: 21000000
   },
   {
     symbol: "RADCAT",
