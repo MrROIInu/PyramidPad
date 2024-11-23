@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Copy, RotateCw, ArrowLeftRight } from 'lucide-react';
-import QRCode from 'react-qr-code';
 import { OrderBookLogo } from './OrderBookLogo';
 import { TestLogo } from './TestLogo';
 import { TOKENS } from '../data/tokens';
 import { supabase } from '../lib/supabase';
 import { TokenSelect } from './TokenSelect';
+import QRCode from 'react-qr-code';
 
 interface Order {
   id: number;
@@ -36,40 +36,67 @@ export const OrderBookDemo: React.FC = () => {
   const [toAmount, setToAmount] = useState('');
   const [swapTx, setSwapTx] = useState('');
   const [importedTx, setImportedTx] = useState('');
-  const [showCopyMessage, setShowCopyMessage] = useState(false);
   const [isRxdToDoge, setIsRxdToDoge] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [timeframe, setTimeframe] = useState<'1d' | '7d'>('1d');
+  const [showCopyMessage, setShowCopyMessage] = useState(false);
 
   useEffect(() => {
     fetchOrders();
     fetchTrades();
+
+    const ordersSubscription = supabase
+      .channel('orderbook_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'orderbook' }, 
+        () => {
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    const tradesSubscription = supabase
+      .channel('trades_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'trades' }, 
+        () => {
+          fetchTrades();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      ordersSubscription.unsubscribe();
+      tradesSubscription.unsubscribe();
+    };
   }, []);
 
   const fetchOrders = async () => {
-    const { data, error } = await supabase
-      .from('orderbook')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('orderbook')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching orders:', error);
-    } else {
+      if (error) throw error;
       setOrders(data || []);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
     }
   };
 
   const fetchTrades = async () => {
-    const { data, error } = await supabase
-      .from('trades')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('trades')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching trades:', error);
-    } else {
+      if (error) throw error;
       setTrades(data || []);
+    } catch (error) {
+      console.error('Error fetching trades:', error);
     }
   };
 
@@ -132,11 +159,24 @@ export const OrderBookDemo: React.FC = () => {
 
       if (error) throw error;
 
+      const { error: tradeError } = await supabase
+        .from('trades')
+        .insert([{
+          from_token: fromToken.symbol,
+          to_token: toToken.symbol,
+          from_amount: parseFloat(fromAmount),
+          to_amount: parseFloat(toAmount),
+          price
+        }]);
+
+      if (tradeError) throw tradeError;
+
       setFromAmount('');
       setToAmount('');
       setSwapTx('');
       setImportedTx('');
-      fetchOrders();
+      
+      await Promise.all([fetchOrders(), fetchTrades()]);
     } catch (error) {
       console.error('Error creating order:', error);
       alert('Failed to create order. Please try again.');
@@ -176,54 +216,66 @@ export const OrderBookDemo: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
-              <label className="block text-yellow-600 mb-2">From</label>
-              <div className="flex gap-4">
-                <TokenSelect
-                  tokens={[TOKENS.find(t => t.symbol === "RXD")!, TOKENS.find(t => t.symbol === "DOGE")!]}
-                  selectedToken={fromToken}
-                  onChange={setFromToken}
-                  className="flex-1"
-                />
-                <input
-                  type="number"
-                  value={fromAmount}
-                  onChange={(e) => setFromAmount(e.target.value)}
-                  className="bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 w-32 focus:outline-none focus:border-yellow-600"
-                  placeholder="Amount"
-                  required
-                />
-              </div>
+              <label className="block text-yellow-600 mb-2">From Token</label>
+              <TokenSelect
+                tokens={[TOKENS.find(t => t.symbol === "RXD")!, TOKENS.find(t => t.symbol === "DOGE")!]}
+                selectedToken={fromToken}
+                onChange={setFromToken}
+              />
             </div>
-
             <div>
-              <label className="block text-yellow-600 mb-2">To</label>
-              <div className="flex gap-4">
-                <TokenSelect
-                  tokens={[TOKENS.find(t => t.symbol === "RXD")!, TOKENS.find(t => t.symbol === "DOGE")!]}
-                  selectedToken={toToken}
-                  onChange={setToToken}
-                  className="flex-1"
-                />
-                <input
-                  type="number"
-                  value={toAmount}
-                  onChange={(e) => setToAmount(e.target.value)}
-                  className="bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 w-32 focus:outline-none focus:border-yellow-600"
-                  placeholder="Amount"
-                  required
-                />
-              </div>
+              <label className="block text-yellow-600 mb-2">Amount</label>
+              <input
+                type="number"
+                value={fromAmount}
+                onChange={(e) => setFromAmount(e.target.value)}
+                className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+                placeholder="Enter amount"
+                min="1"
+                required
+              />
             </div>
           </div>
 
-          <div>
-            <label className="block text-yellow-600 mb-2">Transaction ID</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label className="block text-yellow-600 mb-2">To Token</label>
+              <TokenSelect
+                tokens={[TOKENS.find(t => t.symbol === "RXD")!, TOKENS.find(t => t.symbol === "DOGE")!]}
+                selectedToken={toToken}
+                onChange={setToToken}
+              />
+            </div>
+            <div>
+              <label className="block text-yellow-600 mb-2">You Will Receive</label>
+              <input
+                type="number"
+                value={toAmount}
+                onChange={(e) => setToAmount(e.target.value)}
+                className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+                placeholder="Enter amount"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <p className="text-yellow-600 mb-2">
+              <a 
+                href="https://photonic-test.radiant4people.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-yellow-500 no-underline"
+              >
+                Swap in Photonic Wallet
+              </a> with TX:
+            </p>
             <input
               type="text"
               value={swapTx}
               onChange={(e) => setSwapTx(e.target.value)}
               className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-2"
-              placeholder="Enter your transaction ID"
+              placeholder="Enter your swap transaction"
               required
             />
             <div>
@@ -248,46 +300,50 @@ export const OrderBookDemo: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all mt-6"
+            className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all"
           >
-            Create Order
+            Create Swap Order
           </button>
         </div>
       </form>
 
-      <div className="max-w-2xl mx-auto space-y-8">
+      <div className="space-y-12">
         <div>
-          <h2 className="text-2xl font-bold text-white mb-6">Order Book for DOGE</h2>
-          <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
-            <div className="space-y-4">
-              {orders.map(order => (
-                <div key={order.id} className="flex justify-between items-center p-4 bg-black/20 rounded-lg">
-                  <div>
-                    <p className="text-white">
-                      {order.from_amount} {order.from_token} ➔ {order.to_amount} {order.to_token}
-                    </p>
-                    <p className="text-sm text-yellow-600">
-                      Price: {order.price.toFixed(8)} {order.to_token}/{order.from_token}
-                    </p>
+          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
+            Order Book for DOGE
+          </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {orders.map(order => (
+              <div key={order.id} className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{order.from_amount} {order.from_token}</span>
+                    <span className="text-yellow-600">→</span>
+                    <span className="text-lg">{order.to_amount} {order.to_token}</span>
                   </div>
+                  <span className="text-yellow-600">
+                    Price: {order.price.toFixed(6)}
+                  </span>
                 </div>
-              ))}
-              {orders.length === 0 && (
-                <p className="text-center text-yellow-600">No active orders</p>
-              )}
-            </div>
+                <div className="text-sm text-yellow-600/80">
+                  {new Date(order.created_at).toLocaleString()}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
         <div>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-white">Floor Price Chart</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800">
+              Floor Price Chart
+            </h2>
             <div className="flex gap-2">
               <button
                 onClick={() => setTimeframe('1d')}
-                className={`px-3 py-1 rounded-lg ${
-                  timeframe === '1d'
-                    ? 'bg-yellow-600 text-white'
+                className={`px-3 py-1 rounded-lg transition-colors ${
+                  timeframe === '1d' 
+                    ? 'bg-yellow-600 text-white' 
                     : 'text-yellow-600 hover:bg-yellow-600/10'
                 }`}
               >
@@ -295,9 +351,9 @@ export const OrderBookDemo: React.FC = () => {
               </button>
               <button
                 onClick={() => setTimeframe('7d')}
-                className={`px-3 py-1 rounded-lg ${
-                  timeframe === '7d'
-                    ? 'bg-yellow-600 text-white'
+                className={`px-3 py-1 rounded-lg transition-colors ${
+                  timeframe === '7d' 
+                    ? 'bg-yellow-600 text-white' 
                     : 'text-yellow-600 hover:bg-yellow-600/10'
                 }`}
               >
@@ -306,35 +362,35 @@ export const OrderBookDemo: React.FC = () => {
             </div>
           </div>
           <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm h-64">
-            <div className="text-center text-yellow-600">
-              Chart implementation coming soon...
+            {/* Chart will be implemented later */}
+            <div className="flex items-center justify-center h-full text-yellow-600">
+              Price chart coming soon
             </div>
           </div>
         </div>
 
         <div>
-          <h2 className="text-2xl font-bold text-white mb-6">Transaction History</h2>
-          <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
-            <div className="space-y-4">
-              {trades.map(trade => (
-                <div key={trade.id} className="flex justify-between items-center p-4 bg-black/20 rounded-lg">
-                  <div>
-                    <p className="text-white">
-                      {trade.from_amount} {trade.from_token} ➔ {trade.to_amount} {trade.to_token}
-                    </p>
-                    <p className="text-sm text-yellow-600">
-                      Price: {trade.price.toFixed(8)} {trade.to_token}/{trade.from_token}
-                    </p>
+          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
+            Transaction History
+          </h2>
+          <div className="space-y-4">
+            {trades.map(trade => (
+              <div key={trade.id} className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span>{trade.from_amount} {trade.from_token}</span>
+                    <span className="text-yellow-600">→</span>
+                    <span>{trade.to_amount} {trade.to_token}</span>
                   </div>
-                  <div className="text-sm text-yellow-600/80">
-                    {new Date(trade.created_at).toLocaleString()}
+                  <div className="text-yellow-600">
+                    Price: {trade.price.toFixed(6)}
                   </div>
                 </div>
-              ))}
-              {trades.length === 0 && (
-                <p className="text-center text-yellow-600">No transaction history</p>
-              )}
-            </div>
+                <div className="text-sm text-yellow-600/80 mt-2">
+                  {new Date(trade.created_at).toLocaleString()}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
