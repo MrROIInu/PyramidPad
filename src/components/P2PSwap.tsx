@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, RotateCw } from 'lucide-react';
-import QRCode from 'react-qr-code';
+import { Copy } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import { TOKENS } from '../data/tokens';
 import { TokenSelect } from './TokenSelect';
 import { P2PSwapLogo } from './P2PSwapLogo';
 import { OrderCard } from './OrderCard';
 import { Order } from '../types';
-import { getOrders, saveOrder } from '../lib/database';
 
 export const P2PSwap: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -23,63 +22,57 @@ export const P2PSwap: React.FC = () => {
   }, []);
 
   const fetchOrders = async () => {
-    const data = await getOrders();
-    setOrders(data);
-  };
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  const handleRefresh = () => {
-    fetchOrders();
-  };
-
-  const calculateRatio = () => {
-    if (!fromToken || !toToken || !fromAmount || !toAmount) return 0;
-    return (parseFloat(fromAmount) / fromToken.totalSupply) / (parseFloat(toAmount) / toToken.totalSupply);
-  };
-
-  const getRatioColor = (ratio: number) => {
-    if (ratio >= 0.1 && ratio <= 5) return 'text-green-500';
-    if (ratio > 5 && ratio <= 9) return 'text-yellow-500';
-    return 'text-red-500';
+    if (error) {
+      console.error('Error fetching orders:', error);
+    } else {
+      setOrders(data || []);
+    }
   };
 
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fromToken || !toToken || !fromAmount || !toAmount || !swapTx) return;
 
-    try {
-      await saveOrder({
+    const { error } = await supabase
+      .from('orders')
+      .insert([{
         from_token: fromToken.symbol,
         to_token: toToken.symbol,
         from_amount: parseFloat(fromAmount),
         to_amount: parseFloat(toAmount),
-        swap_tx: swapTx
-      });
+        swap_tx: swapTx,
+        claimed: false,
+        claim_count: 0
+      }]);
 
+    if (error) {
+      console.error('Error creating order:', error);
+      alert('Failed to create order. Please try again.');
+    } else {
       setFromAmount('');
       setToAmount('');
       setSwapTx('');
       setImportedTx('');
       fetchOrders();
-    } catch (error) {
-      console.error('Error creating order:', error);
-      alert('Failed to create order. Please try again.');
     }
   };
 
   const parseImportedTx = (text: string) => {
-    // Match pattern: 🔁 Swap: 1000 RXD ➔ 1000 POW 📋<tx_hash>
-    const match = text.match(/🔁 Swap: (\d+(?:\.\d+)?) ([A-Za-z0-9]+) ➔ (\d+(?:\.\d+)?) ([A-Za-z0-9]+) 📋([a-zA-Z0-9]+)/);
-    
+    const match = text.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([\w\d]+)/);
     if (match) {
-      const [, fromAmt, fromSymbol, toAmt, toSymbol, tx] = match;
+      const [, amount, fromSymbol, , toSymbol, tx] = match;
       const foundFromToken = TOKENS.find(t => t.symbol === fromSymbol);
       const foundToToken = TOKENS.find(t => t.symbol === toSymbol);
       
       if (foundFromToken && foundToToken) {
         setFromToken(foundFromToken);
         setToToken(foundToToken);
-        setFromAmount(fromAmt);
-        setToAmount(toAmt);
+        setFromAmount(amount);
         setSwapTx(tx);
       }
     }
@@ -87,21 +80,10 @@ export const P2PSwap: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4">
-      <P2PSwapLogo className="mb-8" />
+      <P2PSwapLogo className="mb-6" />
 
       <form onSubmit={handleCreateOrder} className="mb-12">
         <div className="bg-gradient-to-r from-amber-900/10 to-yellow-900/10 rounded-xl p-6 backdrop-blur-sm">
-          <div className="flex justify-end mb-4">
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="text-yellow-600 hover:text-yellow-500 p-1"
-              title="Reload"
-            >
-              <RotateCw size={16} />
-            </button>
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="block text-yellow-600 mb-2">From Token</label>
@@ -116,10 +98,19 @@ export const P2PSwap: React.FC = () => {
               <input
                 type="number"
                 value={fromAmount}
-                onChange={(e) => setFromAmount(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFromAmount(value);
+                  // Calculate toAmount based on token ratio
+                  if (value && fromToken && toToken) {
+                    const ratio = fromToken.totalSupply / toToken.totalSupply;
+                    setToAmount((parseFloat(value) / ratio).toFixed(6));
+                  }
+                }}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
                 placeholder="Enter amount"
-                min="1"
+                min="0.000001"
+                step="0.000001"
                 required
               />
             </div>
@@ -131,7 +122,14 @@ export const P2PSwap: React.FC = () => {
               <TokenSelect
                 tokens={TOKENS}
                 selectedToken={toToken}
-                onChange={setToToken}
+                onChange={(token) => {
+                  setToToken(token);
+                  // Recalculate toAmount when token changes
+                  if (fromAmount && fromToken && token) {
+                    const ratio = fromToken.totalSupply / token.totalSupply;
+                    setToAmount((parseFloat(fromAmount) / ratio).toFixed(6));
+                  }
+                }}
               />
             </div>
             <div>
@@ -139,16 +137,21 @@ export const P2PSwap: React.FC = () => {
               <input
                 type="number"
                 value={toAmount}
-                onChange={(e) => setToAmount(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setToAmount(value);
+                  // Calculate fromAmount based on token ratio
+                  if (value && fromToken && toToken) {
+                    const ratio = toToken.totalSupply / fromToken.totalSupply;
+                    setFromAmount((parseFloat(value) * ratio).toFixed(6));
+                  }
+                }}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
                 placeholder="Enter amount"
+                min="0.000001"
+                step="0.000001"
                 required
               />
-              {fromAmount && toAmount && (
-                <p className={`text-sm mt-1 ${getRatioColor(calculateRatio())}`}>
-                  Trade Ratio: {calculateRatio().toFixed(2)}:1
-                </p>
-              )}
             </div>
           </div>
 
@@ -182,12 +185,10 @@ export const P2PSwap: React.FC = () => {
                   parseImportedTx(e.target.value);
                 }}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
-                placeholder="Paste transaction text here"
+                placeholder="Example: 🔁 Swap: 1000 RXD ➔ 1000 POW 📋01000000015c943f068b829d3e00c0638948303463f74aa6839fea2ee5698b712061a8482a000000006a47304402203eef3431f97c5ad0f59bcc5198747771a85dc3d9513d3594c8b042a943e872c302201f332de8b6349831ed01dc530f339fb42f0017e9a30ccfdecfe22ba31f26e2aac32102a86b11635102f4e0f74f2cba09c8db13363ad25e5b656380d8fe271ffb769473ffffffff01e8030000000000004b76a9142b91c3856057c3fc1526bad0ed2069421782a73b88acbdd0b01b97916dd47320f939b42eb0f51709928d874dfd773dd6e92166afc5db190500000000dec0e9aa76e378e4a269e69d00000000🟦"
                 rows={3}
+                style={{ color: 'rgba(255, 255, 255, 0.5)' }}
               />
-              <p className="text-xs text-yellow-600/50 mt-1 italic">
-                Example: 🔁 Swap: 1000 RXD ➔ 1000 RADCAT 📋01000000015c🟦
-              </p>
             </div>
           </div>
 

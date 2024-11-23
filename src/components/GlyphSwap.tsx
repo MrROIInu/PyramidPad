@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Copy, RotateCw } from 'lucide-react';
+import React, { useState } from 'react';
 import QRCode from 'react-qr-code';
+import { Copy } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import { TOKENS } from '../data/tokens';
 import { TokenSelect } from './TokenSelect';
 import { GlyphSwapLogo } from './GlyphSwapLogo';
-import { saveSwap, getLiquidity } from '../lib/database';
 
 const SWAP_WALLET = '1CiKtAE6Zf3tniKmPBhv1e7pBRezZM433N';
 const TAX_PERCENTAGE = 3;
-const MIN_AMOUNT = 2;
-const MIN_LIQUIDITY = 1000000; // 1 million tokens minimum liquidity
 
 interface SwapState {
   showForm: boolean;
@@ -18,88 +16,44 @@ interface SwapState {
 }
 
 export const GlyphSwap: React.FC = () => {
-  const [fromToken, setFromToken] = useState(TOKENS.find(t => t.symbol === "RXD") || TOKENS[0]);
-  const [toToken, setToToken] = useState(TOKENS.find(t => t.symbol === "DOGE") || TOKENS[1]);
+  const [fromToken, setFromToken] = useState(TOKENS[0]);
+  const [toToken, setToToken] = useState(TOKENS[1]);
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
   const [walletAddress, setWalletAddress] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [showCopyMessage, setShowCopyMessage] = useState(false);
-  const [liquidity, setLiquidity] = useState<Record<string, number>>({});
   const [swapState, setSwapState] = useState<SwapState>({
     showForm: true,
     showVerification: false,
     showSuccess: false
   });
 
-  useEffect(() => {
-    fetchLiquidity();
-  }, []);
-
-  const fetchLiquidity = async () => {
-    try {
-      const liquidityPromises = TOKENS.map(token => getLiquidity(token.symbol));
-      const liquidityValues = await Promise.all(liquidityPromises);
-      const newLiquidity: Record<string, number> = {};
-      TOKENS.forEach((token, index) => {
-        newLiquidity[token.symbol] = liquidityValues[index];
-      });
-      setLiquidity(newLiquidity);
-    } catch (error) {
-      console.error('Error fetching liquidity:', error);
-    }
-  };
-
-  const handleRefresh = () => {
-    fetchLiquidity();
-  };
-
   const calculateToAmount = (amount: string) => {
-    if (!amount || !fromToken || !toToken) return '';
-    const fromAmount = parseFloat(amount);
-    if (isNaN(fromAmount)) return '';
-
+    if (!amount) return '';
+    const value = parseFloat(amount);
     const ratio = fromToken.totalSupply / toToken.totalSupply;
-    const baseAmount = fromAmount / ratio;
+    const baseAmount = value / ratio;
     const taxAmount = baseAmount * (TAX_PERCENTAGE / 100);
     return (baseAmount - taxAmount).toFixed(6);
   };
 
-  useEffect(() => {
-    setToAmount(calculateToAmount(fromAmount));
-  }, [fromAmount, fromToken, toToken]);
+  const calculateFromAmount = (amount: string) => {
+    if (!amount) return '';
+    const value = parseFloat(amount);
+    const taxMultiplier = 1 + (TAX_PERCENTAGE / 100);
+    const ratio = toToken.totalSupply / fromToken.totalSupply;
+    return (value * taxMultiplier * ratio).toFixed(6);
+  };
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(SWAP_WALLET);
-    setCopied(true);
-    setTimeout(() => setShowCopyMessage(false), 2000);
+    setShowCopyMessage(true);
+    setTimeout(() => setShowCopyMessage(false), 10000);
   };
 
-  const handleSwap = async (e: React.FormEvent) => {
+  const handleSwap = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!fromToken || !toToken || !fromAmount || !toAmount) return;
-
-    const fromAmountNum = parseFloat(fromAmount);
-    const toAmountNum = parseFloat(toAmount);
-    const availableLiquidity = liquidity[toToken.symbol] || 0;
-
-    // Validation checks
-    if (fromAmountNum < MIN_AMOUNT) {
-      alert(`Minimum amount is ${MIN_AMOUNT} tokens`);
-      return;
-    }
-
-    if (toAmountNum < MIN_AMOUNT) {
-      alert(`Swap amount too small. Would receive less than ${MIN_AMOUNT} tokens`);
-      return;
-    }
-
-    if (toAmountNum > availableLiquidity * 0.5) {
-      alert(`Cannot swap more than 50% of available liquidity (${availableLiquidity * 0.5} ${toToken.symbol})`);
-      return;
-    }
-
     setSwapState({
       showForm: false,
       showVerification: true,
@@ -109,27 +63,30 @@ export const GlyphSwap: React.FC = () => {
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!transactionId || !fromToken || !toToken || !fromAmount || !toAmount || !walletAddress) return;
+    if (!transactionId) return;
 
-    try {
-      await saveSwap({
+    const { error } = await supabase
+      .from('swaps')
+      .insert([{
         from_token: fromToken.symbol,
         to_token: toToken.symbol,
         from_amount: parseFloat(fromAmount),
         to_amount: parseFloat(toAmount),
         tax_amount: parseFloat(toAmount) * (TAX_PERCENTAGE / 100),
         wallet_address: walletAddress,
-        transaction_id: transactionId
-      });
+        transaction_id: transactionId,
+        status: 'pending'
+      }]);
 
+    if (error) {
+      console.error('Error saving swap:', error);
+      alert('Failed to verify swap. Please try again.');
+    } else {
       setSwapState({
         showForm: false,
         showVerification: false,
         showSuccess: true
       });
-    } catch (error) {
-      console.error('Error verifying swap:', error);
-      alert('Failed to verify swap. Please try again.');
     }
   };
 
@@ -141,11 +98,6 @@ export const GlyphSwap: React.FC = () => {
     });
     setTransactionId('');
   };
-
-  const filteredToTokens = TOKENS.filter(token => {
-    const tokenLiquidity = liquidity[token.symbol] || 0;
-    return tokenLiquidity >= MIN_LIQUIDITY;
-  });
 
   if (swapState.showSuccess) {
     return (
@@ -246,17 +198,6 @@ export const GlyphSwap: React.FC = () => {
       <GlyphSwapLogo className="mb-8" />
       <form onSubmit={handleSwap} className="max-w-md mx-auto">
         <div className="bg-gradient-to-r from-amber-900/10 to-yellow-900/10 rounded-xl p-6 backdrop-blur-sm">
-          <div className="flex justify-end mb-4">
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="text-yellow-600 hover:text-yellow-500 p-1"
-              title="Reload"
-            >
-              <RotateCw size={16} />
-            </button>
-          </div>
-
           <div className="space-y-6">
             <div>
               <label className="block text-yellow-600 mb-2">From</label>
@@ -264,16 +205,26 @@ export const GlyphSwap: React.FC = () => {
                 <TokenSelect
                   tokens={TOKENS}
                   selectedToken={fromToken}
-                  onChange={setFromToken}
+                  onChange={(token) => {
+                    setFromToken(token);
+                    if (fromAmount) {
+                      setToAmount(calculateToAmount(fromAmount));
+                    }
+                  }}
                   className="flex-1"
                 />
                 <input
                   type="number"
                   value={fromAmount}
-                  onChange={(e) => setFromAmount(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFromAmount(value);
+                    setToAmount(calculateToAmount(value));
+                  }}
                   className="bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 w-32 focus:outline-none focus:border-yellow-600"
                   placeholder="Amount"
-                  min={MIN_AMOUNT}
+                  min="0.000001"
+                  step="0.000001"
                   required
                 />
               </div>
@@ -283,21 +234,31 @@ export const GlyphSwap: React.FC = () => {
               <label className="block text-yellow-600 mb-2">To (including {TAX_PERCENTAGE}% tax)</label>
               <div className="flex gap-4">
                 <TokenSelect
-                  tokens={filteredToTokens}
+                  tokens={TOKENS}
                   selectedToken={toToken}
-                  onChange={setToToken}
+                  onChange={(token) => {
+                    setToToken(token);
+                    if (toAmount) {
+                      setFromAmount(calculateFromAmount(toAmount));
+                    }
+                  }}
                   className="flex-1"
                 />
                 <input
-                  type="text"
+                  type="number"
                   value={toAmount}
-                  readOnly
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setToAmount(value);
+                    setFromAmount(calculateFromAmount(value));
+                  }}
                   className="bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 w-32 focus:outline-none focus:border-yellow-600"
+                  placeholder="Amount"
+                  min="0.000001"
+                  step="0.000001"
+                  required
                 />
               </div>
-              <p className="text-sm text-yellow-600/80 mt-1">
-                Available liquidity: {liquidity[toToken.symbol]?.toLocaleString() || 0} {toToken.symbol}
-              </p>
             </div>
 
             <div>
