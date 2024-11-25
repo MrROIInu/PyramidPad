@@ -19,7 +19,7 @@
 
 /* Container styles */
 .swap-container {
-  @apply bg-gradient-to-r from-amber-900/10 to-yellow-900/10 rounded-xl p-6 backdrop-blur-sm;
+  @apply bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm;
 }
 
 /* Input styles */
@@ -41,7 +41,7 @@
 
 /* Card styles */
 .card {
-  @apply bg-gradient-to-r from-amber-900/10 to-yellow-900/10 rounded-xl p-6 backdrop-blur-sm;
+  @apply bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm;
 }
 
 /* Text styles */
