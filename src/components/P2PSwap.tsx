@@ -39,9 +39,16 @@ export const P2PSwap: React.FC = () => {
     fetchOrders();
   };
 
-  const calculateTradeRatio = (fromAmount: number, toAmount: number) => {
-    const ratio = fromAmount / toAmount;
+  const calculateTradeRatio = (fromAmt: number, toAmt: number) => {
+    const ratio = fromAmt / toAmt;
     return ratio > 1 ? `1:${ratio.toFixed(2)}` : `${(1/ratio).toFixed(2)}:1`;
+  };
+
+  const getRatioColor = (ratio: string) => {
+    const numericRatio = parseFloat(ratio.split(':')[0]);
+    if (numericRatio >= 0.1 && numericRatio <= 5) return 'text-green-500';
+    if (numericRatio > 5 && numericRatio <= 9) return 'text-yellow-500';
+    return 'text-red-500';
   };
 
   const handleCreateOrder = async (e: React.FormEvent) => {
@@ -125,7 +132,12 @@ export const P2PSwap: React.FC = () => {
               <input
                 type="number"
                 value={fromAmount}
-                onChange={(e) => setFromAmount(e.target.value)}
+                onChange={(e) => {
+                  setFromAmount(e.target.value);
+                  if (e.target.value && toAmount) {
+                    setTradeRatio(calculateTradeRatio(parseFloat(e.target.value), parseFloat(toAmount)));
+                  }
+                }}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
                 placeholder="Enter amount"
                 min="1"
@@ -144,13 +156,13 @@ export const P2PSwap: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-yellow-600 mb-2">Amount</label>
+              <label className="block text-yellow-600 mb-2">You Will Receive</label>
               <input
                 type="number"
                 value={toAmount}
                 onChange={(e) => {
                   setToAmount(e.target.value);
-                  if (e.target.value && fromAmount) {
+                  if (fromAmount && e.target.value) {
                     setTradeRatio(calculateTradeRatio(parseFloat(fromAmount), parseFloat(e.target.value)));
                   }
                 }}
@@ -163,11 +175,7 @@ export const P2PSwap: React.FC = () => {
           </div>
 
           {tradeRatio && (
-            <div className={`text-center mb-6 ${
-              parseFloat(tradeRatio.split(':')[0]) <= 5 ? 'text-green-500' :
-              parseFloat(tradeRatio.split(':')[0]) <= 9 ? 'text-yellow-500' :
-              'text-red-500'
-            }`}>
+            <div className={`text-center mb-6 ${getRatioColor(tradeRatio)}`}>
               Trade Ratio: {tradeRatio}
             </div>
           )}
@@ -183,11 +191,22 @@ export const P2PSwap: React.FC = () => {
               className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
               placeholder="Paste transaction text here"
               rows={3}
-              required
             />
             <p className="text-xs text-yellow-600/50 mt-1 italic">
               Example: 🔁 Swap: 1000 RXD ➔ 1000 RADCAT 📋01000000015c🟦
             </p>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-yellow-600 mb-2">TX for Photonic Wallet:</label>
+            <input
+              type="text"
+              value={swapTx}
+              onChange={(e) => setSwapTx(e.target.value)}
+              className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+              placeholder="If using only TX put it here"
+              required
+            />
           </div>
 
           <button
