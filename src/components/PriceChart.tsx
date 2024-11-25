@@ -1,5 +1,4 @@
-import React, { useMemo } from 'react';
-import { Line } from 'react-chartjs-2';
+import React from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -9,8 +8,9 @@ import {
   Title,
   Tooltip,
   Legend,
-  ChartOptions
+  Filler
 } from 'chart.js';
+import { Line } from 'react-chartjs-2';
 
 ChartJS.register(
   CategoryScale,
@@ -19,7 +19,8 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 interface PriceChartProps {
@@ -28,7 +29,7 @@ interface PriceChartProps {
 }
 
 export const PriceChart: React.FC<PriceChartProps> = ({ trades, timeframe }) => {
-  const chartData = useMemo(() => {
+  const chartData = React.useMemo(() => {
     const now = new Date();
     const startTime = new Date(now.getTime() - (timeframe === '1d' ? 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000));
     
@@ -50,55 +51,61 @@ export const PriceChart: React.FC<PriceChartProps> = ({ trades, timeframe }) => 
       labels,
       datasets: [
         {
-          label: 'DOGE/RXD Price',
+          label: 'Price',
           data: prices,
           borderColor: '#CA8A04',
           backgroundColor: 'rgba(202, 138, 4, 0.1)',
-          tension: 0.4,
           fill: true,
-        },
-      ],
+          tension: 0,
+          pointRadius: 0,
+          borderWidth: 2,
+          stepped: 'before'
+        }
+      ]
     };
   }, [trades, timeframe]);
 
-  const options: ChartOptions<'line'> = {
+  const options = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      intersect: false,
+      mode: 'index' as const
+    },
     plugins: {
       legend: {
-        display: true,
-        labels: {
-          color: '#CA8A04',
-        },
+        display: false
       },
       tooltip: {
-        mode: 'index',
-        intersect: false,
-      },
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: '#CA8A04',
+        bodyColor: '#fff',
+        borderColor: '#CA8A04',
+        borderWidth: 1,
+        padding: 12,
+        displayColors: false
+      }
     },
     scales: {
       x: {
         grid: {
-          color: 'rgba(202, 138, 4, 0.1)',
+          display: false
         },
         ticks: {
           color: '#CA8A04',
-        },
+          maxRotation: 0
+        }
       },
       y: {
         grid: {
-          color: 'rgba(202, 138, 4, 0.1)',
+          color: 'rgba(202, 138, 4, 0.1)'
         },
         ticks: {
           color: '#CA8A04',
-        },
-      },
-    },
-    interaction: {
-      mode: 'nearest',
-      axis: 'x',
-      intersect: false,
-    },
+          callback: (value: number) => `$${value.toFixed(8)}`
+        }
+      }
+    }
   };
 
   return (

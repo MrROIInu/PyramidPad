@@ -9,18 +9,16 @@ interface Token {
 
 interface TokenSelectProps {
   tokens: Token[];
-  selectedToken: Token | null;
+  selectedToken: Token;
   onChange: (token: Token) => void;
   className?: string;
-  placeholder?: string;
 }
 
 export const TokenSelect: React.FC<TokenSelectProps> = ({
   tokens,
   selectedToken,
   onChange,
-  className = '',
-  placeholder = 'Select token'
+  className = ''
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -43,18 +41,12 @@ export const TokenSelect: React.FC<TokenSelectProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center gap-2 bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 cursor-pointer min-w-[120px]"
       >
-        {selectedToken ? (
-          <>
-            <img
-              src={selectedToken.imageUrl}
-              alt={selectedToken.symbol}
-              className="w-6 h-6 rounded-full"
-            />
-            <span className="flex-1 text-left">{selectedToken.symbol}</span>
-          </>
-        ) : (
-          <span className="flex-1 text-left text-yellow-600/50">{placeholder}</span>
-        )}
+        <img
+          src={selectedToken.imageUrl}
+          alt={selectedToken.symbol}
+          className="w-6 h-6 rounded-full"
+        />
+        <span className="flex-1 text-left">{selectedToken.symbol}</span>
         <svg
           className={`w-4 h-4 text-yellow-600 transition-transform ${isOpen ? 'rotate-180' : ''}`}
           fill="none"
@@ -77,7 +69,7 @@ export const TokenSelect: React.FC<TokenSelectProps> = ({
                   setIsOpen(false);
                 }}
                 className={`w-full flex items-center gap-2 px-4 py-2 hover:bg-yellow-600/10 transition-colors ${
-                  selectedToken?.symbol === token.symbol ? 'bg-yellow-600/20' : ''
+                  token.symbol === selectedToken.symbol ? 'bg-yellow-600/20' : ''
                 }`}
               >
                 <img
