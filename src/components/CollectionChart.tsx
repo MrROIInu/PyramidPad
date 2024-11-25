@@ -3,72 +3,93 @@ import { Flame } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
 import { TOKEN_PRICES, formatPriceUSD, formatMarketCap, formatVolume, calculateAge } from '../lib/tokenPrices';
 
-// Simulated data for demonstration
+// Simulated trading volume and launch dates
 const SIMULATED_DATA = {
-  volumes: {
-    RADCAT: 838201,
-    DOGE: 4006622,
-    PEPE: 342242,
-    PILIM: 287519,
-    // Add more tokens as needed
-  },
-  launchDates: {
-    RADCAT: new Date('2024-01-01'),
-    DOGE: new Date('2024-02-01'),
-    PEPE: new Date('2024-01-15'),
-    PILIM: new Date('2024-01-20'),
-    // Add more tokens as needed
-  },
-  priceChanges: {
-    RADCAT: -7,
-    DOGE: -14,
-    PEPE: -9,
-    PILIM: -23,
-    // Add more tokens as needed
-  }
+  volumes: Object.fromEntries(
+    TOKENS.map(token => [
+      token.symbol,
+      Math.floor(Math.random() * 5000000) + 100000
+    ])
+  ),
+  launchDates: Object.fromEntries(
+    TOKENS.map(token => [
+      token.symbol,
+      new Date(Date.now() - (Math.floor(Math.random() * 365) + 30) * 24 * 60 * 60 * 1000)
+    ])
+  ),
+  priceChanges: Object.fromEntries(
+    TOKENS.map(token => [
+      token.symbol,
+      (Math.random() * 40) - 20 // Random price change between -20% and +20%
+    ])
+  )
 };
 
 interface TokenRowProps {
   index: number;
-  token: {
-    symbol: string;
-    imageUrl: string;
-    totalSupply: number;
-  };
+  token: typeof TOKENS[0];
+  onFavorite: () => void;
+  isFavorite: boolean;
 }
 
-const TokenRow: React.FC<TokenRowProps> = ({ index, token }) => {
+const TokenRow: React.FC<TokenRowProps> = ({ index, token, onFavorite, isFavorite }) => {
   const priceUSD = TOKEN_PRICES[token.symbol] || 0;
   const volume = SIMULATED_DATA.volumes[token.symbol] || 0;
-  const launchDate = SIMULATED_DATA.launchDates[token.symbol] || new Date();
-  const priceChange = SIMULATED_DATA.priceChanges[token.symbol] || 0;
+  const launchDate = SIMULATED_DATA.launchDates[token.symbol];
+  const priceChange = SIMULATED_DATA.priceChanges[token.symbol];
 
   return (
     <tr className="border-b border-yellow-600/10 hover:bg-yellow-600/5">
-      <td className="px-3 py-3 text-base">{index + 1}</td>
-      <td className="px-3 py-3">
-        <div className="flex items-center gap-3">
-          <img src={token.imageUrl} alt={token.symbol} className="w-8 h-8 rounded-full" />
-          <span className="font-medium text-base">{token.symbol}</span>
+      <td className="px-4 py-2">
+        <button
+          onClick={onFavorite}
+          className={`p-1 rounded ${isFavorite ? 'text-yellow-600' : 'text-gray-400'}`}
+        >
+          ⭐
+        </button>
+      </td>
+      <td className="px-4 py-2">{index + 1}</td>
+      <td className="px-4 py-2">
+        <div className="flex items-center gap-2">
+          <img src={token.imageUrl} alt={token.symbol} className="w-6 h-6 rounded-full" />
+          <span className="font-medium">{token.symbol}</span>
         </div>
       </td>
-      <td className="px-3 py-3 text-base">{formatPriceUSD(priceUSD)}</td>
-      <td className="px-3 py-3 text-base">
+      <td className="px-4 py-2">{formatPriceUSD(priceUSD)}</td>
+      <td className="px-4 py-2">
         <span className={priceChange >= 0 ? 'text-green-500' : 'text-red-500'}>
           {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
         </span>
       </td>
-      <td className="px-3 py-3 text-base">{formatMarketCap(priceUSD, token.totalSupply)}</td>
-      <td className="px-3 py-3 text-base">{formatVolume(volume)}</td>
-      <td className="px-3 py-3 text-base">{calculateAge(launchDate)}</td>
-      <td className="px-3 py-3 text-base">0%</td>
-      <td className="px-3 py-3 text-base">100%</td>
+      <td className="px-4 py-2">{formatMarketCap(priceUSD, token.totalSupply)}</td>
+      <td className="px-4 py-2">{formatVolume(volume)}</td>
+      <td className="px-4 py-2">{calculateAge(launchDate)}</td>
+      <td className="px-4 py-2">0%</td>
+      <td className="px-4 py-2">
+        <div className="flex items-center justify-between">
+          <span>100%</span>
+          <span className="text-sm text-gray-400">
+            {(token.totalSupply / 1000000).toFixed(1)}M
+          </span>
+        </div>
+      </td>
     </tr>
   );
 };
 
 export const CollectionChart: React.FC = () => {
   const [view, setView] = useState<'all' | 'trending'>('all');
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+
+  const toggleFavorite = (symbol: string) => {
+    const newFavorites = new Set(favorites);
+    if (newFavorites.has(symbol)) {
+      newFavorites.delete(symbol);
+    } else {
+      newFavorites.add(symbol);
+    }
+    setFavorites(newFavorites);
+  };
 
   // Filter out RXD token and sort the remaining tokens
   const filteredTokens = TOKENS.filter(token => token.symbol !== 'RXD');
@@ -83,11 +104,11 @@ export const CollectionChart: React.FC = () => {
     : sortedTokens;
 
   return (
-    <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm">
-      <div className="flex gap-4 mb-4">
+    <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
+      <div className="flex gap-4 mb-6">
         <button
           onClick={() => setView('all')}
-          className={`px-6 py-2 rounded-lg transition-colors text-base ${
+          className={`px-4 py-2 rounded-lg transition-colors ${
             view === 'all'
               ? 'bg-yellow-600 text-white'
               : 'text-yellow-600 hover:bg-yellow-600/10'
@@ -97,13 +118,13 @@ export const CollectionChart: React.FC = () => {
         </button>
         <button
           onClick={() => setView('trending')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg transition-colors text-base ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
             view === 'trending'
               ? 'bg-yellow-600 text-white'
               : 'text-yellow-600 hover:bg-yellow-600/10'
           }`}
         >
-          <Flame size={20} />
+          <Flame size={16} />
           Trending
         </button>
       </div>
@@ -112,15 +133,16 @@ export const CollectionChart: React.FC = () => {
         <table className="w-full">
           <thead>
             <tr className="text-yellow-600 border-b border-yellow-600/20">
-              <th className="px-3 py-3 text-left text-base">#</th>
-              <th className="px-3 py-3 text-left text-base">Ticker</th>
-              <th className="px-3 py-3 text-left text-base">Price (USD)</th>
-              <th className="px-3 py-3 text-left text-base">Last 7 Days</th>
-              <th className="px-3 py-3 text-left text-base">Market Cap</th>
-              <th className="px-3 py-3 text-left text-base">Volume (24h)</th>
-              <th className="px-3 py-3 text-left text-base">Age</th>
-              <th className="px-3 py-3 text-left text-base">Premint</th>
-              <th className="px-3 py-3 text-left text-base">Minted</th>
+              <th className="px-4 py-2 text-left"></th>
+              <th className="px-4 py-2 text-left">#</th>
+              <th className="px-4 py-2 text-left">Ticker</th>
+              <th className="px-4 py-2 text-left">Price (USD)</th>
+              <th className="px-4 py-2 text-left">Last 7 Days</th>
+              <th className="px-4 py-2 text-left">Market Cap</th>
+              <th className="px-4 py-2 text-left">Volume (24h)</th>
+              <th className="px-4 py-2 text-left">Age</th>
+              <th className="px-4 py-2 text-left">Premint</th>
+              <th className="px-4 py-2 text-left">Minted</th>
             </tr>
           </thead>
           <tbody>
@@ -129,6 +151,8 @@ export const CollectionChart: React.FC = () => {
                 key={token.symbol}
                 index={index}
                 token={token}
+                onFavorite={() => toggleFavorite(token.symbol)}
+                isFavorite={favorites.has(token.symbol)}
               />
             ))}
           </tbody>
