@@ -3,6 +3,7 @@ import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import { Copy } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
+import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
 
 interface Order {
   id: number;
@@ -28,6 +29,18 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim 
   const activeOrders = orders.filter(o => !o.claimed && o.status !== 'cancelled');
   const maxPages = Math.ceil(activeOrders.length / ordersPerPage);
 
+  const calculateUSDValue = (amount: number, tokenSymbol: string) => {
+    const tokenPrice = TOKEN_PRICES[tokenSymbol];
+    return tokenPrice * amount;
+  };
+
+  const calculatePriceComparison = (order: Order) => {
+    const currentPrice = TOKEN_PRICES[order.to_token];
+    const orderPrice = order.price;
+    const percentageDiff = ((currentPrice - orderPrice) / orderPrice) * 100;
+    return percentageDiff;
+  };
+
   const handleCopy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -51,6 +64,7 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim 
           .map(order => {
             const fromToken = TOKENS.find(t => t.symbol === order.from_token);
             const toToken = TOKENS.find(t => t.symbol === order.to_token);
+            const priceComparison = calculatePriceComparison(order);
 
             if (!fromToken || !toToken) return null;
 
@@ -61,14 +75,31 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim 
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <img src={fromToken.imageUrl} alt={fromToken.symbol} className="w-8 h-8 rounded-full" />
-                      <span className="text-lg">{order.from_amount} {fromToken.symbol}</span>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <img src={fromToken.imageUrl} alt={fromToken.symbol} className="w-8 h-8 rounded-full" />
+                        <div>
+                          <span className="text-lg">{order.from_amount} {fromToken.symbol}</span>
+                          <div className="text-sm text-yellow-600/80">
+                            ≈ {formatPriceUSD(calculateUSDValue(order.from_amount, fromToken.symbol))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <span className="text-yellow-600">→</span>
-                    <div className="flex items-center gap-2">
-                      <img src={toToken.imageUrl} alt={toToken.symbol} className="w-8 h-8 rounded-full" />
-                      <span className="text-lg">{order.to_amount} {toToken.symbol}</span>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <img src={toToken.imageUrl} alt={toToken.symbol} className="w-8 h-8 rounded-full" />
+                        <div>
+                          <span className="text-lg">{order.to_amount} {toToken.symbol}</span>
+                          <div className="text-sm text-yellow-600/80">
+                            ≈ {formatPriceUSD(calculateUSDValue(order.to_amount, toToken.symbol))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className={`text-sm ${priceComparison >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {priceComparison >= 0 ? '+' : ''}{priceComparison.toFixed(2)}% vs floor price
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-2">

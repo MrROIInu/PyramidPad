@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, RotateCw, ArrowRightLeft } from 'lucide-react';
+import { Copy, RotateCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { OrderBookLogo } from './OrderBookLogo';
+import { GlyphSwapLogo } from './GlyphSwapLogo';
 import { PriceChart } from './PriceChart';
 import { useClipboard } from '../hooks/useClipboard';
 import { TransactionHistory } from './TransactionHistory';
@@ -12,9 +12,11 @@ import { OrderList } from './OrderList';
 import { TokenSelect } from './TokenSelect';
 
 const RXD_TOKEN = TOKENS.find(t => t.symbol === 'RXD')!;
+const RADCAT_TOKEN = TOKENS.find(t => t.symbol === 'RADCAT')!;
 
-export const OrderBookSwap: React.FC = () => {
-  const [selectedToken, setSelectedToken] = useState(TOKENS.find(t => t.symbol === 'DOGE')!);
+export const GlyphSwap: React.FC = () => {
+  const [selectedToken, setSelectedToken] = useState(RADCAT_TOKEN);
+  const [isRxdToToken, setIsRxdToToken] = useState(true);
   const [rxdAmount, setRxdAmount] = useState('');
   const [tokenAmount, setTokenAmount] = useState('');
   const [tradeRatio, setTradeRatio] = useState('');
@@ -107,10 +109,10 @@ export const OrderBookSwap: React.FC = () => {
       const { error } = await supabase
         .from('orders')
         .insert([{
-          from_token: RXD_TOKEN.symbol,
-          to_token: selectedToken.symbol,
-          from_amount: parseFloat(rxdAmount),
-          to_amount: parseFloat(tokenAmount),
+          from_token: isRxdToToken ? RXD_TOKEN.symbol : selectedToken.symbol,
+          to_token: isRxdToToken ? selectedToken.symbol : RXD_TOKEN.symbol,
+          from_amount: parseFloat(isRxdToToken ? rxdAmount : tokenAmount),
+          to_amount: parseFloat(isRxdToToken ? tokenAmount : rxdAmount),
           swap_tx: transactionId,
           claimed: false,
           claim_count: 0,
@@ -180,9 +182,9 @@ export const OrderBookSwap: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div>
       <div className="flex justify-center mb-8">
-        <OrderBookLogo />
+        <GlyphSwapLogo />
       </div>
 
       <form onSubmit={handleSubmit} className="mb-12">
@@ -220,11 +222,7 @@ export const OrderBookSwap: React.FC = () => {
                 <input
                   type="number"
                   value={rxdAmount}
-                  onChange={(e) => {
-                    setRxdAmount(e.target.value);
-                    const ratio = TOKEN_PRICES[selectedToken.symbol] / TOKEN_PRICES.RXD;
-                    setTokenAmount((parseFloat(e.target.value) * ratio).toFixed(6));
-                  }}
+                  onChange={(e) => setRxdAmount(e.target.value)}
                   className="flex-1 bg-transparent focus:outline-none"
                   placeholder="Enter RXD amount"
                   required
@@ -243,11 +241,7 @@ export const OrderBookSwap: React.FC = () => {
                 <input
                   type="number"
                   value={tokenAmount}
-                  onChange={(e) => {
-                    setTokenAmount(e.target.value);
-                    const ratio = TOKEN_PRICES.RXD / TOKEN_PRICES[selectedToken.symbol];
-                    setRxdAmount((parseFloat(e.target.value) * ratio).toFixed(6));
-                  }}
+                  onChange={(e) => setTokenAmount(e.target.value)}
                   className="flex-1 bg-transparent focus:outline-none"
                   placeholder={`Enter ${selectedToken.symbol} amount`}
                   required
@@ -277,7 +271,7 @@ export const OrderBookSwap: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-yellow-600 mb-2">TX for Photonic Wallet:</label>
+            <label className="block text-yellow-600 mb-2">Photonic Wallet TX:</label>
             <input
               type="text"
               value={transactionId}
@@ -339,7 +333,7 @@ export const OrderBookSwap: React.FC = () => {
 
         <div>
           <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-            Collection Overview
+            RXD20 Glyph Token Chart
           </h2>
           <CollectionChart />
         </div>
