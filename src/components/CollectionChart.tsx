@@ -91,7 +91,9 @@ export const CollectionChart: React.FC = () => {
     setFavorites(newFavorites);
   };
 
-  const sortedTokens = [...TOKENS].sort((a, b) => {
+  // Filter out RXD token and sort the remaining tokens
+  const filteredTokens = TOKENS.filter(token => token.symbol !== 'RXD');
+  const sortedTokens = [...filteredTokens].sort((a, b) => {
     const volumeA = SIMULATED_DATA.volumes[a.symbol] || 0;
     const volumeB = SIMULATED_DATA.volumes[b.symbol] || 0;
     return volumeB - volumeA;

@@ -5,6 +5,12 @@
 @layer base {
   body {
     @apply text-gray-100;
+    background-image: url('https://static.wixstatic.com/media/c0fd9f_7a29e6d3a40f4821a14dbe8f93b9d069~mv2.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    min-height: 100vh;
   }
 }
 
@@ -51,4 +57,25 @@
 
 .text-secondary {
   @apply text-yellow-600/80;
+}
+
+/* Override rc-slider styles */
+.rc-slider-rail {
+  @apply !bg-yellow-600/20;
+}
+
+.rc-slider-track {
+  @apply !bg-yellow-600;
+}
+
+.rc-slider-handle {
+  @apply !border-yellow-600 !bg-yellow-600;
+}
+
+.rc-slider-handle:hover {
+  @apply !border-yellow-500;
+}
+
+.rc-slider-handle-dragging {
+  @apply !shadow-yellow-600/50;
 }

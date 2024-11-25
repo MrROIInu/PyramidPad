@@ -34,14 +34,14 @@ export const WalletConnect: React.FC = () => {
   return (
     <button
       onClick={handleConnect}
-      className="flex items-center gap-2 bg-yellow-600/20 text-yellow-600 px-3 py-1 rounded-lg text-sm font-semibold border border-yellow-600/30 hover:bg-yellow-600/30 transition-colors"
+      className="flex items-center gap-2 bg-yellow-600/20 text-yellow-600 px-4 py-2 rounded-lg text-sm font-semibold border border-yellow-600/30 hover:bg-yellow-600/30 transition-colors"
     >
       <img 
         src="https://static.wixstatic.com/shapes/c0fd9f_893a3fcd86f5426eb168724c33fc2630.svg"
         alt=""
-        className="w-4 h-4"
+        className="w-5 h-5"
       />
-      {isConnected ? address : 'Photonic Wallet'}
+      {isConnected ? address.slice(0, 8) + '...' + address.slice(-8) : 'Photonic Wallet'}
     </button>
   );
 };
