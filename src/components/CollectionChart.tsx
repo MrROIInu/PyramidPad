@@ -3,66 +3,66 @@ import { Flame } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
 import { TOKEN_PRICES, formatPriceUSD, formatMarketCap, formatVolume, calculateAge } from '../lib/tokenPrices';
 
-// Simulated trading volume and launch dates
+// Simulated data for demonstration
 const SIMULATED_DATA = {
-  volumes: Object.fromEntries(
-    TOKENS.map(token => [
-      token.symbol,
-      Math.floor(Math.random() * 5000000) + 100000
-    ])
-  ),
-  launchDates: Object.fromEntries(
-    TOKENS.map(token => [
-      token.symbol,
-      new Date(Date.now() - (Math.floor(Math.random() * 365) + 30) * 24 * 60 * 60 * 1000)
-    ])
-  ),
-  priceChanges: Object.fromEntries(
-    TOKENS.map(token => [
-      token.symbol,
-      (Math.random() * 40) - 20 // Random price change between -20% and +20%
-    ])
-  )
+  volumes: {
+    RADCAT: 838201,
+    DOGE: 4006622,
+    PEPE: 342242,
+    PILIM: 287519,
+    // Add more tokens as needed
+  },
+  launchDates: {
+    RADCAT: new Date('2024-01-01'),
+    DOGE: new Date('2024-02-01'),
+    PEPE: new Date('2024-01-15'),
+    PILIM: new Date('2024-01-20'),
+    // Add more tokens as needed
+  },
+  priceChanges: {
+    RADCAT: -7,
+    DOGE: -14,
+    PEPE: -9,
+    PILIM: -23,
+    // Add more tokens as needed
+  }
 };
 
 interface TokenRowProps {
   index: number;
-  token: typeof TOKENS[0];
+  token: {
+    symbol: string;
+    imageUrl: string;
+    totalSupply: number;
+  };
 }
 
 const TokenRow: React.FC<TokenRowProps> = ({ index, token }) => {
   const priceUSD = TOKEN_PRICES[token.symbol] || 0;
   const volume = SIMULATED_DATA.volumes[token.symbol] || 0;
-  const launchDate = SIMULATED_DATA.launchDates[token.symbol];
-  const priceChange = SIMULATED_DATA.priceChanges[token.symbol];
+  const launchDate = SIMULATED_DATA.launchDates[token.symbol] || new Date();
+  const priceChange = SIMULATED_DATA.priceChanges[token.symbol] || 0;
 
   return (
     <tr className="border-b border-yellow-600/10 hover:bg-yellow-600/5">
-      <td className="px-2 py-2 text-sm">{index + 1}</td>
-      <td className="px-2 py-2">
-        <div className="flex items-center gap-2">
-          <img src={token.imageUrl} alt={token.symbol} className="w-6 h-6 rounded-full" />
-          <span className="font-medium text-sm">{token.symbol}</span>
+      <td className="px-3 py-3 text-base">{index + 1}</td>
+      <td className="px-3 py-3">
+        <div className="flex items-center gap-3">
+          <img src={token.imageUrl} alt={token.symbol} className="w-8 h-8 rounded-full" />
+          <span className="font-medium text-base">{token.symbol}</span>
         </div>
       </td>
-      <td className="px-2 py-2 text-sm">{formatPriceUSD(priceUSD)}</td>
-      <td className="px-2 py-2 text-sm">
+      <td className="px-3 py-3 text-base">{formatPriceUSD(priceUSD)}</td>
+      <td className="px-3 py-3 text-base">
         <span className={priceChange >= 0 ? 'text-green-500' : 'text-red-500'}>
           {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
         </span>
       </td>
-      <td className="px-2 py-2 text-sm">{formatMarketCap(priceUSD, token.totalSupply)}</td>
-      <td className="px-2 py-2 text-sm">{formatVolume(volume)}</td>
-      <td className="px-2 py-2 text-sm">{calculateAge(launchDate)}</td>
-      <td className="px-2 py-2 text-sm">0%</td>
-      <td className="px-2 py-2">
-        <div className="flex items-center justify-between text-sm">
-          <span>100%</span>
-          <span className="text-gray-400 ml-2">
-            {(token.totalSupply / 1000000).toFixed(1)}M
-          </span>
-        </div>
-      </td>
+      <td className="px-3 py-3 text-base">{formatMarketCap(priceUSD, token.totalSupply)}</td>
+      <td className="px-3 py-3 text-base">{formatVolume(volume)}</td>
+      <td className="px-3 py-3 text-base">{calculateAge(launchDate)}</td>
+      <td className="px-3 py-3 text-base">0%</td>
+      <td className="px-3 py-3 text-base">100%</td>
     </tr>
   );
 };
@@ -87,7 +87,7 @@ export const CollectionChart: React.FC = () => {
       <div className="flex gap-4 mb-4">
         <button
           onClick={() => setView('all')}
-          className={`px-4 py-2 rounded-lg transition-colors text-sm ${
+          className={`px-6 py-2 rounded-lg transition-colors text-base ${
             view === 'all'
               ? 'bg-yellow-600 text-white'
               : 'text-yellow-600 hover:bg-yellow-600/10'
@@ -97,13 +97,13 @@ export const CollectionChart: React.FC = () => {
         </button>
         <button
           onClick={() => setView('trending')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm ${
+          className={`flex items-center gap-2 px-6 py-2 rounded-lg transition-colors text-base ${
             view === 'trending'
               ? 'bg-yellow-600 text-white'
               : 'text-yellow-600 hover:bg-yellow-600/10'
           }`}
         >
-          <Flame size={16} />
+          <Flame size={20} />
           Trending
         </button>
       </div>
@@ -112,15 +112,15 @@ export const CollectionChart: React.FC = () => {
         <table className="w-full">
           <thead>
             <tr className="text-yellow-600 border-b border-yellow-600/20">
-              <th className="px-2 py-2 text-left text-xs">#</th>
-              <th className="px-2 py-2 text-left text-xs">Ticker</th>
-              <th className="px-2 py-2 text-left text-xs">Price (USD)</th>
-              <th className="px-2 py-2 text-left text-xs">Last 7 Days</th>
-              <th className="px-2 py-2 text-left text-xs">Market Cap</th>
-              <th className="px-2 py-2 text-left text-xs">Volume (24h)</th>
-              <th className="px-2 py-2 text-left text-xs">Age</th>
-              <th className="px-2 py-2 text-left text-xs">Premint</th>
-              <th className="px-2 py-2 text-left text-xs">Minted</th>
+              <th className="px-3 py-3 text-left text-base">#</th>
+              <th className="px-3 py-3 text-left text-base">Ticker</th>
+              <th className="px-3 py-3 text-left text-base">Price (USD)</th>
+              <th className="px-3 py-3 text-left text-base">Last 7 Days</th>
+              <th className="px-3 py-3 text-left text-base">Market Cap</th>
+              <th className="px-3 py-3 text-left text-base">Volume (24h)</th>
+              <th className="px-3 py-3 text-left text-base">Age</th>
+              <th className="px-3 py-3 text-left text-base">Premint</th>
+              <th className="px-3 py-3 text-left text-base">Minted</th>
             </tr>
           </thead>
           <tbody>
