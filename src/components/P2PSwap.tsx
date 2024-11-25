@@ -67,16 +67,18 @@ export const P2PSwap: React.FC = () => {
   };
 
   const parseImportedTx = (text: string) => {
-    const match = text.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([\w\d]+)/);
+    // Match pattern: 🔁 Swap: 1000 RXD ➔ 1000 POW 📋<tx_hash>
+    const match = text.match(/🔁 Swap: (\d+(?:\.\d+)?) ([A-Za-z0-9]+) ➔ (\d+(?:\.\d+)?) ([A-Za-z0-9]+) 📋([a-zA-Z0-9]+)/);
+    
     if (match) {
-      const [, amount, fromSymbol, toAmt, toSymbol, tx] = match;
+      const [, fromAmt, fromSymbol, toAmt, toSymbol, tx] = match;
       const foundFromToken = TOKENS.find(t => t.symbol === fromSymbol);
       const foundToToken = TOKENS.find(t => t.symbol === toSymbol);
       
       if (foundFromToken && foundToToken) {
         setFromToken(foundFromToken);
         setToToken(foundToToken);
-        setFromAmount(amount);
+        setFromAmount(fromAmt);
         setToAmount(toAmt);
         setSwapTx(tx);
       }
@@ -180,10 +182,12 @@ export const P2PSwap: React.FC = () => {
                   parseImportedTx(e.target.value);
                 }}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
-                placeholder="Example: 🔁 Swap: 1000 RXD ➔ 1000 POW 📋01000000015c943f068b829d3e00c0638948303463f74aa6839fea2ee5698b712061a8482a000000006a47304402203eef3431f97c5ad0f59bcc5198747771a85dc3d9513d3594c8b042a943e872c302201f332de8b6349831ed01dc530f339fb42f0017e9a30ccfdecfe22ba31f26e2aac32102a86b11635102f4e0f74f2cba09c8db13363ad25e5b656380d8fe271ffb769473ffffffff01e8030000000000004b76a9142b91c3856057c3fc1526bad0ed2069421782a73b88acbdd0b01b97916dd47320f939b42eb0f51709928d874dfd773dd6e92166afc5db190500000000dec0e9aa76e378e4a269e69d00000000🟦"
+                placeholder="Paste transaction text here"
                 rows={3}
-                style={{ color: 'rgba(255, 255, 255, 0.5)' }}
               />
+              <p className="text-xs text-yellow-600/50 mt-1 italic">
+                Example: 🔁 Swap: 1000 RXD ➔ 1000 RADCAT 📋01000000015c🟦
+              </p>
             </div>
           </div>
 
