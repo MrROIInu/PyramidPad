@@ -87,19 +87,24 @@ export const P2PSwap: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex justify-center mb-8">
         <P2PSwapLogo />
-        <button
-          onClick={handleRefresh}
-          className="text-yellow-600 hover:text-yellow-500 p-2"
-          title="Refresh"
-        >
-          <RotateCw size={20} />
-        </button>
       </div>
 
       <form onSubmit={handleCreateOrder} className="mb-12">
         <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-white">Create Swap Order</h2>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="text-yellow-600 hover:text-yellow-500 p-2"
+              title="Refresh"
+            >
+              <RotateCw size={20} />
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="block text-yellow-600 mb-2">From Token</label>
