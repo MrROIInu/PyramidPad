@@ -16,36 +16,22 @@ export const P2PSwap: React.FC = () => {
   const [swapTx, setSwapTx] = useState('');
   const [importedTx, setImportedTx] = useState('');
   const [showCopyMessage, setShowCopyMessage] = useState(false);
+  const [tradeRatio, setTradeRatio] = useState('');
 
   useEffect(() => {
     fetchOrders();
-    // Subscribe to orders table changes
-    const subscription = supabase
-      .channel('orders_channel')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'orders' }, 
-        () => {
-          fetchOrders();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
 
   const fetchOrders = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setOrders(data || []);
-    } catch (error) {
+    if (error) {
       console.error('Error fetching orders:', error);
+    } else {
+      setOrders(data || []);
     }
   };
 
@@ -53,48 +39,37 @@ export const P2PSwap: React.FC = () => {
     fetchOrders();
   };
 
+  const calculateTradeRatio = (fromAmount: number, toAmount: number) => {
+    const ratio = fromAmount / toAmount;
+    return ratio > 1 ? `1:${ratio.toFixed(2)}` : `${(1/ratio).toFixed(2)}:1`;
+  };
+
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fromToken || !toToken || !fromAmount || !toAmount || !swapTx) return;
 
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .insert([{
-          from_token: fromToken.symbol,
-          to_token: toToken.symbol,
-          from_amount: parseFloat(fromAmount),
-          to_amount: parseFloat(toAmount),
-          swap_tx: swapTx,
-          claimed: false,
-          claim_count: 0
-        }]);
+    const { error } = await supabase
+      .from('orders')
+      .insert([{
+        from_token: fromToken.symbol,
+        to_token: toToken.symbol,
+        from_amount: parseFloat(fromAmount),
+        to_amount: parseFloat(toAmount),
+        swap_tx: swapTx,
+        claimed: false,
+        claim_count: 0
+      }]);
 
-      if (error) throw error;
-
+    if (error) {
+      console.error('Error creating order:', error);
+      alert('Failed to create order. Please try again.');
+    } else {
       setFromAmount('');
       setToAmount('');
       setSwapTx('');
       setImportedTx('');
-      await fetchOrders();
-    } catch (error) {
-      console.error('Error creating order:', error);
-      alert('Failed to create order. Please try again.');
-    }
-  };
-
-  const handleClaim = async (orderId: number) => {
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ claimed: true })
-        .eq('id', orderId);
-
-      if (error) throw error;
-      await fetchOrders();
-    } catch (error) {
-      console.error('Error claiming order:', error);
-      alert('Failed to claim order. Please try again.');
+      setTradeRatio('');
+      fetchOrders();
     }
   };
 
@@ -111,6 +86,7 @@ export const P2PSwap: React.FC = () => {
         setFromAmount(amount);
         setToAmount(toAmt);
         setSwapTx(tx);
+        setTradeRatio(calculateTradeRatio(parseFloat(amount), parseFloat(toAmt)));
       }
     }
   };
@@ -121,7 +97,7 @@ export const P2PSwap: React.FC = () => {
         <P2PSwapLogo />
       </div>
 
-      <form onSubmit={handleCreateOrder}>
+      <form onSubmit={handleCreateOrder} className="mb-12">
         <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-white">Create Swap Order</h2>
@@ -168,55 +144,50 @@ export const P2PSwap: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-yellow-600 mb-2">You Will Receive</label>
+              <label className="block text-yellow-600 mb-2">Amount</label>
               <input
                 type="number"
                 value={toAmount}
-                onChange={(e) => setToAmount(e.target.value)}
+                onChange={(e) => {
+                  setToAmount(e.target.value);
+                  if (e.target.value && fromAmount) {
+                    setTradeRatio(calculateTradeRatio(parseFloat(fromAmount), parseFloat(e.target.value)));
+                  }
+                }}
                 className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
                 placeholder="Enter amount"
+                min="1"
                 required
               />
             </div>
           </div>
 
+          {tradeRatio && (
+            <div className={`text-center mb-6 ${
+              parseFloat(tradeRatio.split(':')[0]) <= 5 ? 'text-green-500' :
+              parseFloat(tradeRatio.split(':')[0]) <= 9 ? 'text-yellow-500' :
+              'text-red-500'
+            }`}>
+              Trade Ratio: {tradeRatio}
+            </div>
+          )}
+
           <div className="mb-6">
-            <p className="text-yellow-600 mb-2">
-              <a 
-                href="https://photonic-test.radiant4people.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-yellow-500 no-underline"
-              >
-                Swap in Photonic Wallet
-              </a> with TX:
-            </p>
-            <input
-              type="text"
-              value={swapTx}
-              onChange={(e) => setSwapTx(e.target.value)}
-              className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-2"
-              placeholder="Enter your swap transaction"
+            <label className="block text-yellow-600 mb-2">Import Transaction text from Photonic Wallet:</label>
+            <textarea
+              value={importedTx}
+              onChange={(e) => {
+                setImportedTx(e.target.value);
+                parseImportedTx(e.target.value);
+              }}
+              className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+              placeholder="Paste transaction text here"
+              rows={3}
               required
             />
-            <div>
-              <label className="block text-yellow-600 mb-2">
-                Import Transaction Text:
-              </label>
-              <textarea
-                value={importedTx}
-                onChange={(e) => {
-                  setImportedTx(e.target.value);
-                  parseImportedTx(e.target.value);
-                }}
-                className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
-                placeholder="Paste transaction text here"
-                rows={3}
-              />
-              <p className="text-xs text-yellow-600/50 mt-1 italic">
-                Example: 🔁 Swap: 1000 RXD ➔ 1000 RADCAT 📋01000000015c🟦
-              </p>
-            </div>
+            <p className="text-xs text-yellow-600/50 mt-1 italic">
+              Example: 🔁 Swap: 1000 RXD ➔ 1000 RADCAT 📋01000000015c🟦
+            </p>
           </div>
 
           <button
@@ -228,7 +199,7 @@ export const P2PSwap: React.FC = () => {
         </div>
       </form>
 
-      <div className="space-y-6 mt-12">
+      <div className="space-y-6">
         <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800">
           Active Orders
         </h2>
@@ -237,12 +208,9 @@ export const P2PSwap: React.FC = () => {
             <OrderCard
               key={order.id}
               order={order}
-              onClaim={() => handleClaim(order.id)}
+              onClaim={fetchOrders}
             />
           ))}
-          {orders.filter(order => !order.claimed).length === 0 && (
-            <p className="text-yellow-600 col-span-2 text-center">No active orders</p>
-          )}
         </div>
       </div>
 
