@@ -1,42 +1,37 @@
 import { useEffect, useCallback } from 'react';
 
 export function useClipboard(callback: (text: string) => void) {
-  const handleClipboardText = useCallback((text: string) => {
-    if (text && text.includes('🔁 Swap:')) {
-      callback(text.trim());
+  const handleClipboardChange = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && text.includes('🔁 Swap:')) {
+        callback(text.trim());
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'NotAllowedError') {
+        console.error('Failed to read clipboard:', error);
+      }
     }
   }, [callback]);
 
   useEffect(() => {
+    // Check clipboard when component mounts
+    handleClipboardChange();
+
+    // Add paste event listener to document
     const handlePaste = (e: ClipboardEvent) => {
       const text = e.clipboardData?.getData('text');
-      if (text) {
-        handleClipboardText(text);
+      if (text && text.includes('🔁 Swap:')) {
+        callback(text.trim());
       }
     };
 
-    const handleCopy = async () => {
-      try {
-        const text = await navigator.clipboard.readText();
-        handleClipboardText(text);
-      } catch (error) {
-        console.error('Failed to read clipboard:', error);
-      }
-    };
-
-    // Listen for paste events
-    window.addEventListener('paste', handlePaste);
-    
-    // Listen for copy events
-    document.addEventListener('copy', handleCopy);
-    
-    // Listen for clipboard changes
-    navigator.clipboard?.addEventListener?.('clipboardchange', handleCopy);
+    document.addEventListener('paste', handlePaste);
+    document.addEventListener('focus', handleClipboardChange);
 
     return () => {
-      window.removeEventListener('paste', handlePaste);
-      document.removeEventListener('copy', handleCopy);
-      navigator.clipboard?.removeEventListener?.('clipboardchange', handleCopy);
+      document.removeEventListener('paste', handlePaste);
+      document.removeEventListener('focus', handleClipboardChange);
     };
-  }, [handleClipboardText]);
+  }, [callback, handleClipboardChange]);
 }
