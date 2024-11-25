@@ -3,20 +3,20 @@ import { Copy, RotateCw, ArrowRightLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { OrderBookLogo } from './OrderBookLogo';
 import { PriceChart } from './PriceChart';
+import { useClipboard } from '../hooks/useClipboard';
 import { TransactionHistory } from './TransactionHistory';
 import { CollectionChart } from './CollectionChart';
-import { useClipboard } from '../hooks/useClipboard';
 import { TOKEN_PRICES } from '../lib/tokenPrices';
 import { TOKENS } from '../data/tokens';
 import { OrderList } from './OrderList';
+import { TokenSelect } from './TokenSelect';
 
 const RXD_TOKEN = TOKENS.find(t => t.symbol === 'RXD')!;
-const DOGE_TOKEN = TOKENS.find(t => t.symbol === 'DOGE')!;
 
 export const OrderBookSwap: React.FC = () => {
-  const [isRxdToDoge, setIsRxdToDoge] = useState(true);
+  const [selectedToken, setSelectedToken] = useState(TOKENS.find(t => t.symbol === 'DOGE')!);
   const [rxdAmount, setRxdAmount] = useState('');
-  const [dogeAmount, setDogeAmount] = useState('');
+  const [tokenAmount, setTokenAmount] = useState('');
   const [tradeRatio, setTradeRatio] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [importedTx, setImportedTx] = useState('');
@@ -25,14 +25,15 @@ export const OrderBookSwap: React.FC = () => {
   const [timeframe, setTimeframe] = useState<'1d' | '7d'>('1d');
 
   useEffect(() => {
-    fetchTrades();
     fetchOrders();
-  }, []);
+    fetchTrades();
+  }, [selectedToken]);
 
   const fetchTrades = async () => {
     const { data, error } = await supabase
       .from('trades')
       .select('*')
+      .or(`from_token.eq.${selectedToken.symbol},to_token.eq.${selectedToken.symbol}`)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -46,6 +47,7 @@ export const OrderBookSwap: React.FC = () => {
     const { data, error } = await supabase
       .from('orders')
       .select('*')
+      .or(`from_token.eq.${selectedToken.symbol},to_token.eq.${selectedToken.symbol}`)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -56,19 +58,8 @@ export const OrderBookSwap: React.FC = () => {
   };
 
   const handleRefresh = () => {
-    fetchTrades();
     fetchOrders();
-  };
-
-  const handleSwitch = () => {
-    setIsRxdToDoge(!isRxdToDoge);
-    const tempRxd = rxdAmount;
-    setRxdAmount(dogeAmount);
-    setDogeAmount(tempRxd);
-    if (tradeRatio) {
-      const [num, den] = tradeRatio.split(':');
-      setTradeRatio(`${den}:${num}`);
-    }
+    fetchTrades();
   };
 
   const calculateTradeRatio = (fromAmount: number, toAmount: number) => {
@@ -92,24 +83,14 @@ export const OrderBookSwap: React.FC = () => {
     
     if (match) {
       const [, amount1, token1, amount2, token2, tx] = match;
+      const token = TOKENS.find(t => t.symbol === token2);
       
-      if ((token1 === 'RXD' && token2 === 'DOGE') || (token1 === 'DOGE' && token2 === 'RXD')) {
-        const isRxdFirst = token1 === 'RXD';
-        setIsRxdToDoge(isRxdFirst);
-        
-        if (isRxdFirst) {
-          setRxdAmount(amount1);
-          setDogeAmount(amount2);
-        } else {
-          setRxdAmount(amount2);
-          setDogeAmount(amount1);
-        }
-        
+      if (token) {
+        setSelectedToken(token);
+        setRxdAmount(amount1);
+        setTokenAmount(amount2);
         setTransactionId(tx);
-        setTradeRatio(calculateTradeRatio(
-          parseFloat(isRxdFirst ? amount1 : amount2),
-          parseFloat(isRxdFirst ? amount2 : amount1)
-        ));
+        setTradeRatio(calculateTradeRatio(parseFloat(amount1), parseFloat(amount2)));
       }
     }
   };
@@ -120,26 +101,26 @@ export const OrderBookSwap: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rxdAmount || !dogeAmount || !transactionId) return;
+    if (!rxdAmount || !tokenAmount || !transactionId) return;
 
     try {
       const { error } = await supabase
         .from('orders')
         .insert([{
-          from_token: isRxdToDoge ? 'RXD' : 'DOGE',
-          to_token: isRxdToDoge ? 'DOGE' : 'RXD',
-          from_amount: parseFloat(isRxdToDoge ? rxdAmount : dogeAmount),
-          to_amount: parseFloat(isRxdToDoge ? dogeAmount : rxdAmount),
+          from_token: RXD_TOKEN.symbol,
+          to_token: selectedToken.symbol,
+          from_amount: parseFloat(rxdAmount),
+          to_amount: parseFloat(tokenAmount),
           swap_tx: transactionId,
           claimed: false,
           claim_count: 0,
-          price: TOKEN_PRICES[isRxdToDoge ? 'DOGE' : 'RXD']
+          price: TOKEN_PRICES[selectedToken.symbol]
         }]);
 
       if (error) throw error;
 
       setRxdAmount('');
-      setDogeAmount('');
+      setTokenAmount('');
       setTransactionId('');
       setImportedTx('');
       setTradeRatio('');
@@ -218,34 +199,34 @@ export const OrderBookSwap: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex items-center justify-center gap-4 mb-6">
-            <button
-              type="button"
-              onClick={handleSwitch}
-              className="flex items-center gap-2 bg-yellow-600/20 text-yellow-600 px-4 py-2 rounded-lg hover:bg-yellow-600/30 transition-colors"
-            >
-              <img src={isRxdToDoge ? RXD_TOKEN.imageUrl : DOGE_TOKEN.imageUrl} alt="" className="w-6 h-6" />
-              <span>{isRxdToDoge ? 'RXD → DOGE' : 'DOGE → RXD'}</span>
-              <ArrowRightLeft size={16} />
-            </button>
+          <div className="mb-6">
+            <label className="block text-yellow-600 mb-2">Select Token</label>
+            <TokenSelect
+              tokens={TOKENS.filter(t => t.symbol !== 'RXD')}
+              selectedToken={selectedToken}
+              onChange={setSelectedToken}
+            />
           </div>
 
-          {/* Form inputs */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
-              <label className="block text-yellow-600 mb-2">Amount</label>
+              <label className="block text-yellow-600 mb-2">RXD Amount</label>
               <div className="flex items-center gap-2 bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2">
                 <img
-                  src={isRxdToDoge ? RXD_TOKEN.imageUrl : DOGE_TOKEN.imageUrl}
-                  alt=""
+                  src={RXD_TOKEN.imageUrl}
+                  alt="RXD"
                   className="w-6 h-6"
                 />
                 <input
                   type="number"
-                  value={isRxdToDoge ? rxdAmount : dogeAmount}
-                  onChange={(e) => isRxdToDoge ? setRxdAmount(e.target.value) : setDogeAmount(e.target.value)}
+                  value={rxdAmount}
+                  onChange={(e) => {
+                    setRxdAmount(e.target.value);
+                    const ratio = TOKEN_PRICES[selectedToken.symbol] / TOKEN_PRICES.RXD;
+                    setTokenAmount((parseFloat(e.target.value) * ratio).toFixed(6));
+                  }}
                   className="flex-1 bg-transparent focus:outline-none"
-                  placeholder={`Enter ${isRxdToDoge ? 'RXD' : 'DOGE'} amount`}
+                  placeholder="Enter RXD amount"
                   required
                 />
               </div>
@@ -255,16 +236,20 @@ export const OrderBookSwap: React.FC = () => {
               <label className="block text-yellow-600 mb-2">You Will Receive</label>
               <div className="flex items-center gap-2 bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2">
                 <img
-                  src={isRxdToDoge ? DOGE_TOKEN.imageUrl : RXD_TOKEN.imageUrl}
-                  alt=""
+                  src={selectedToken.imageUrl}
+                  alt={selectedToken.symbol}
                   className="w-6 h-6"
                 />
                 <input
                   type="number"
-                  value={isRxdToDoge ? dogeAmount : rxdAmount}
-                  onChange={(e) => isRxdToDoge ? setDogeAmount(e.target.value) : setRxdAmount(e.target.value)}
+                  value={tokenAmount}
+                  onChange={(e) => {
+                    setTokenAmount(e.target.value);
+                    const ratio = TOKEN_PRICES.RXD / TOKEN_PRICES[selectedToken.symbol];
+                    setRxdAmount((parseFloat(e.target.value) * ratio).toFixed(6));
+                  }}
                   className="flex-1 bg-transparent focus:outline-none"
-                  placeholder={`Enter ${isRxdToDoge ? 'DOGE' : 'RXD'} amount`}
+                  placeholder={`Enter ${selectedToken.symbol} amount`}
                   required
                 />
               </div>
@@ -285,7 +270,7 @@ export const OrderBookSwap: React.FC = () => {
               value={importedTx}
               onChange={(e) => handleImportedTxChange(e.target.value)}
               className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-2"
-              placeholder="Example: 🔁 Swap: 1000 RXD ➔ 1000 DOGE 📋01000000015c🟦"
+              placeholder="Example: 🔁 Swap: 10 RXD ➔ 12 Doge 📋01000000011663127159c249e495🟦"
               rows={3}
               style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.875rem' }}
             />
@@ -321,7 +306,7 @@ export const OrderBookSwap: React.FC = () => {
 
         <div>
           <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-            Floor Price Chart
+            Floor Price Chart for {selectedToken.symbol}
           </h2>
           <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
             <div className="flex justify-end gap-4 mb-4">
