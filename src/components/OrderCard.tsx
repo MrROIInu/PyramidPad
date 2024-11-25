@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Copy } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
-import { supabase } from '../lib/supabase';
+import { updateOrderStatus } from '../lib/database';
 import { Order } from '../types';
 
 interface OrderCardProps {
@@ -22,8 +22,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onClaim }) => {
   const displayRatio = ratio > 1 ? `1:${ratio.toFixed(2)}` : `${(1/ratio).toFixed(2)}:1`;
 
   const getRatioColor = (ratio: number) => {
-    if (ratio >= 0.1 && ratio <= 6) return 'text-green-500';
-    if (ratio > 6 && ratio <= 10) return 'text-yellow-500';
+    if (ratio >= 0.1 && ratio <= 5) return 'text-green-500';
+    if (ratio > 5 && ratio <= 9) return 'text-yellow-500';
     return 'text-red-500';
   };
 
@@ -31,7 +31,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onClaim }) => {
     try {
       await navigator.clipboard.writeText(text);
       setShowCopyMessage(true);
-      setTimeout(() => setShowCopyMessage(false), 10000);
+      setTimeout(() => setShowCopyMessage(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
     }
@@ -40,15 +40,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onClaim }) => {
   const handleClaim = async () => {
     setIsUpdating(true);
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ 
-          claimed: true,
-          claim_count: (order.claim_count || 0) + 1 
-        })
-        .eq('id', order.id);
-
-      if (error) throw error;
+      await updateOrderStatus(order.id, true);
       if (onClaim) onClaim();
     } catch (error) {
       console.error('Error claiming order:', error);
@@ -73,7 +65,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onClaim }) => {
       </div>
 
       <p className={`mb-4 ${getRatioColor(ratio)}`}>
-        Trade Ratio: {displayRatio} (compared with tokens total supply)
+        Trade Ratio: {displayRatio}
       </p>
 
       <div className="mb-4">

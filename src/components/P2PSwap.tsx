@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Copy, RotateCw } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import QRCode from 'react-qr-code';
 import { TOKENS } from '../data/tokens';
 import { TokenSelect } from './TokenSelect';
 import { P2PSwapLogo } from './P2PSwapLogo';
 import { OrderCard } from './OrderCard';
 import { Order } from '../types';
-import { saveOrder } from '../lib/database';
+import { getOrders, saveOrder } from '../lib/database';
 
 export const P2PSwap: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -22,21 +22,13 @@ export const P2PSwap: React.FC = () => {
     fetchOrders();
   }, []);
 
-  const handleRefresh = () => {
-    fetchOrders();
+  const fetchOrders = async () => {
+    const data = await getOrders();
+    setOrders(data);
   };
 
-  const fetchOrders = async () => {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching orders:', error);
-    } else {
-      setOrders(data || []);
-    }
+  const handleRefresh = () => {
+    fetchOrders();
   };
 
   const calculateRatio = () => {
@@ -229,7 +221,6 @@ export const P2PSwap: React.FC = () => {
               <OrderCard
                 key={order.id}
                 order={order}
-                onClaim={fetchOrders}
               />
             ))}
           </div>
