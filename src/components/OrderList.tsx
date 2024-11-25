@@ -1,67 +1,56 @@
-import React, { useState } from 'react';
-import { Copy } from 'lucide-react';
+import React from 'react';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
+import { Copy } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
 import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
 
+interface Order {
+  id: number;
+  from_token: string;
+  to_token: string;
+  from_amount: number;
+  to_amount: number;
+  swap_tx: string;
+  claimed: boolean;
+  status?: string;
+  price: number;
+}
+
 interface OrderListProps {
-  orders: any[];
+  orders: Order[];
   onCancel: (id: number) => void;
   onClaim: (id: number) => void;
 }
 
-const PriceComparison: React.FC<{ difference: number }> = ({ difference }) => {
-  if (isNaN(difference)) {
-    return <div className="text-sm text-yellow-600">Price comparison unavailable</div>;
-  }
-
-  if (difference === 0) {
-    return <div className="text-sm text-yellow-600">At floor price</div>;
-  }
-
-  if (difference > 0) {
-    return <div className="text-sm text-green-500">{difference.toFixed(2)}% higher than floor price</div>;
-  }
-
-  return <div className="text-sm text-red-500">{Math.abs(difference).toFixed(2)}% lower than floor price</div>;
-};
-
 export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim }) => {
-  const [currentPage, setCurrentPage] = useState(0);
-  const [showCopyMessage, setShowCopyMessage] = useState(false);
+  const [currentPage, setCurrentPage] = React.useState(0);
   const ordersPerPage = 5;
-
-  const activeOrders = orders.filter(order => !order.claimed);
+  const activeOrders = orders.filter(o => !o.claimed && o.status !== 'cancelled');
   const maxPages = Math.ceil(activeOrders.length / ordersPerPage);
+
+  const calculateUSDValue = (amount: number, tokenSymbol: string) => {
+    const tokenPrice = TOKEN_PRICES[tokenSymbol];
+    return tokenPrice * amount;
+  };
+
+  const calculatePriceComparison = (order: Order) => {
+    const currentPrice = TOKEN_PRICES[order.to_token];
+    const orderPrice = order.price;
+    const percentageDiff = ((currentPrice - orderPrice) / orderPrice) * 100;
+    return percentageDiff;
+  };
 
   const handleCopy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      setShowCopyMessage(true);
-      setTimeout(() => setShowCopyMessage(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
     }
   };
 
-  const calculateUSDValue = (amount: number, symbol: string) => {
-    return amount * (TOKEN_PRICES[symbol] || 0);
-  };
-
-  const calculatePriceComparison = (order: any) => {
-    const currentPrice = TOKEN_PRICES[order.to_token] || 0;
-    const orderPrice = order.price || 0;
-    if (!currentPrice || !orderPrice) return NaN;
-    return ((currentPrice - orderPrice) / orderPrice) * 100;
-  };
-
   if (activeOrders.length === 0) {
-    return (
-      <div className="text-center text-yellow-600 py-8">
-        No active orders
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -108,7 +97,9 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim 
                           </div>
                         </div>
                       </div>
-                      <PriceComparison difference={priceComparison} />
+                      <div className={`text-sm ${priceComparison >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {priceComparison >= 0 ? '+' : ''}{priceComparison.toFixed(2)}% vs floor price
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -137,13 +128,6 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim 
                       <Copy size={20} />
                     </button>
                   </div>
-                  {showCopyMessage && (
-                    <div className="absolute top-full left-0 right-0 mt-2 text-center">
-                      <p className="text-green-500 text-sm bg-black/80 rounded-lg py-2 px-4 inline-block">
-                        TX copied to clipboard
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
             );
