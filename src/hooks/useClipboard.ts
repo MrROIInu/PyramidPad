@@ -1,28 +1,24 @@
 import { useEffect } from 'react';
 
+const SWAP_REGEX = /🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([^\s🟦]+)/;
+
 export function useClipboard(callback: (text: string) => void) {
   useEffect(() => {
-    const isValidSwapText = (text: string) => {
-      return text.includes('🔁 Swap:') && 
-             text.includes('➔') && 
-             text.includes('📋');
-    };
-
-    const handlePaste = (e: ClipboardEvent) => {
-      const text = e.clipboardData?.getData('text');
-      if (text && isValidSwapText(text)) {
-        callback(text);
-      }
-    };
-
     const handleClipboardChange = async () => {
       try {
         const text = await navigator.clipboard.readText();
-        if (text && isValidSwapText(text)) {
+        if (SWAP_REGEX.test(text)) {
           callback(text);
         }
       } catch (error) {
         // Ignore clipboard read errors
+      }
+    };
+
+    const handlePaste = (e: ClipboardEvent) => {
+      const text = e.clipboardData?.getData('text');
+      if (text && SWAP_REGEX.test(text)) {
+        callback(text);
       }
     };
 

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { OrderBookSwap } from './components/OrderBookSwap';
 import { TokenList } from './pages/TokenList';
 import { Navigation } from './components/Navigation';
+import { GlyphSwapLogo } from './components/GlyphSwapLogo';
 
 const App: React.FC = () => {
   return (
@@ -31,6 +32,7 @@ const App: React.FC = () => {
                 </div>
               </div>
             </div>
+            <GlyphSwapLogo />
           </div>
           <Routes>
             <Route path="/" element={<OrderBookSwap />} />
