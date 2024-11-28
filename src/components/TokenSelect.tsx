@@ -1,11 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-
-interface Token {
-  symbol: string;
-  name: string;
-  imageUrl: string;
-  totalSupply: number;
-}
+import { Token } from '../types';
 
 interface TokenSelectProps {
   tokens: Token[];
@@ -22,6 +16,15 @@ export const TokenSelect: React.FC<TokenSelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Sort tokens to ensure RADCAT is first
+  const sortedTokens = [...tokens]
+    .filter(token => token.symbol !== 'RXD')
+    .sort((a, b) => {
+      if (a.symbol === 'RADCAT') return -1;
+      if (b.symbol === 'RADCAT') return 1;
+      return a.symbol.localeCompare(b.symbol);
+    });
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -60,7 +63,7 @@ export const TokenSelect: React.FC<TokenSelectProps> = ({
       {isOpen && (
         <div className="absolute z-50 w-64 mt-2 bg-black/95 border border-yellow-600/30 rounded-lg shadow-xl overflow-hidden">
           <div className="max-h-60 overflow-y-auto">
-            {tokens.map(token => (
+            {sortedTokens.map(token => (
               <button
                 key={token.symbol}
                 type="button"

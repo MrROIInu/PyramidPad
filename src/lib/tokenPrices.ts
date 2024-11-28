@@ -1,37 +1,23 @@
-// Current DOGE price from CoinMarketCap
-const DOGE_PRICE_USD = 0.17;
-// Current RXD price from CoinMarketCap (hypothetical)
-const RXD_PRICE_USD = 0.25;
-
 import { TOKENS } from '../data/tokens';
+import { RXD_TOKEN } from '../constants/tokens';
 
-// Calculate price ratios based on total supply and RXD price
-export const calculateTokenPrices = () => {
-  const prices: Record<string, number> = {};
-  const rxdToken = TOKENS.find(t => t.symbol === 'RXD');
-  
-  if (!rxdToken) return prices;
+// Current RXD price from CoinMarketCap
+const RXD_PRICE_USD = 0.0009199;
+const PHOTONS_PER_RXD = 100000000;
 
-  TOKENS.forEach(token => {
-    // Calculate price based on total supply ratio compared to RXD
-    const supplyRatio = rxdToken.totalSupply / token.totalSupply;
-    prices[token.symbol] = RXD_PRICE_USD * supplyRatio;
-  });
+// Calculate price per photon in USD
+const PHOTON_PRICE_USD = RXD_PRICE_USD / PHOTONS_PER_RXD;
 
-  // Override DOGE price with actual market price
-  prices['DOGE'] = DOGE_PRICE_USD;
-
-  return prices;
+export const TOKEN_PRICES: Record<string, number> = {
+  [RXD_TOKEN.symbol]: RXD_PRICE_USD
 };
 
-export const TOKEN_PRICES = calculateTokenPrices();
+// Calculate prices for all tokens based on 1 token = 1 photon
+TOKENS.forEach(token => {
+  // Each token is worth 1 photon, so price in USD is PHOTON_PRICE_USD
+  TOKEN_PRICES[token.symbol] = PHOTON_PRICE_USD;
+});
 
-// Calculate percentage change from previous price
-export const calculatePriceChange = (currentPrice: number, previousPrice: number): number => {
-  return ((currentPrice - previousPrice) / previousPrice) * 100;
-};
-
-// Format price to USD string
 export const formatPriceUSD = (price: number): string => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -41,7 +27,6 @@ export const formatPriceUSD = (price: number): string => {
   }).format(price);
 };
 
-// Format market cap
 export const formatMarketCap = (price: number, totalSupply: number): string => {
   const marketCap = price * totalSupply;
   return new Intl.NumberFormat('en-US', {
@@ -51,7 +36,6 @@ export const formatMarketCap = (price: number, totalSupply: number): string => {
   }).format(marketCap);
 };
 
-// Format volume
 export const formatVolume = (volume: number): string => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -60,8 +44,4 @@ export const formatVolume = (volume: number): string => {
   }).format(volume);
 };
 
-// Calculate time since launch
-export const calculateAge = (launchDate: Date): string => {
-  const days = Math.floor((Date.now() - launchDate.getTime()) / (1000 * 60 * 60 * 24));
-  return `${days}d`;
-};
+export const calculateTokenPrices = () => TOKEN_PRICES;
