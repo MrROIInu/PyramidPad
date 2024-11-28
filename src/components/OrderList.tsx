@@ -1,18 +1,8 @@
 import React from 'react';
-import { Copy } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
+import { RXD_TOKEN } from '../constants/tokens';
 import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
-
-interface Order {
-  id: number;
-  from_token: string;
-  to_token: string;
-  from_amount: number;
-  to_amount: number;
-  swap_tx: string;
-  claimed: boolean;
-  status?: string;
-}
+import { Order } from '../types';
 
 interface OrderListProps {
   orders: Order[];
@@ -36,14 +26,6 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim 
     );
   }
 
-  const handleCopy = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
-  };
-
   return (
     <div>
       <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
@@ -51,8 +33,10 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim 
       </h2>
       <div className="space-y-4">
         {activeOrders.map(order => {
-          const fromToken = TOKENS.find(t => t.symbol === order.from_token)!;
-          const toToken = TOKENS.find(t => t.symbol === order.to_token)!;
+          const fromToken = order.from_token === 'RXD' ? RXD_TOKEN : TOKENS.find(t => t.symbol === order.from_token);
+          const toToken = order.to_token === 'RXD' ? RXD_TOKEN : TOKENS.find(t => t.symbol === order.to_token);
+
+          if (!fromToken || !toToken) return null;
 
           return (
             <div
@@ -97,18 +81,6 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim 
                     className="px-4 py-2 bg-red-600/20 text-red-500 rounded-lg hover:bg-red-600/30 transition-colors"
                   >
                     Cancel
-                  </button>
-                </div>
-              </div>
-
-              <div className="relative">
-                <div 
-                  className="flex items-start gap-2 bg-black/30 border border-yellow-600/30 rounded-lg p-4 cursor-pointer group"
-                  onClick={() => handleCopy(order.swap_tx)}
-                >
-                  <code className="flex-1 text-sm break-all">{order.swap_tx}</code>
-                  <button className="text-yellow-600 hover:text-yellow-500 p-1">
-                    <Copy size={20} />
                   </button>
                 </div>
               </div>
