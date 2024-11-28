@@ -1,4 +1,5 @@
 import React from 'react';
+import { Copy } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
 import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
@@ -12,6 +13,18 @@ interface OrderListProps {
 
 export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim }) => {
   const activeOrders = orders.filter(o => !o.claimed && o.status !== 'cancelled');
+
+  const handleCopy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const generateTransactionText = (order: Order) => {
+    return `🔁 Swap: ${order.from_amount} ${order.from_token} ➔ ${order.to_amount} ${order.to_token} 📋${order.swap_tx}🟦`;
+  };
 
   if (activeOrders.length === 0) {
     return (
@@ -37,6 +50,8 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim 
           const toToken = order.to_token === 'RXD' ? RXD_TOKEN : TOKENS.find(t => t.symbol === order.to_token);
 
           if (!fromToken || !toToken) return null;
+
+          const transactionText = generateTransactionText(order);
 
           return (
             <div
@@ -81,6 +96,18 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim 
                     className="px-4 py-2 bg-red-600/20 text-red-500 rounded-lg hover:bg-red-600/30 transition-colors"
                   >
                     Cancel
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div 
+                  className="flex items-start gap-2 bg-black/30 border border-yellow-600/30 rounded-lg p-4 cursor-pointer group"
+                  onClick={() => handleCopy(transactionText)}
+                >
+                  <code className="flex-1 text-sm break-all">{transactionText}</code>
+                  <button className="text-yellow-600 hover:text-yellow-500 p-1">
+                    <Copy size={20} />
                   </button>
                 </div>
               </div>
