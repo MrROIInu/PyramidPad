@@ -97,7 +97,8 @@ export const OrderBookSwap: React.FC = () => {
         swap_tx: transactionId,
         claimed: false,
         claim_count: 0,
-        status: 'active'
+        status: 'active',
+        created_at: new Date().toISOString()
       };
 
       const { error } = await supabase
@@ -308,7 +309,7 @@ export const OrderBookSwap: React.FC = () => {
           </div>
         </div>
 
-        <TransactionHistory transactions={trades} />
+        <TransactionHistory transactions={trades} orders={orders} />
 
         <div>
           <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
