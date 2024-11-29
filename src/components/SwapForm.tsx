@@ -1,17 +1,26 @@
 import React from 'react';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, Loader2 } from 'lucide-react';
 import { TokenSelect } from './TokenSelect';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
 import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
 import { useSwapForm } from '../hooks/useSwapForm';
+import { useSwapContext } from '../contexts/SwapContext';
 
-export const SwapForm: React.FC = () => {
+interface SwapFormProps {
+  onOrderCreated: () => Promise<void>;
+}
+
+export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
+  const { selectedToken: contextSelectedToken } = useSwapContext();
+  
   const {
     formState,
+    loading,
+    error,
     updateFormState,
     handleSubmit,
-  } = useSwapForm();
+  } = useSwapForm(onOrderCreated);
 
   const {
     selectedToken,
@@ -21,6 +30,13 @@ export const SwapForm: React.FC = () => {
     transactionId,
     importedTx
   } = formState;
+
+  // Update form when context token changes
+  React.useEffect(() => {
+    if (contextSelectedToken.symbol !== selectedToken.symbol) {
+      updateFormState({ selectedToken: contextSelectedToken });
+    }
+  }, [contextSelectedToken, selectedToken.symbol, updateFormState]);
 
   const handleImportedTxChange = (text: string) => {
     if (!text.includes('🔁 Swap:') || !text.includes('➔') || !text.includes('📋')) return;
@@ -52,6 +68,12 @@ export const SwapForm: React.FC = () => {
   return (
     <form onSubmit={handleSubmit} className="mb-12">
       <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
+        {error && (
+          <div className="mb-6 bg-red-500/20 border border-red-500/30 text-red-500 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
+
         <div className="mb-6">
           <label className="block text-yellow-600 mb-2">Select Token</label>
           <TokenSelect
@@ -164,9 +186,17 @@ export const SwapForm: React.FC = () => {
 
         <button
           type="submit"
-          className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all mt-6"
+          disabled={loading}
+          className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all mt-6 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          Create Swap Order
+          {loading ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Creating Order...
+            </>
+          ) : (
+            'Create Swap Order'
+          )}
         </button>
       </div>
     </form>

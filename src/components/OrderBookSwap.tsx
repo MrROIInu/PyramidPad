@@ -5,17 +5,18 @@ import { TransactionHistory } from './TransactionHistory';
 import { useOrders } from '../hooks/useOrders';
 
 export const OrderBookSwap: React.FC = () => {
-  const { orders, onClaim, onCancel } = useOrders();
+  const { orders, loading, onClaim, onCancel, fetchOrders } = useOrders();
 
   return (
     <div className="container mx-auto px-4">
-      <SwapForm />
+      <SwapForm onOrderCreated={fetchOrders} />
 
       <div className="space-y-12">
         <OrderList
           orders={orders.filter(o => !o.claimed && o.status !== 'cancelled')}
           onCancel={onCancel}
           onClaim={onClaim}
+          loading={loading}
         />
 
         <TransactionHistory 

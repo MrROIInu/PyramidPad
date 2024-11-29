@@ -21,21 +21,27 @@ const initialState: SwapFormState = {
   importedTx: ''
 };
 
-export const useSwapForm = () => {
+export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
   const [formState, setFormState] = useState<SwapFormState>(initialState);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const resetForm = useCallback(() => {
     setFormState(initialState);
+    setError(null);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
     if (!formState.rxdAmount || !formState.tokenAmount || !formState.transactionId) {
+      setError('Please fill in all required fields');
       return;
     }
 
     try {
+      setLoading(true);
       const orderData = {
         from_token: formState.isRxdToToken ? 'RXD' : formState.selectedToken.symbol,
         to_token: formState.isRxdToToken ? formState.selectedToken.symbol : 'RXD',
@@ -47,25 +53,31 @@ export const useSwapForm = () => {
         status: 'active'
       };
 
-      const { error } = await supabase
+      const { error: supabaseError } = await supabase
         .from('orders')
         .insert([orderData]);
 
-      if (error) throw error;
+      if (supabaseError) throw supabaseError;
 
-      // Reset form after successful submission
+      await onOrderCreated();
       resetForm();
-    } catch (error) {
-      console.error('Error creating order:', error);
+    } catch (err) {
+      console.error('Error creating order:', err);
+      setError('Failed to create order. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const updateFormState = useCallback((updates: Partial<SwapFormState>) => {
     setFormState(prev => ({ ...prev, ...updates }));
+    setError(null);
   }, []);
 
   return {
     formState,
+    loading,
+    error,
     updateFormState,
     handleSubmit,
     resetForm
