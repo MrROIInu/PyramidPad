@@ -6,15 +6,20 @@ import { getMiningData } from './tokenData';
 const supabaseUrl = 'https://vmlrhtccpuhttgaszymo.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtbHJodGNjcHVodHRnYXN6eW1vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzIwNzI0MjksImV4cCI6MjA0NzY0ODQyOX0.g_oEjsXloQ20YFL3YW1xSbQRe2ZPeF01R4ItclFEYiY';
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: false
+  },
+  db: {
+    schema: 'public'
+  }
+});
 
 export const initializeDatabase = async () => {
   try {
-    // Clear existing trades
-    await supabase
-      .from('trades')
-      .delete()
-      .neq('id', 0);
+    // Initialize orders table if it doesn't exist
+    const { error: createError } = await supabase.rpc('create_tables');
+    if (createError) throw createError;
 
     // Initialize token data
     const tokenData = TOKENS.map(token => {
@@ -23,7 +28,7 @@ export const initializeDatabase = async () => {
         symbol: token.symbol,
         name: token.name,
         total_supply: token.totalSupply,
-        contract_address: token.contractAddress,
+        contract_address: token.contractAddress || '94fddcbf9cb28c1d732f725e6b10a5403f7a1d3ca335785154b9ab00689de66f00000000',
         price_usd: calculateTokenPrice(token.totalSupply),
         market_cap: calculateMarketCap(token.totalSupply),
         volume_24h: 0,
@@ -48,21 +53,4 @@ export const initializeDatabase = async () => {
     console.error('Error initializing database:', error);
     return false;
   }
-};
-
-export const subscribeToUpdates = (callback: () => void) => {
-  const ordersSubscription = supabase
-    .channel('orders-channel')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, callback)
-    .subscribe();
-
-  const tokensSubscription = supabase
-    .channel('tokens-channel')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'tokens' }, callback)
-    .subscribe();
-
-  return () => {
-    ordersSubscription.unsubscribe();
-    tokensSubscription.unsubscribe();
-  };
 };

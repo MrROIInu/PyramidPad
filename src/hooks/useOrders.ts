@@ -5,23 +5,59 @@ import { Order } from '../types';
 export const useOrders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      setError(null);
+      
+      const { data, error: fetchError } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
       setOrders(data || []);
-    } catch (error) {
-      console.error('Error fetching orders:', error);
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+      setError('Failed to fetch orders');
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const onClaim = useCallback(async (id: number) => {
+    try {
+      setError(null);
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ claimed: true })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+      await fetchOrders();
+    } catch (err) {
+      console.error('Error claiming order:', err);
+      setError('Failed to claim order');
+    }
+  }, [fetchOrders]);
+
+  const onCancel = useCallback(async (id: number) => {
+    try {
+      setError(null);
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ status: 'cancelled' })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+      await fetchOrders();
+    } catch (err) {
+      console.error('Error cancelling order:', err);
+      setError('Failed to cancel order');
+    }
+  }, [fetchOrders]);
 
   useEffect(() => {
     fetchOrders();
@@ -39,33 +75,12 @@ export const useOrders = () => {
     };
   }, [fetchOrders]);
 
-  const onClaim = async (id: number) => {
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ claimed: true })
-        .eq('id', id);
-
-      if (error) throw error;
-      await fetchOrders();
-    } catch (error) {
-      console.error('Error claiming order:', error);
-    }
+  return {
+    orders,
+    loading,
+    error,
+    onClaim,
+    onCancel,
+    fetchOrders
   };
-
-  const onCancel = async (id: number) => {
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: 'cancelled' })
-        .eq('id', id);
-
-      if (error) throw error;
-      await fetchOrders();
-    } catch (error) {
-      console.error('Error cancelling order:', error);
-    }
-  };
-
-  return { orders, loading, onClaim, onCancel, fetchOrders };
 };

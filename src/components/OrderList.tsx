@@ -1,5 +1,5 @@
 import React from 'react';
-import { Copy } from 'lucide-react';
+import { Copy, Loader2 } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
 import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
@@ -9,13 +9,22 @@ interface OrderListProps {
   orders: Order[];
   onCancel: (id: number) => void;
   onClaim: (id: number) => void;
+  loading?: boolean;
 }
 
-export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim }) => {
+export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim, loading = false }) => {
   const handleCopy = async (text: string) => {
     await navigator.clipboard.writeText(text);
     alert('TX copied to clipboard. Claim order when you have made swap in Photonic Wallet.');
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-yellow-600" />
+      </div>
+    );
+  }
 
   if (orders.length === 0) {
     return (
