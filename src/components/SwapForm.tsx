@@ -3,9 +3,9 @@ import { ArrowUpDown, Loader2 } from 'lucide-react';
 import { TokenSelect } from './TokenSelect';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
-import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
 import { useSwapForm } from '../hooks/useSwapForm';
 import { useSwapContext } from '../contexts/SwapContext';
+import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
 
 interface SwapFormProps {
   onOrderCreated: () => Promise<void>;
@@ -60,9 +60,10 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     }
   };
 
-  const calculateUSDValue = (amount: string, token: typeof RXD_TOKEN) => {
-    const tokenPrice = TOKEN_PRICES[token.symbol];
-    return tokenPrice * parseFloat(amount || '0');
+  const calculateUSDValue = (amount: string, symbol: string): string => {
+    const price = TOKEN_PRICES[symbol] || 0;
+    const value = parseFloat(amount) * price;
+    return formatPriceUSD(value);
   };
 
   return (
@@ -109,10 +110,10 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
                 />
               </div>
               <div className="text-sm text-yellow-600/80 px-2">
-                ≈ {formatPriceUSD(calculateUSDValue(
+                ≈ {calculateUSDValue(
                   isRxdToToken ? rxdAmount : tokenAmount,
-                  isRxdToToken ? RXD_TOKEN : selectedToken
-                ))}
+                  isRxdToToken ? 'RXD' : selectedToken.symbol
+                )}
               </div>
             </div>
           </div>
@@ -140,10 +141,10 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
                 />
               </div>
               <div className="text-sm text-yellow-600/80 px-2">
-                ≈ {formatPriceUSD(calculateUSDValue(
+                ≈ {calculateUSDValue(
                   isRxdToToken ? tokenAmount : rxdAmount,
-                  isRxdToToken ? selectedToken : RXD_TOKEN
-                ))}
+                  isRxdToToken ? selectedToken.symbol : 'RXD'
+                )}
               </div>
             </div>
           </div>
