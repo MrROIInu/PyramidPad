@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { TOKENS } from '../data/tokens';
 import { TOKEN_PRICES, formatPriceUSD, formatMarketCap } from '../lib/tokenPrices';
 import { getMiningData } from '../lib/tokenData';
-import { useSwapContext } from '../contexts/SwapContext';
 import { useOrders } from '../hooks/useOrders';
+import { useSwapContext } from '../contexts/SwapContext';
 
 export const CollectionChart: React.FC = () => {
   const navigate = useNavigate();
@@ -70,7 +70,7 @@ export const CollectionChart: React.FC = () => {
                   </td>
                   <td className="px-2 py-2">{formatPriceUSD(TOKEN_PRICES[token.symbol])}</td>
                   <td className="px-2 py-2">
-                    {formatMarketCap(TOKEN_PRICES[token.symbol], token.totalSupply)}
+                    {formatMarketCap(token.totalSupply)}
                   </td>
                   <td className="px-2 py-2">
                     <div className="flex items-center gap-2">

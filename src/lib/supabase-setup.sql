@@ -1,3 +1,14 @@
+-- Create updated_at trigger function
+create or replace function handle_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc'::text, now());
+  return new;
+end;
+$$;
+
 -- Create tables function
 create or replace function create_tables()
 returns void
@@ -80,3 +91,6 @@ begin
     for update to anon using (true);
 end;
 $$;
+
+-- Execute the create_tables function
+select create_tables();

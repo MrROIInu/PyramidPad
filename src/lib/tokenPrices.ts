@@ -1,52 +1,26 @@
 import { TOKENS } from '../data/tokens';
 import { supabase } from './supabase';
+import {
+  TOKEN_PRICES,
+  TOKEN_MARKET_CAPS,
+  initializeTokenPrices,
+  formatUSDPrice,
+  formatMarketCap,
+  calculateTokenPrice,
+  calculateMarketCap
+} from '../data/tokenSupply';
 
-// Current RXD price from CoinMarketCap
-const RXD_PRICE_USD = 0.000886;
+// Initialize prices on import
+initializeTokenPrices(TOKENS);
 
-// Calculate token price in USD based on total supply ratio
-export const calculateTokenPrice = (totalSupply: number): number => {
-  const rxdTotalSupply = 21000000; // RXD total supply
-  return (RXD_PRICE_USD * rxdTotalSupply) / totalSupply;
+export {
+  TOKEN_PRICES,
+  TOKEN_MARKET_CAPS,
+  formatUSDPrice as formatPriceUSD,
+  formatMarketCap,
+  calculateTokenPrice,
+  calculateMarketCap
 };
-
-// Calculate market cap in USD
-export const calculateMarketCap = (price: number, totalSupply: number): number => {
-  return price * totalSupply;
-};
-
-// Format price to USD string
-export const formatPriceUSD = (price: number): string => {
-  if (isNaN(price) || !isFinite(price)) return '$0.00';
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 9,
-    maximumFractionDigits: 9
-  }).format(price);
-};
-
-// Format market cap
-export const formatMarketCap = (price: number, totalSupply: number): string => {
-  const marketCap = calculateMarketCap(price, totalSupply);
-  if (isNaN(marketCap) || !isFinite(marketCap)) return '$0.00';
-  
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 2,
-    notation: 'compact',
-    compactDisplay: 'short'
-  }).format(marketCap);
-};
-
-// Calculate token prices for all tokens
-export const TOKEN_PRICES = Object.fromEntries(
-  TOKENS.map(token => [
-    token.symbol,
-    calculateTokenPrice(token.totalSupply)
-  ])
-);
 
 // Update token prices in Supabase
 export const updateTokenPrices = async () => {
@@ -55,9 +29,9 @@ export const updateTokenPrices = async () => {
       symbol: token.symbol,
       name: token.name,
       total_supply: token.totalSupply,
-      contract_address: token.contractAddress,
-      price_usd: calculateTokenPrice(token.totalSupply),
-      market_cap: calculateMarketCap(calculateTokenPrice(token.totalSupply), token.totalSupply)
+      contract_address: token.contractAddress || '94fddcbf9cb28c1d732f725e6b10a5403f7a1d3ca335785154b9ab00689de66f00000000',
+      price_usd: TOKEN_PRICES.get(token.symbol) || 0,
+      market_cap: TOKEN_MARKET_CAPS.get(token.symbol) || 0
     }));
 
     const { error } = await supabase
@@ -66,9 +40,9 @@ export const updateTokenPrices = async () => {
 
     if (error) throw error;
 
-    return TOKEN_PRICES;
+    return Object.fromEntries(TOKEN_PRICES);
   } catch (error) {
     console.error('Error updating token prices:', error);
-    return TOKEN_PRICES;
+    return Object.fromEntries(TOKEN_PRICES);
   }
 };
