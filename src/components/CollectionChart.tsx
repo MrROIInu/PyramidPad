@@ -1,10 +1,15 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TOKENS } from '../data/tokens';
 import { TOKEN_PRICES, formatPriceUSD, formatMarketCap } from '../lib/tokenPrices';
 import { getMiningData } from '../lib/tokenData';
+import { useOrders } from '../hooks/useOrders';
 
 export const CollectionChart: React.FC = () => {
-  // Sort tokens to ensure RADCAT is first
+  const navigate = useNavigate();
+  const { orders } = useOrders();
+
+  // Sort tokens to ensure RADCAT is first and exclude RXD
   const displayTokens = [...TOKENS]
     .filter(token => token.symbol !== 'RXD')
     .sort((a, b) => {
@@ -13,62 +18,69 @@ export const CollectionChart: React.FC = () => {
       return a.symbol.localeCompare(b.symbol);
     });
 
+  const getOpenOrderCount = (symbol: string) => {
+    return orders.filter(order => 
+      (order.from_token === symbol || order.to_token === symbol) && 
+      !order.claimed && 
+      order.status !== 'cancelled'
+    ).length;
+  };
+
+  const handleTokenClick = (symbol: string) => {
+    navigate(`/?token=${symbol}`, { replace: true });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm">
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full text-sm">
           <thead>
             <tr className="text-yellow-600 border-b border-yellow-600/20">
-              <th className="px-3 py-3 text-left text-base">#</th>
-              <th className="px-3 py-3 text-left text-base">Ticker</th>
-              <th className="px-3 py-3 text-left text-base">Price (USD)</th>
-              <th className="px-3 py-3 text-left text-base">Market Cap</th>
-              <th className="px-3 py-3 text-left text-base">Volume (24h)</th>
-              <th className="px-3 py-3 text-left text-base">Premined</th>
-              <th className="px-3 py-3 text-left text-base">Mined</th>
-              <th className="px-3 py-3 text-left text-base">Difficulty</th>
+              <th className="px-2 py-2 text-left">#</th>
+              <th className="px-2 py-2 text-left">Ticker</th>
+              <th className="px-2 py-2 text-left">Price (USD)</th>
+              <th className="px-2 py-2 text-left">Market Cap</th>
+              <th className="px-2 py-2 text-left">Preminted</th>
+              <th className="px-2 py-2 text-left">Minted</th>
+              <th className="px-2 py-2 text-left">Open Orders</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="text-sm">
             {displayTokens.map((token, index) => {
               const miningData = getMiningData(token.symbol);
+              const openOrders = getOpenOrderCount(token.symbol);
+              
               return (
-                <tr key={token.symbol} className="border-b border-yellow-600/10 hover:bg-yellow-600/5">
-                  <td className="px-3 py-3 text-base">{index + 1}</td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-3">
-                      <img src={token.imageUrl} alt={token.symbol} className="w-8 h-8 rounded-full" />
-                      <span className="font-medium text-base">{token.symbol}</span>
+                <tr 
+                  key={token.symbol} 
+                  className="border-b border-yellow-600/10 hover:bg-yellow-600/5 cursor-pointer"
+                  onClick={() => handleTokenClick(token.symbol)}
+                >
+                  <td className="px-2 py-2">{index + 1}</td>
+                  <td className="px-2 py-2">
+                    <div className="flex items-center gap-2">
+                      <img src={token.imageUrl} alt={token.symbol} className="w-6 h-6 rounded-full" />
+                      <span>{token.symbol}</span>
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-base">{formatPriceUSD(TOKEN_PRICES[token.symbol])}</td>
-                  <td className="px-3 py-3 text-base">
+                  <td className="px-2 py-2">{formatPriceUSD(TOKEN_PRICES[token.symbol])}</td>
+                  <td className="px-2 py-2">
                     {formatMarketCap(TOKEN_PRICES[token.symbol], token.totalSupply)}
                   </td>
-                  <td className="px-3 py-3 text-base">-</td>
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2">0%</td>
+                  <td className="px-2 py-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 bg-black/30 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-yellow-600 to-amber-800"
-                          style={{ width: '0%' }}
-                        />
-                      </div>
-                      <span className="text-sm">0%</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 bg-black/30 rounded-full overflow-hidden">
+                      <div className="w-16 h-1.5 bg-black/30 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-gradient-to-r from-yellow-600 to-amber-800"
                           style={{ width: `${miningData.mined}%` }}
                         />
                       </div>
-                      <span className="text-sm">{miningData.mined}%</span>
+                      <span className="text-xs">{miningData.mined}%</span>
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-base">{miningData.difficulty}</td>
+                  <td className="px-2 py-2">{openOrders}</td>
                 </tr>
               );
             })}

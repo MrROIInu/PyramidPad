@@ -4,12 +4,16 @@ import { OrderBookSwap } from './components/OrderBookSwap';
 import { TokenList } from './pages/TokenList';
 import { Navigation } from './components/Navigation';
 import { GlyphSwapLogo } from './components/GlyphSwapLogo';
+import { LatestOrders } from './pages/LatestOrders';
+import { ActivityFeed } from './components/ActivityFeed';
+import { TopGainers } from './components/TopGainers';
+import { CollectionChart } from './components/CollectionChart';
 
 const App: React.FC = () => {
   return (
     <Router>
-      <div className="min-h-screen bg-[url('https://static.wixstatic.com/media/c0fd9f_7a29e6d3a40f4821a14dbe8f93b9d069~mv2.jpg')] bg-cover bg-center bg-fixed">
-        <div className="min-h-screen backdrop-blur-sm bg-black/50">
+      <div className="min-h-screen">
+        <div className="min-h-screen">
           <div className="container mx-auto px-4 py-4">
             <div className="flex justify-between items-center mb-4">
               <Navigation />
@@ -32,11 +36,26 @@ const App: React.FC = () => {
                 </div>
               </div>
             </div>
-            <GlyphSwapLogo />
           </div>
           <Routes>
-            <Route path="/" element={<OrderBookSwap />} />
+            <Route path="/" element={
+              <div className="container mx-auto px-4">
+                <GlyphSwapLogo />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                  <ActivityFeed />
+                  <TopGainers />
+                </div>
+                <OrderBookSwap />
+                <div className="mt-12">
+                  <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
+                    RXD20 Glyph Token Chart
+                  </h2>
+                  <CollectionChart />
+                </div>
+              </div>
+            } />
             <Route path="/tokens" element={<TokenList />} />
+            <Route path="/latest" element={<LatestOrders />} />
           </Routes>
         </div>
       </div>

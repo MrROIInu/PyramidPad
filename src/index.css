@@ -12,70 +12,43 @@
     background-repeat: no-repeat;
     min-height: 100vh;
   }
-}
 
-@keyframes pyramidFill {
-  from {
-    clip-path: polygon(0% 100%, 100% 100%, 100% 100%, 0% 100%);
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: -1;
   }
-  to {
-    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
-  }
 }
 
-/* Container styles */
-.swap-container {
-  @apply bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm;
+/* Animation for activity feed */
+@keyframes flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
-/* Input styles */
-.input-field {
-  @apply bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 
-         focus:outline-none focus:border-yellow-600;
+.animate-flash {
+  animation: flash 2s ease-in-out infinite;
 }
 
-/* Button styles */
-.button-primary {
-  @apply bg-gradient-to-r from-yellow-600 to-amber-800 text-white 
-         hover:from-yellow-500 hover:to-amber-700 transition-all;
+/* Token hover effect */
+.token-hover {
+  @apply transition-transform duration-200 hover:scale-105 cursor-pointer;
 }
 
-.button-secondary {
-  @apply bg-yellow-600/10 text-yellow-600 
-         hover:bg-yellow-600/20 hover:text-yellow-500 transition-colors;
+/* Price deviation colors */
+.price-up {
+  @apply text-green-500;
 }
 
-/* Card styles */
-.card {
-  @apply bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm;
+.price-down {
+  @apply text-red-500;
 }
 
-/* Text styles */
-.text-primary {
-  @apply text-yellow-600;
-}
-
-.text-secondary {
-  @apply text-yellow-600/80;
-}
-
-/* Override rc-slider styles */
-.rc-slider-rail {
-  @apply !bg-yellow-600/20;
-}
-
-.rc-slider-track {
-  @apply !bg-yellow-600;
-}
-
-.rc-slider-handle {
-  @apply !border-yellow-600 !bg-yellow-600;
-}
-
-.rc-slider-handle:hover {
-  @apply !border-yellow-500;
-}
-
-.rc-slider-handle-dragging {
-  @apply !shadow-yellow-600/50;
+.price-warning {
+  @apply text-red-500 font-bold;
 }

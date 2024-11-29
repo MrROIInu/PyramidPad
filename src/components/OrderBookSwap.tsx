@@ -1,67 +1,54 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, RotateCw, ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { TOKENS } from '../data/tokens';
+import { TOKENS, DEFAULT_TOKEN } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
 import { TokenSelect } from './TokenSelect';
 import { OrderList } from './OrderList';
-import { PriceChart } from './PriceChart';
 import { TransactionHistory } from './TransactionHistory';
-import { CollectionChart } from './CollectionChart';
+import { useClipboard } from '../hooks/useClipboard';
 import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
 
-// Find RADCAT token to use as default
-const DEFAULT_TOKEN = TOKENS.find(t => t.symbol === 'RADCAT') || TOKENS[0];
-
 export const OrderBookSwap: React.FC = () => {
-  const [selectedToken, setSelectedToken] = useState(DEFAULT_TOKEN);
+  const [searchParams] = useSearchParams();
+  const tokenParam = searchParams.get('token');
+  const initialToken = tokenParam ? TOKENS.find(t => t.symbol === tokenParam) || DEFAULT_TOKEN : DEFAULT_TOKEN;
+
+  const [selectedToken, setSelectedToken] = useState(initialToken);
   const [isRxdToToken, setIsRxdToToken] = useState(true);
   const [rxdAmount, setRxdAmount] = useState('');
   const [tokenAmount, setTokenAmount] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [importedTx, setImportedTx] = useState('');
   const [orders, setOrders] = useState<any[]>([]);
-  const [trades, setTrades] = useState<any[]>([]);
-  const [timeframe, setTimeframe] = useState<'1d' | '7d'>('1d');
+
+  useEffect(() => {
+    // Update selected token when URL parameter changes
+    if (tokenParam) {
+      const token = TOKENS.find(t => t.symbol === tokenParam);
+      if (token) {
+        setSelectedToken(token);
+      }
+    }
+  }, [tokenParam]);
 
   useEffect(() => {
     fetchOrders();
-    fetchTrades();
   }, [selectedToken]);
 
   const fetchOrders = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .or(`from_token.eq.${selectedToken.symbol},to_token.eq.${selectedToken.symbol}`)
-        .order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .or(`from_token.eq.${selectedToken.symbol},to_token.eq.${selectedToken.symbol}`)
+      .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setOrders(data || []);
-    } catch (error) {
+    if (error) {
       console.error('Error fetching orders:', error);
+    } else {
+      setOrders(data || []);
     }
-  };
-
-  const fetchTrades = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('trades')
-        .select('*')
-        .or(`from_token.eq.${selectedToken.symbol},to_token.eq.${selectedToken.symbol}`)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setTrades(data || []);
-    } catch (error) {
-      console.error('Error fetching trades:', error);
-    }
-  };
-
-  const handleRefresh = () => {
-    fetchOrders();
-    fetchTrades();
   };
 
   const handleImportedTxChange = (text: string) => {
@@ -84,6 +71,8 @@ export const OrderBookSwap: React.FC = () => {
     }
   };
 
+  useClipboard(handleImportedTxChange);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rxdAmount || !tokenAmount || !transactionId) return;
@@ -97,8 +86,7 @@ export const OrderBookSwap: React.FC = () => {
         swap_tx: transactionId,
         claimed: false,
         claim_count: 0,
-        status: 'active',
-        created_at: new Date().toISOString()
+        status: 'active'
       };
 
       const { error } = await supabase
@@ -119,21 +107,9 @@ export const OrderBookSwap: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4">
       <form onSubmit={handleSubmit} className="mb-12">
         <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-white">Create Swap Order</h2>
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="text-yellow-600 hover:text-yellow-500 p-2"
-              title="Refresh"
-            >
-              <RotateCw size={20} />
-            </button>
-          </div>
-
           <div className="mb-6">
             <label className="block text-yellow-600 mb-2">Select Token</label>
             <TokenSelect
@@ -241,7 +217,7 @@ export const OrderBookSwap: React.FC = () => {
 
       <div className="space-y-12">
         <OrderList
-          orders={orders}
+          orders={orders.filter(o => !o.claimed && o.status !== 'cancelled')}
           onCancel={async (orderId) => {
             const { error } = await supabase
               .from('orders')
@@ -250,73 +226,18 @@ export const OrderBookSwap: React.FC = () => {
             if (!error) fetchOrders();
           }}
           onClaim={async (orderId) => {
-            const order = orders.find(o => o.id === orderId);
-            if (!order) return;
-
-            const { error: orderError } = await supabase
+            const { error } = await supabase
               .from('orders')
               .update({ claimed: true })
               .eq('id', orderId);
-
-            if (!orderError) {
-              const { error: tradeError } = await supabase
-                .from('trades')
-                .insert([{
-                  from_token: order.from_token,
-                  to_token: order.to_token,
-                  from_amount: order.from_amount,
-                  to_amount: order.to_amount,
-                  price: TOKEN_PRICES[order.to_token],
-                  created_at: new Date().toISOString()
-                }]);
-
-              if (!tradeError) {
-                fetchOrders();
-                fetchTrades();
-              }
-            }
+            if (!error) fetchOrders();
           }}
         />
 
-        <div>
-          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-            Floor Price Chart for {selectedToken.symbol}
-          </h2>
-          <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
-            <div className="flex justify-end gap-4 mb-4">
-              <button
-                onClick={() => setTimeframe('1d')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  timeframe === '1d'
-                    ? 'bg-yellow-600 text-white'
-                    : 'text-yellow-600 hover:bg-yellow-600/10'
-                }`}
-              >
-                1D
-              </button>
-              <button
-                onClick={() => setTimeframe('7d')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  timeframe === '7d'
-                    ? 'bg-yellow-600 text-white'
-                    : 'text-yellow-600 hover:bg-yellow-600/10'
-                }`}
-              >
-                7D
-              </button>
-            </div>
-            <PriceChart trades={trades} timeframe={timeframe} />
-          </div>
-        </div>
-
-        <TransactionHistory transactions={trades} orders={orders} />
-
-        <div>
-          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-            RXD20 Glyph Token Chart
-          </h2>
-          <CollectionChart />
-        </div>
+        <TransactionHistory 
+          transactions={[]}
+          orders={orders}
+        />
       </div>
     </div>
   );

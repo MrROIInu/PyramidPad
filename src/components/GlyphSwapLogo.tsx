@@ -2,7 +2,7 @@ import React from 'react';
 
 export const GlyphSwapLogo: React.FC = () => {
   return (
-    <div className="flex justify-center mb-8">
+    <div className="flex flex-col items-center mb-8">
       <div className="flex items-center h-16">
         <img 
           src="https://static.wixstatic.com/media/c0fd9f_cfacf9e215804e3a8ad37a1f5e0d3f11~mv2.png"

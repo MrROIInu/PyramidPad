@@ -1,23 +1,26 @@
 import { Token } from '../types';
-import { GRAVITY_FALLBACK_IMAGE } from '../constants/images';
 
+// Define RADCAT first as it should always be at the top
+export const RADCAT: Token = {
+  symbol: "RADCAT",
+  name: "RADCAT",
+  imageUrl: "https://static.wixstatic.com/media/c0fd9f_c2c4b7bf64464273a2cf3e30d08a9692~mv2.png",
+  totalSupply: 21000000,
+  contractAddress: "01a61182dd9c5162bc547e6140d4d9c78f78316b32a2ef0c6063954be87ed10900000000",
+  social: {
+    website: "https://www.radcat.live",
+    x: "https://x.com/RadiantRADCAT",
+    discord: "https://discord.gg/pwBMDDzWWG",
+    telegram: "https://t.me/RadiantRADCAT"
+  }
+};
+
+// Define all tokens
 export const TOKENS: Token[] = [
-  {
-    symbol: "RADCAT",
-    name: "RADCAT",
-    imageUrl: "https://static.wixstatic.com/media/c0fd9f_c2c4b7bf64464273a2cf3e30d08a9692~mv2.png",
-    totalSupply: 21000000,
-    contractAddress: "01a61182dd9c5162bc547e6140d4d9c78f78316b32a2ef0c6063954be87ed10900000000",
-    social: {
-      website: "https://www.radcat.live",
-      x: "https://x.com/RadiantRADCAT",
-      discord: "https://discord.gg/pwBMDDzWWG",
-      telegram: "https://t.me/RadiantRADCAT"
-    }
-  },
+  RADCAT,
   {
     symbol: "PILIM",
-    name: "pilim",
+    name: "Pilim",
     imageUrl: "https://static.wixstatic.com/media/c0fd9f_42bf29bc4cff49a2b50d46599890ecd7~mv2.png",
     totalSupply: 100000000000,
     contractAddress: "dd9e3fc687377232d2f454e106d91be9dff2f3df67ae69e475609b3dc21debab00000000"
@@ -52,7 +55,7 @@ export const TOKENS: Token[] = [
   },
   {
     symbol: "PEPE",
-    name: "pepe",
+    name: "Pepe",
     imageUrl: "https://static.wixstatic.com/media/c0fd9f_13942eda9a82482b8ae59796e34220df~mv2.webp",
     totalSupply: 2530000000000,
     contractAddress: "bfd890e595eb2a3bcd65e0b48bd0f16e4427d3643530b57a776ae961932c551600000000"
@@ -114,7 +117,7 @@ export const TOKENS: Token[] = [
     contractAddress: "c486b71cad2635ca24a2c234bc1815a1d563c42c3f2cc924763a8b099d29ade400000000"
   },
   {
-    symbol: "MERi",
+    symbol: "MERI",
     name: "Meretrix",
     imageUrl: "https://static.wixstatic.com/media/c0fd9f_be356f4b61f348409c608e610b92b736~mv2.png",
     totalSupply: 176720,
@@ -142,8 +145,8 @@ export const TOKENS: Token[] = [
     contractAddress: "e598239f18730e9d76d249b896c7611fb503fc1b4ecae436685e2f8b276db84e00000000"
   },
   {
-    symbol: "$RBG",
-    name: "RadiantBulldog",
+    symbol: "RGB",
+    name: "RGB",
     imageUrl: "https://static.wixstatic.com/media/c0fd9f_4d39998241254e3f9dcabaf92b6ab29b~mv2.jpeg",
     totalSupply: 420690000000,
     contractAddress: "b45dc453befb589aff8bfd76af0b994615b37eda094f48c380eb31deaf96a2a800000000"
@@ -165,7 +168,7 @@ export const TOKENS: Token[] = [
   {
     symbol: "RXDASIC",
     name: "RXD ASIC",
-    imageUrl: "https://static.wixstatic.com/media/c0fd9f_a13e17e43b6240f3a2e3682216e58e13~mv2.jpeg",
+    imageUrl: "https://static.wixstatic.com/media/c0fd9f_f01ad2a3ea424a30800d6dbe45a0ac9a~mv2.jpeg",
     totalSupply: 96877449,
     contractAddress: "121351aa3e3262074edc701d48d72cc481c1b4a81027d14c95c75ab384a1f72600000000"
   },
@@ -317,38 +320,45 @@ export const TOKENS: Token[] = [
     contractAddress: "2c55b00a5798675f145125c514507b3c31dcd5483e7479b2c3a0f3d2a4b3355300000000"
   },
   {
+    symbol: "GODZ",
+    name: "RadiantGodz",
+    imageUrl: "https://static.wixstatic.com/media/c0fd9f_9919749ab3544ecfb4534cc04e4c2c9e~mv2.png",
+    totalSupply: 10000000000,
+    contractAddress: "94fddcbf9cb28c1d732f725e6b10a5403f7a1d3ca335785154b9ab00689de66f00000000"
+  },
+  {
     symbol: "WOJAK",
     name: "Wojak",
     imageUrl: "https://static.wixstatic.com/media/c0fd9f_5a495232f15046c4827120054ce13585~mv2.jpg",
-    totalSupply: 21000000,
+    totalSupply: 96877449,
     contractAddress: "464d5e10a6a15300ea6383592e4acfb0ff1102b13779c0a4fdb1eeb08dc760b900000000"
   },
   {
     symbol: "Me me",
     name: "Me me",
     imageUrl: "https://static.wixstatic.com/media/c0fd9f_e3674bd85a894109a4632ea4ccb5a5ee~mv2.png",
-    totalSupply: 21000000,
+    totalSupply: 96877449,
     contractAddress: "94fddcbf9cb28c1d732f725e6b10a5403f7a1d3ca335785154b9ab00689de66f00000000"
   },
   {
     symbol: "DAD",
     name: "DAD",
     imageUrl: "https://static.wixstatic.com/media/c0fd9f_7f3d58b8e4924b67bcb6a06b50aa361a~mv2.png",
-    totalSupply: 21000000,
+    totalSupply: 96877449,
     contractAddress: "b549ef3004340df7ba3f0858c8040c7b50732e67e17de970f5055a223f0d900a00000000"
   },
   {
     symbol: "RISI",
     name: "Radiant is investment",
     imageUrl: "https://static.wixstatic.com/media/c0fd9f_857a888b66884a4f9958b74b745ff963~mv2.jpg",
-    totalSupply: 21000000,
+    totalSupply: 96877449,
     contractAddress: "70cba3da2a80f3e796474fc48f133e8bd4ee2debfcd6f053a22d621d792c238f00000000"
   },
   {
     symbol: "SIR",
     name: "SIR",
     imageUrl: "https://static.wixstatic.com/media/c0fd9f_1a96a864dff245a498f3a4d4ebed3ef5~mv2.gif",
-    totalSupply: 21000000,
+    totalSupply: 96877449,
     contractAddress: "0661a3377621dcc9fa01b944978fa8109f177b12efc6255560ada3572ac57ef700000000"
   },
   {
@@ -359,31 +369,27 @@ export const TOKENS: Token[] = [
     contractAddress: "a4036781ecc137a9c7ce01fde6913db0c8617d502bae91333bf89b4cc44ffde200000000"
   },
   {
-    symbol: "RABO",
-    name: "Radiant: A Blockchain Odyssey",
-    imageUrl: GRAVITY_FALLBACK_IMAGE,
-    totalSupply: 21000000,
-    contractAddress: "9f36267260feb4f8545550c442804f4970b5a68dbe158fc722e18a5e042d906200000000"
-  },
-  {
     symbol: "π",
     name: "π",
-    imageUrl: GRAVITY_FALLBACK_IMAGE,
-    totalSupply: 31415926,
+    imageUrl: "https://static.wixstatic.com/media/c0fd9f_a6fd4fcd3912452fbb14689d27bf338f~mv2.jpg",
+    totalSupply: 96877449,
     contractAddress: "4b817aa701939266317e7d2248805f21f2ada65923baab05c1e40d079085fb9300000000"
-  },
-  {
-    symbol: "RADCHAD",
-    name: "RADCHAD",
-    imageUrl: GRAVITY_FALLBACK_IMAGE,
-    totalSupply: 21000000,
-    contractAddress: "72bf5bde455aeed720006e3a1f34c27c83802a1323228ed57560253db7517a7a00000000"
   },
   {
     symbol: "P2P",
     name: "P2P",
-    imageUrl: GRAVITY_FALLBACK_IMAGE,
-    totalSupply: 21000000,
+    imageUrl: "https://static.wixstatic.com/media/c0fd9f_3774555c1839401e911d4b26a1a075c8~mv2.jpg",
+    totalSupply: 96877449,
     contractAddress: "6a77304fe437875fac6c276def89420bc1e3772bb265353a7cac7b219f058bc500000000"
+  },
+  {
+    symbol: "RADCHAD",
+    name: "RADCHAD",
+    imageUrl: "https://static.wixstatic.com/media/c0fd9f_0f84c8ebd5bc463798a8d28631668e30~mv2.jpg",
+    totalSupply: 96877449,
+    contractAddress: "72bf5bde455aeed720006e3a1f34c27c83802a1323228ed57560253db7517a7a00000000"
   }
-].sort((a, b) => a.symbol.localeCompare(b.symbol));
+];
+
+// Set RADCAT as the default token for the swap interface
+export const DEFAULT_TOKEN = RADCAT;

@@ -3,12 +3,12 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { initializeDatabase } from './lib/supabase';
-import { calculateTokenPrices } from './lib/tokenPrices';
+import { updateTokenPrices } from './lib/tokenPrices';
 
 // Initialize database and token prices
 Promise.all([
   initializeDatabase(),
-  calculateTokenPrices()
+  updateTokenPrices()
 ]).catch(console.error);
 
 const root = document.getElementById('root');

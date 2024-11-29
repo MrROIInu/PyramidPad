@@ -38,12 +38,11 @@ const MINING_DATA: Record<string, MiningData> = {
   "RXDASIC": { mined: 1.29, difficulty: 10 },
   "RANTX": { mined: 0.06, difficulty: 218 },
   "DJANGO": { mined: 8.24, difficulty: 100 },
-  "$RBG": { mined: 0.03, difficulty: 50 },
+  "RGB": { mined: 0.03, difficulty: 50 },
   "RABO": { mined: 0.01, difficulty: 256 },
   "GRAVITY": { mined: 2.76, difficulty: 10 },
   "KATA": { mined: 3.02, difficulty: 85 },
-  "NEOX": { mined: 0.03, difficulty: 699 },
-  "HAT": { mined: 100, difficulty: 1 }
+  "NEOX": { mined: 0.03, difficulty: 699 }
 };
 
 export const getMiningData = (symbol: string): MiningData => {
