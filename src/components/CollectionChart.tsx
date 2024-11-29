@@ -1,5 +1,4 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { TOKENS } from '../data/tokens';
 import { TOKEN_PRICES, formatPriceUSD, formatMarketCap } from '../lib/tokenPrices';
 import { getMiningData } from '../lib/tokenData';
@@ -7,7 +6,6 @@ import { useOrders } from '../hooks/useOrders';
 import { useSwapContext } from '../contexts/SwapContext';
 
 export const CollectionChart: React.FC = () => {
-  const navigate = useNavigate();
   const { updateSelectedToken } = useSwapContext();
   const { orders } = useOrders();
 
@@ -69,9 +67,7 @@ export const CollectionChart: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-2 py-2">{formatPriceUSD(TOKEN_PRICES[token.symbol])}</td>
-                  <td className="px-2 py-2">
-                    {formatMarketCap(token.totalSupply)}
-                  </td>
+                  <td className="px-2 py-2">{formatMarketCap(token.totalSupply)}</td>
                   <td className="px-2 py-2">
                     <div className="flex items-center gap-2">
                       <div className="w-16 h-1.5 bg-black/30 rounded-full overflow-hidden">

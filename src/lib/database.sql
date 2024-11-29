@@ -35,7 +35,7 @@ CREATE TABLE public.orders (
 );
 
 -- Create updated_at trigger function
-CREATE OR REPLACE FUNCTION update_updated_at_column()
+CREATE OR REPLACE FUNCTION handle_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = CURRENT_TIMESTAMP;
@@ -44,15 +44,15 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create triggers
-CREATE TRIGGER update_tokens_updated_at
+CREATE TRIGGER handle_updated_at_tokens
   BEFORE UPDATE ON public.tokens
   FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+  EXECUTE FUNCTION handle_updated_at();
 
-CREATE TRIGGER update_orders_updated_at
+CREATE TRIGGER handle_updated_at_orders
   BEFORE UPDATE ON public.orders
   FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+  EXECUTE FUNCTION handle_updated_at();
 
 -- Enable RLS
 ALTER TABLE public.tokens ENABLE ROW LEVEL SECURITY;

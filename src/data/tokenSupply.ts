@@ -1,5 +1,3 @@
-import { Token } from '../types';
-
 // RXD token data
 export const RXD_SUPPLY = {
   total: 21000000000,
@@ -7,21 +5,21 @@ export const RXD_SUPPLY = {
 };
 
 // Current RXD price from CoinMarketCap
-export const RXD_PRICE_USD = 0.000886;
+export const RXD_PRICE_USD = 0.000894;
 
 // Exchange rate: 1 glyph = 0.001 RXD
 export const GLYPH_TO_RXD_RATIO = 0.001;
 
 // Calculate token price in USD based on RXD price and exchange rate
-export const calculateTokenPrice = (totalSupply: number): number => {
-  // Price calculation using RXD price and exchange rate
-  // 1 glyph = 0.001 RXD, so multiply RXD price by this ratio
+export const calculateTokenPrice = (): number => {
+  // 1 glyph = 0.001 RXD
+  // So multiply RXD price by the exchange rate
   return RXD_PRICE_USD * GLYPH_TO_RXD_RATIO;
 };
 
 // Calculate market cap for a token
 export const calculateMarketCap = (totalSupply: number): number => {
-  const tokenPrice = calculateTokenPrice(totalSupply);
+  const tokenPrice = calculateTokenPrice();
   return tokenPrice * totalSupply;
 };
 
@@ -63,7 +61,7 @@ export const initializeTokenPrices = (tokens: Token[]): void => {
   tokens.forEach(token => {
     if (token.symbol === 'RXD') return;
     
-    const price = calculateTokenPrice(token.totalSupply);
+    const price = calculateTokenPrice();
     const marketCap = calculateMarketCap(token.totalSupply);
     
     TOKEN_PRICES.set(token.symbol, price);

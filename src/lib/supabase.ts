@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { TOKENS } from '../data/tokens';
-import { calculateTokenPrice, calculateMarketCap } from './tokenPrices';
+import { calculateGlyphTokenUsdPrice, calculateMarketCap } from './tokenPrices';
 import { getMiningData } from './tokenData';
 
 const supabaseUrl = 'https://vmlrhtccpuhttgaszymo.supabase.co';
@@ -9,9 +9,6 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: false
-  },
-  db: {
-    schema: 'public'
   }
 });
 
@@ -24,13 +21,16 @@ export const initializeDatabase = async () => {
     // Initialize token data
     const tokenData = TOKENS.map(token => {
       const miningData = getMiningData(token.symbol);
+      const price = token.symbol === 'RXD' ? RXD_PRICE_USD : calculateGlyphTokenUsdPrice();
+      const marketCap = calculateMarketCap(token.totalSupply);
+
       return {
         symbol: token.symbol,
         name: token.name,
         total_supply: token.totalSupply,
         contract_address: token.contractAddress || '94fddcbf9cb28c1d732f725e6b10a5403f7a1d3ca335785154b9ab00689de66f00000000',
-        price_usd: calculateTokenPrice(token.totalSupply),
-        market_cap: calculateMarketCap(token.totalSupply),
+        price_usd: price,
+        market_cap: marketCap,
         volume_24h: 0,
         price_change_7d: 0,
         preminted: 0,
