@@ -3,7 +3,7 @@ export interface Token {
   name: string;
   imageUrl: string;
   totalSupply: number;
-  contractAddress?: string;
+  contractAddress: string;
   social?: {
     website?: string;
     x?: string;
@@ -22,7 +22,6 @@ export interface Order {
   claimed: boolean;
   created_at: string;
   claim_count: number;
-  status?: string;
 }
 
 export interface MiningData {

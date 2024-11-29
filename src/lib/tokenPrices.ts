@@ -1,21 +1,23 @@
-// Constants
-export const RXD_PRICE_USD = 0.000894;
-export const GLYPH_TO_RXD_RATIO = 0.001; // 1 glyph = 0.001 RXD
+import { TOKENS } from '../data/tokens';
+import { supabase } from './supabase';
 
-// Calculate USD price of a glyph token
-export const calculateGlyphTokenUsdPrice = (): number => {
-  return RXD_PRICE_USD * GLYPH_TO_RXD_RATIO; // Should be 0.000000894
+// Current RXD price from CoinMarketCap
+const RXD_PRICE_USD = 0.000886;
+const PHOTON_PER_RXD = 100000000; // 100 million photons per RXD
+const PHOTON_TO_RXD_RATIO = 0.001; // 1 photon = 0.001 RXD
+
+// Calculate token price in USD based on total supply ratio
+export const calculateTokenPrice = (totalSupply: number): number => {
+  return RXD_PRICE_USD * PHOTON_TO_RXD_RATIO;
 };
 
-// Calculate market cap for a token
+// Calculate market cap in USD
 export const calculateMarketCap = (totalSupply: number): number => {
-  const tokenPrice = calculateGlyphTokenUsdPrice();
-  return tokenPrice * totalSupply;
+  return calculateTokenPrice(totalSupply) * totalSupply;
 };
 
-// Format USD price with 9 decimals
+// Format price to USD string
 export const formatPriceUSD = (price: number): string => {
-  if (isNaN(price) || !isFinite(price)) return '$0.000000000';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -24,34 +26,44 @@ export const formatPriceUSD = (price: number): string => {
   }).format(price);
 };
 
-// Format market cap with appropriate suffix
+// Format market cap
 export const formatMarketCap = (marketCap: number): string => {
-  if (isNaN(marketCap) || !isFinite(marketCap)) return '$0.00';
-  
-  if (marketCap >= 1_000_000_000) {
-    return `$${(marketCap / 1_000_000_000).toFixed(2)}B`;
-  } else if (marketCap >= 1_000_000) {
-    return `$${(marketCap / 1_000_000).toFixed(2)}M`;
-  } else if (marketCap >= 1_000) {
-    return `$${(marketCap / 1_000).toFixed(2)}K`;
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 3
+  }).format(marketCap);
+};
+
+// Calculate token prices for all tokens
+export const TOKEN_PRICES = Object.fromEntries(
+  TOKENS.map(token => [
+    token.symbol,
+    calculateTokenPrice(token.totalSupply)
+  ])
+);
+
+// Update token prices in Supabase
+export const updateTokenPrices = async () => {
+  try {
+    const tokenUpdates = TOKENS.map(token => ({
+      symbol: token.symbol,
+      name: token.name,
+      total_supply: token.totalSupply,
+      contract_address: token.contractAddress,
+      price_usd: calculateTokenPrice(token.totalSupply),
+      market_cap: calculateMarketCap(token.totalSupply)
+    }));
+
+    const { error } = await supabase
+      .from('tokens')
+      .upsert(tokenUpdates, { onConflict: 'symbol' });
+
+    if (error) throw error;
+
+    return TOKEN_PRICES;
+  } catch (error) {
+    console.error('Error updating token prices:', error);
+    return TOKEN_PRICES;
   }
-  return `$${marketCap.toFixed(2)}`;
-};
-
-// Calculate and store token prices
-export const TOKEN_PRICES: Record<string, number> = {
-  'RXD': RXD_PRICE_USD
-};
-
-// Initialize token prices
-export const initializeTokenPrices = (tokens: Token[]): void => {
-  tokens.forEach(token => {
-    if (token.symbol === 'RXD') {
-      TOKEN_PRICES[token.symbol] = RXD_PRICE_USD;
-    } else {
-      // Each token's price is based on the RXD exchange rate
-      const tokenPrice = calculateGlyphTokenUsdPrice();
-      TOKEN_PRICES[token.symbol] = tokenPrice;
-    }
-  });
 };
