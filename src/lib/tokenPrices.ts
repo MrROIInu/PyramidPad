@@ -3,21 +3,21 @@ import { supabase } from './supabase';
 
 // Current RXD price from CoinMarketCap
 const RXD_PRICE_USD = 0.000886;
-const PHOTON_PER_RXD = 100000000; // 100 million photons per RXD
-const PHOTON_TO_RXD_RATIO = 0.001; // 1 photon = 0.001 RXD
 
 // Calculate token price in USD based on total supply ratio
 export const calculateTokenPrice = (totalSupply: number): number => {
-  return RXD_PRICE_USD * PHOTON_TO_RXD_RATIO;
+  const rxdTotalSupply = 21000000; // RXD total supply
+  return (RXD_PRICE_USD * rxdTotalSupply) / totalSupply;
 };
 
 // Calculate market cap in USD
-export const calculateMarketCap = (totalSupply: number): number => {
-  return calculateTokenPrice(totalSupply) * totalSupply;
+export const calculateMarketCap = (price: number, totalSupply: number): number => {
+  return price * totalSupply;
 };
 
 // Format price to USD string
 export const formatPriceUSD = (price: number): string => {
+  if (isNaN(price) || !isFinite(price)) return '$0.00';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -27,11 +27,16 @@ export const formatPriceUSD = (price: number): string => {
 };
 
 // Format market cap
-export const formatMarketCap = (marketCap: number): string => {
+export const formatMarketCap = (price: number, totalSupply: number): string => {
+  const marketCap = calculateMarketCap(price, totalSupply);
+  if (isNaN(marketCap) || !isFinite(marketCap)) return '$0.00';
+  
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    maximumFractionDigits: 3
+    maximumFractionDigits: 2,
+    notation: 'compact',
+    compactDisplay: 'short'
   }).format(marketCap);
 };
 
@@ -52,7 +57,7 @@ export const updateTokenPrices = async () => {
       total_supply: token.totalSupply,
       contract_address: token.contractAddress,
       price_usd: calculateTokenPrice(token.totalSupply),
-      market_cap: calculateMarketCap(token.totalSupply)
+      market_cap: calculateMarketCap(calculateTokenPrice(token.totalSupply), token.totalSupply)
     }));
 
     const { error } = await supabase

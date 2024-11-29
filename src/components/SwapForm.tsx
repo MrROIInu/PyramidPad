@@ -3,7 +3,6 @@ import { ArrowUpDown, Loader2 } from 'lucide-react';
 import { TokenSelect } from './TokenSelect';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
-import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
 import { useSwapForm } from '../hooks/useSwapForm';
 import { useSwapContext } from '../contexts/SwapContext';
 
@@ -60,11 +59,6 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     }
   };
 
-  const calculateUSDValue = (amount: string, token: typeof RXD_TOKEN) => {
-    const tokenPrice = TOKEN_PRICES[token.symbol];
-    return tokenPrice * parseFloat(amount || '0');
-  };
-
   return (
     <form onSubmit={handleSubmit} className="mb-12">
       <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
@@ -88,63 +82,47 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
             <label className="block text-yellow-600 mb-2">
               {isRxdToToken ? 'RXD Amount' : `${selectedToken.symbol} Amount`}
             </label>
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2">
-                <img
-                  src={isRxdToToken ? RXD_TOKEN.imageUrl : selectedToken.imageUrl}
-                  alt=""
-                  className="w-6 h-6"
-                />
-                <input
-                  type="number"
-                  value={isRxdToToken ? rxdAmount : tokenAmount}
-                  onChange={(e) => updateFormState(
-                    isRxdToToken 
-                      ? { rxdAmount: e.target.value }
-                      : { tokenAmount: e.target.value }
-                  )}
-                  className="flex-1 bg-transparent focus:outline-none"
-                  placeholder="Enter amount"
-                  required
-                />
-              </div>
-              <div className="text-sm text-yellow-600/80 px-2">
-                ≈ {formatPriceUSD(calculateUSDValue(
-                  isRxdToToken ? rxdAmount : tokenAmount,
-                  isRxdToToken ? RXD_TOKEN : selectedToken
-                ))}
-              </div>
+            <div className="flex items-center gap-2 bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2">
+              <img
+                src={isRxdToToken ? RXD_TOKEN.imageUrl : selectedToken.imageUrl}
+                alt=""
+                className="w-6 h-6"
+              />
+              <input
+                type="number"
+                value={isRxdToToken ? rxdAmount : tokenAmount}
+                onChange={(e) => updateFormState(
+                  isRxdToToken 
+                    ? { rxdAmount: e.target.value }
+                    : { tokenAmount: e.target.value }
+                )}
+                className="flex-1 bg-transparent focus:outline-none"
+                placeholder="Enter amount"
+                required
+              />
             </div>
           </div>
 
           <div>
             <label className="block text-yellow-600 mb-2">You Will Receive</label>
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2">
-                <img
-                  src={isRxdToToken ? selectedToken.imageUrl : RXD_TOKEN.imageUrl}
-                  alt=""
-                  className="w-6 h-6"
-                />
-                <input
-                  type="number"
-                  value={isRxdToToken ? tokenAmount : rxdAmount}
-                  onChange={(e) => updateFormState(
-                    isRxdToToken 
-                      ? { tokenAmount: e.target.value }
-                      : { rxdAmount: e.target.value }
-                  )}
-                  className="flex-1 bg-transparent focus:outline-none"
-                  placeholder="Enter amount"
-                  required
-                />
-              </div>
-              <div className="text-sm text-yellow-600/80 px-2">
-                ≈ {formatPriceUSD(calculateUSDValue(
-                  isRxdToToken ? tokenAmount : rxdAmount,
-                  isRxdToToken ? selectedToken : RXD_TOKEN
-                ))}
-              </div>
+            <div className="flex items-center gap-2 bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2">
+              <img
+                src={isRxdToToken ? selectedToken.imageUrl : RXD_TOKEN.imageUrl}
+                alt=""
+                className="w-6 h-6"
+              />
+              <input
+                type="number"
+                value={isRxdToToken ? tokenAmount : rxdAmount}
+                onChange={(e) => updateFormState(
+                  isRxdToToken 
+                    ? { tokenAmount: e.target.value }
+                    : { rxdAmount: e.target.value }
+                )}
+                className="flex-1 bg-transparent focus:outline-none"
+                placeholder="Enter amount"
+                required
+              />
             </div>
           </div>
         </div>
