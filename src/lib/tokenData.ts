@@ -1,6 +1,7 @@
 import { MiningData } from '../types';
 
-const MINING_DATA: Record<string, MiningData> = {
+// Mining data for each token
+export const MINING_DATA: Record<string, MiningData> = {
   "GLYPH": { mined: 4.93, difficulty: 150 },
   "GOAT": { mined: 84.61, difficulty: 100 },
   "RISI": { mined: 10.90, difficulty: 10 },
@@ -39,12 +40,11 @@ const MINING_DATA: Record<string, MiningData> = {
   "RANTX": { mined: 0.06, difficulty: 218 },
   "DJANGO": { mined: 8.24, difficulty: 100 },
   "RGB": { mined: 0.03, difficulty: 50 },
-  "RABO": { mined: 0.01, difficulty: 256 },
   "GRAVITY": { mined: 2.76, difficulty: 10 },
   "KATA": { mined: 3.02, difficulty: 85 },
   "NEOX": { mined: 0.03, difficulty: 699 }
 };
 
 export const getMiningData = (symbol: string): MiningData => {
-  return MINING_DATA[symbol] || { mined: 100, difficulty: 1 };
+  return MINING_DATA[symbol] || { mined: 0, difficulty: 1 };
 };
