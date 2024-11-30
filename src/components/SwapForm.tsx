@@ -5,9 +5,10 @@ import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
 import { useSwapForm } from '../hooks/useSwapForm';
 import { useSwapContext } from '../contexts/SwapContext';
-import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
+import { formatPriceUSD } from '../lib/tokenPrices';
 import { useWalletManager } from '../hooks/useWalletManager';
 import { WalletAddressInput } from './wallet/WalletAddressInput';
+import { useRealtimePrices } from '../hooks/useRealtimePrices';
 
 interface SwapFormProps {
   onOrderCreated: () => Promise<void>;
@@ -15,15 +16,18 @@ interface SwapFormProps {
 
 export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
   const { selectedToken: contextSelectedToken } = useSwapContext();
+  const prices = useRealtimePrices();
+  
   const {
     walletAddress,
     isWalletChecked,
     isWalletValid,
     copied,
+    isLoading,
     handleWalletChange,
     checkWallet,
     copyFeeWallet
-  } = useWalletManager();
+  } = useWalletManager(true);
   
   const {
     formState,
@@ -59,7 +63,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
   };
 
   const calculateUSDValue = (amount: string, symbol: string): string => {
-    const price = TOKEN_PRICES[symbol] || 0;
+    const price = prices[symbol] || 0;
     const value = parseFloat(amount) * price;
     return formatPriceUSD(value);
   };
@@ -78,6 +82,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
           isWalletChecked={isWalletChecked}
           isWalletValid={isWalletValid}
           copied={copied}
+          isLoading={isLoading}
           onWalletChange={handleWalletChange}
           onCopyFeeWallet={copyFeeWallet}
         />

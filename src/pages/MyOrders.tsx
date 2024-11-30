@@ -11,10 +11,11 @@ export const MyOrders: React.FC = () => {
     isWalletChecked,
     isWalletValid,
     copied,
+    isLoading,
     handleWalletChange,
     checkWallet,
     copyFeeWallet
-  } = useWalletManager();
+  } = useWalletManager(false);
 
   const [filteredOrders, setFilteredOrders] = useState(orders);
 
@@ -38,8 +39,11 @@ export const MyOrders: React.FC = () => {
           isWalletChecked={isWalletChecked}
           isWalletValid={isWalletValid}
           copied={copied}
+          isLoading={isLoading}
           onWalletChange={handleWalletChange}
           onCopyFeeWallet={copyFeeWallet}
+          onCheck={checkWallet}
+          showCheckButton={true}
         />
       </div>
 

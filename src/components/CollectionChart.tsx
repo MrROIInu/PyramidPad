@@ -1,16 +1,19 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TOKENS } from '../data/tokens';
-import { TOKEN_PRICES, formatPriceUSD, formatMarketCap, calculateMarketCap } from '../lib/tokenPrices';
+import { formatPriceUSD, formatMarketCap } from '../lib/tokenPrices';
 import { getMiningData } from '../lib/tokenData';
 import { useOrders } from '../hooks/useOrders';
 import { useSwapContext } from '../contexts/SwapContext';
+import { useRealtimePrices } from '../hooks/useRealtimePrices';
 
 export const CollectionChart: React.FC = () => {
   const navigate = useNavigate();
   const { updateSelectedToken } = useSwapContext();
   const { orders } = useOrders();
+  const prices = useRealtimePrices();
 
+  // Show all tokens, sorted with RADCAT first
   const displayTokens = [...TOKENS]
     .filter(token => token.symbol !== 'RXD')
     .sort((a, b) => {
@@ -35,6 +38,11 @@ export const CollectionChart: React.FC = () => {
     }
   };
 
+  const calculateMarketCap = (symbol: string, totalSupply: number): number => {
+    const price = prices[symbol] || 0;
+    return price * totalSupply;
+  };
+
   return (
     <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm">
       <div className="overflow-x-auto">
@@ -53,6 +61,7 @@ export const CollectionChart: React.FC = () => {
           <tbody className="text-sm">
             {displayTokens.map((token, index) => {
               const miningData = getMiningData(token.symbol);
+              const marketCap = calculateMarketCap(token.symbol, token.totalSupply);
               
               return (
                 <tr 
@@ -67,10 +76,8 @@ export const CollectionChart: React.FC = () => {
                       <span>{token.symbol}</span>
                     </div>
                   </td>
-                  <td className="px-2 py-2">{formatPriceUSD(TOKEN_PRICES[token.symbol])}</td>
-                  <td className="px-2 py-2">
-                    {formatMarketCap(calculateMarketCap(token.symbol, token.totalSupply))}
-                  </td>
+                  <td className="px-2 py-2">{formatPriceUSD(prices[token.symbol])}</td>
+                  <td className="px-2 py-2">{formatMarketCap(marketCap)}</td>
                   <td className="px-2 py-2">{miningData.preminted}%</td>
                   <td className="px-2 py-2">
                     <div className="flex items-center gap-2">

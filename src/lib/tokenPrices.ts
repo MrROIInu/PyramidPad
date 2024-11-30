@@ -3,27 +3,14 @@ import axios from 'axios';
 
 // Constants
 export const RXD_FLOOR_PRICE = 0.001; // 1 token = 0.001 RXD
-let RXD_PRICE_USD = 0.000894; // Initial price, will be updated from CoinGecko
+let RXD_PRICE_USD = 0.000894; // Initial price
 
-// Fetch RXD price from CoinGecko
-export const updateRXDPrice = async () => {
-  try {
-    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=radiant&vs_currencies=usd');
-    if (response.data?.radiant?.usd) {
-      RXD_PRICE_USD = response.data.radiant.usd;
-      // Update all token prices after RXD price update
-      Object.keys(TOKEN_PRICES).forEach(symbol => {
-        TOKEN_PRICES[symbol] = calculateTokenPrice(symbol);
-      });
-    }
-    return TOKEN_PRICES;
-  } catch (error) {
-    console.error('Error fetching RXD price:', error);
-    return TOKEN_PRICES;
-  }
+// Initialize token prices
+export const TOKEN_PRICES: Record<string, number> = {
+  'RXD': RXD_PRICE_USD
 };
 
-// Calculate token price (1 token = 0.001 RXD)
+// Calculate token price
 export const calculateTokenPrice = (symbol: string): number => {
   if (symbol === 'RXD') return RXD_PRICE_USD;
   return RXD_PRICE_USD * RXD_FLOOR_PRICE;
@@ -31,13 +18,13 @@ export const calculateTokenPrice = (symbol: string): number => {
 
 // Calculate market cap
 export const calculateMarketCap = (symbol: string, totalSupply: number): number => {
-  const tokenPrice = calculateTokenPrice(symbol);
-  return tokenPrice * totalSupply;
+  const price = calculateTokenPrice(symbol);
+  return price * totalSupply;
 };
 
 // Format USD price with 9 decimals
 export const formatPriceUSD = (price: number): string => {
-  if (isNaN(price) || !isFinite(price)) return '$0.000000000';
+  if (!price || isNaN(price) || !isFinite(price)) return '$0.000000000';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -48,7 +35,7 @@ export const formatPriceUSD = (price: number): string => {
 
 // Format market cap with appropriate suffix
 export const formatMarketCap = (marketCap: number): string => {
-  if (isNaN(marketCap) || !isFinite(marketCap)) return '$0';
+  if (!marketCap || isNaN(marketCap) || !isFinite(marketCap)) return '$0';
   
   if (marketCap >= 1_000_000_000) {
     return `$${(marketCap / 1_000_000_000).toFixed(2)}B`;
@@ -60,9 +47,26 @@ export const formatMarketCap = (marketCap: number): string => {
   return `$${marketCap.toFixed(2)}`;
 };
 
-// Calculate and store token prices
-export const TOKEN_PRICES: Record<string, number> = {
-  'RXD': RXD_PRICE_USD
+// Fetch RXD price from CoinGecko
+export const updateRXDPrice = async () => {
+  try {
+    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=radiant&vs_currencies=usd');
+    if (response.data?.radiant?.usd) {
+      RXD_PRICE_USD = response.data.radiant.usd;
+      TOKEN_PRICES['RXD'] = RXD_PRICE_USD;
+      
+      // Update all token prices
+      Object.keys(TOKEN_PRICES).forEach(symbol => {
+        if (symbol !== 'RXD') {
+          TOKEN_PRICES[symbol] = RXD_PRICE_USD * RXD_FLOOR_PRICE;
+        }
+      });
+    }
+    return { ...TOKEN_PRICES };
+  } catch (error) {
+    console.warn('Error fetching RXD price, using fallback price');
+    return { ...TOKEN_PRICES };
+  }
 };
 
 // Initialize token prices

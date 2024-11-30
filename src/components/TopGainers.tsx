@@ -1,18 +1,20 @@
 import React from 'react';
 import { TrendingUp } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
-import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
+import { formatPriceUSD } from '../lib/tokenPrices';
+import { useRealtimePrices } from '../hooks/useRealtimePrices';
 import { useSwapContext } from '../contexts/SwapContext';
 
 export const TopGainers: React.FC = () => {
   const { updateSelectedToken } = useSwapContext();
+  const prices = useRealtimePrices();
 
   // Get top 3 tokens by market cap, excluding RXD
   const topTokens = [...TOKENS]
     .filter(token => token.symbol !== 'RXD')
     .sort((a, b) => {
-      const marketCapA = TOKEN_PRICES[a.symbol] * a.totalSupply;
-      const marketCapB = TOKEN_PRICES[b.symbol] * b.totalSupply;
+      const marketCapA = prices[a.symbol] * a.totalSupply;
+      const marketCapB = prices[b.symbol] * b.totalSupply;
       return marketCapB - marketCapA;
     })
     .slice(0, 3);
@@ -41,7 +43,7 @@ export const TopGainers: React.FC = () => {
               <span>{token.symbol}</span>
             </div>
             <span className="text-green-500">
-              {formatPriceUSD(TOKEN_PRICES[token.symbol])}
+              {formatPriceUSD(prices[token.symbol])}
             </span>
           </div>
         ))}

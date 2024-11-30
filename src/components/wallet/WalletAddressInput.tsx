@@ -1,5 +1,5 @@
 import React from 'react';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Loader2 } from 'lucide-react';
 import { FEE_WALLET } from '../../lib/walletManager';
 
 interface WalletAddressInputProps {
@@ -7,8 +7,11 @@ interface WalletAddressInputProps {
   isWalletChecked: boolean;
   isWalletValid: boolean;
   copied: boolean;
+  isLoading?: boolean;
   onWalletChange: (address: string) => void;
   onCopyFeeWallet: () => void;
+  onCheck?: () => void;
+  showCheckButton?: boolean;
 }
 
 export const WalletAddressInput: React.FC<WalletAddressInputProps> = ({
@@ -16,20 +19,42 @@ export const WalletAddressInput: React.FC<WalletAddressInputProps> = ({
   isWalletChecked,
   isWalletValid,
   copied,
+  isLoading,
   onWalletChange,
-  onCopyFeeWallet
+  onCopyFeeWallet,
+  onCheck,
+  showCheckButton = false
 }) => {
   return (
     <div className="mb-6">
       <label className="block text-yellow-600 mb-2">Your Photonic Wallet Address</label>
-      <input
-        type="text"
-        value={walletAddress}
-        onChange={(e) => onWalletChange(e.target.value)}
-        className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
-        placeholder="Enter your Photonic wallet address"
-        required
-      />
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={walletAddress}
+          onChange={(e) => onWalletChange(e.target.value)}
+          className="flex-1 bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600"
+          placeholder="Enter your Photonic wallet address"
+          required
+        />
+        {showCheckButton && onCheck && (
+          <button
+            type="button"
+            onClick={onCheck}
+            disabled={!walletAddress || isLoading}
+            className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Checking...
+              </>
+            ) : (
+              'Check Wallet'
+            )}
+          </button>
+        )}
+      </div>
       
       {isWalletChecked && !isWalletValid && (
         <div className="mt-4 p-4 bg-yellow-600/20 rounded-lg">

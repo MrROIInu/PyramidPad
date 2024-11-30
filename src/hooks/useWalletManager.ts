@@ -1,24 +1,44 @@
-import { useState, useCallback } from 'react';
-import { isWalletAllowed, FEE_WALLET } from '../lib/walletManager';
+import { useState, useCallback, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
-export const useWalletManager = () => {
+export const FEE_WALLET = '1LqoPnuUm3kdKvPJrELoe6JY3mJc9C7d1e';
+
+export const useWalletManager = (autoCheck: boolean = false) => {
   const [walletAddress, setWalletAddress] = useState('');
   const [isWalletChecked, setIsWalletChecked] = useState(false);
   const [isWalletValid, setIsWalletValid] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const checkWallet = useCallback(async () => {
+    if (!walletAddress) return false;
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from('wallet_addresses')
+        .select('*')
+        .eq('address', walletAddress)
+        .maybeSingle();
+
+      setIsWalletChecked(true);
+      setIsWalletValid(!!data);
+      return !!data;
+    } catch (error) {
+      console.warn('Error checking wallet:', error);
+      setIsWalletChecked(true);
+      setIsWalletValid(false);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [walletAddress]);
 
   const handleWalletChange = useCallback((address: string) => {
     setWalletAddress(address);
     setIsWalletChecked(false);
+    setIsWalletValid(false);
   }, []);
-
-  const checkWallet = useCallback(async () => {
-    if (!walletAddress) return false;
-    const isAllowed = await isWalletAllowed(walletAddress);
-    setIsWalletChecked(true);
-    setIsWalletValid(isAllowed);
-    return isAllowed;
-  }, [walletAddress]);
 
   const copyFeeWallet = useCallback(async () => {
     try {
@@ -26,15 +46,22 @@ export const useWalletManager = () => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      console.error('Failed to copy fee wallet address:', error);
+      console.warn('Failed to copy fee wallet address:', error);
     }
   }, []);
+
+  useEffect(() => {
+    if (autoCheck && walletAddress && !isWalletChecked) {
+      checkWallet();
+    }
+  }, [autoCheck, walletAddress, isWalletChecked, checkWallet]);
 
   return {
     walletAddress,
     isWalletChecked,
     isWalletValid,
     copied,
+    isLoading,
     handleWalletChange,
     checkWallet,
     copyFeeWallet

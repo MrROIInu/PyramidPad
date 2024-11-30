@@ -1,7 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import { TOKENS } from '../data/tokens';
-import { calculateTokenPrice, calculateMarketCap } from './tokenPrices';
-import { getMiningData } from './tokenData';
 
 const supabaseUrl = 'https://vmlrhtccpuhttgaszymo.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtbHJodGNjcHVodHRnYXN6eW1vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzIwNzI0MjksImV4cCI6MjA0NzY0ODQyOX0.g_oEjsXloQ20YFL3YW1xSbQRe2ZPeF01R4ItclFEYiY';
@@ -10,56 +7,21 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: false
   },
-  db: {
-    schema: 'public'
-  },
-  global: {
-    headers: {
-      'Content-Type': 'application/json'
+  realtime: {
+    params: {
+      eventsPerSecond: 10
     }
   }
 });
 
+// Initialize database tables
 export const initializeDatabase = async () => {
   try {
-    // Initialize orders table if it doesn't exist
-    const { error: createError } = await supabase.rpc('create_tables');
-    if (createError) throw createError;
-
-    // Initialize token data with batch insert
-    const tokenData = TOKENS.map(token => {
-      const miningData = getMiningData(token.symbol);
-      const price = calculateTokenPrice(token.symbol);
-      const marketCap = calculateMarketCap(token.symbol, token.totalSupply);
-
-      return {
-        symbol: token.symbol,
-        name: token.name,
-        total_supply: token.totalSupply,
-        contract_address: token.contractAddress || '94fddcbf9cb28c1d732f725e6b10a5403f7a1d3ca335785154b9ab00689de66f00000000',
-        price_usd: price,
-        market_cap: marketCap,
-        volume_24h: 0,
-        price_change_7d: 0,
-        preminted: miningData.preminted,
-        minted: miningData.minted,
-        open_orders: 0
-      };
-    });
-
-    // Use upsert with onConflict strategy
-    const { error: tokenError } = await supabase
-      .from('tokens')
-      .upsert(tokenData, { 
-        onConflict: 'symbol',
-        ignoreDuplicates: false 
-      });
-
-    if (tokenError) throw tokenError;
-
+    const { error } = await supabase.rpc('create_tables');
+    if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Error initializing database:', error);
+    console.warn('Database initialization error:', error);
     return false;
   }
 };

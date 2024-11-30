@@ -15,14 +15,12 @@ export const useOrders = () => {
       const { data, error: fetchError } = await supabase
         .from('orders')
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100) // Limit to most recent 100 orders
-        .timeout(10000); // 10 second timeout
+        .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
       setOrders(data || []);
     } catch (err) {
-      console.error('Error fetching orders:', err);
+      console.warn('Error fetching orders:', err);
       setError('Failed to fetch orders. Please try again.');
     } finally {
       setLoading(false);
@@ -35,13 +33,12 @@ export const useOrders = () => {
       const { error: updateError } = await supabase
         .from('orders')
         .update({ claimed: true })
-        .eq('id', id)
-        .timeout(5000);
+        .eq('id', id);
 
       if (updateError) throw updateError;
       await fetchOrders();
     } catch (err) {
-      console.error('Error claiming order:', err);
+      console.warn('Error claiming order:', err);
       setError('Failed to claim order. Please try again.');
     }
   }, [fetchOrders]);
@@ -52,13 +49,12 @@ export const useOrders = () => {
       const { error: updateError } = await supabase
         .from('orders')
         .update({ status: 'cancelled' })
-        .eq('id', id)
-        .timeout(5000);
+        .eq('id', id);
 
       if (updateError) throw updateError;
       await fetchOrders();
     } catch (err) {
-      console.error('Error cancelling order:', err);
+      console.warn('Error cancelling order:', err);
       setError('Failed to cancel order. Please try again.');
     }
   }, [fetchOrders]);
@@ -66,12 +62,11 @@ export const useOrders = () => {
   useEffect(() => {
     fetchOrders();
 
-    // Subscribe to real-time changes
     const subscription = supabase
       .channel('orders-channel')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'orders' },
-        () => fetchOrders()
+        fetchOrders
       )
       .subscribe();
 

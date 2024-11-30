@@ -1,9 +1,10 @@
 import React from 'react';
-import { Copy, Globe, Twitter, MessageCircle } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { Token } from '../types';
-import { TOKEN_PRICES, formatPriceUSD, formatMarketCap } from '../lib/tokenPrices';
+import { formatPriceUSD, formatMarketCap } from '../lib/tokenPrices';
 import { getMiningData } from '../lib/tokenData';
 import { SocialIcons } from './SocialIcons';
+import { useRealtimePrices } from '../hooks/useRealtimePrices';
 
 interface TokenCardProps {
   token: Token;
@@ -12,7 +13,9 @@ interface TokenCardProps {
 }
 
 export const TokenCard: React.FC<TokenCardProps> = ({ token, onCopy, isCopied }) => {
+  const prices = useRealtimePrices();
   const miningData = getMiningData(token.symbol);
+  const marketCap = (prices[token.symbol] || 0) * token.totalSupply;
 
   return (
     <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
@@ -57,11 +60,11 @@ export const TokenCard: React.FC<TokenCardProps> = ({ token, onCopy, isCopied })
           </div>
           <div>
             <p className="text-sm text-yellow-600/80">Price</p>
-            <p className="font-medium">{formatPriceUSD(TOKEN_PRICES[token.symbol])}</p>
+            <p className="font-medium">{formatPriceUSD(prices[token.symbol])}</p>
           </div>
           <div>
             <p className="text-sm text-yellow-600/80">Market Cap</p>
-            <p className="font-medium">{formatMarketCap(TOKEN_PRICES[token.symbol], token.totalSupply)}</p>
+            <p className="font-medium">{formatMarketCap(marketCap)}</p>
           </div>
           <div>
             <p className="text-sm text-yellow-600/80">Mining Progress</p>
