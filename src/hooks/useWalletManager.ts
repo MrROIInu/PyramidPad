@@ -19,7 +19,9 @@ export const useWalletManager = (autoCheck: boolean = false) => {
         .from('wallet_addresses')
         .select('*')
         .eq('address', walletAddress)
-        .maybeSingle();
+        .single();
+
+      if (error) throw error;
 
       setIsWalletChecked(true);
       setIsWalletValid(!!data);
