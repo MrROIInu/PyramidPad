@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ArrowUpDown, Loader2 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import Slider from 'rc-slider';
+import 'rc-slider/assets/index.css';
 import { TokenSelect } from './TokenSelect';
+import { TokenAmountInput } from './TokenAmountInput';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
 import { useSwapForm } from '../hooks/useSwapForm';
@@ -9,6 +13,7 @@ import { formatPriceUSD } from '../lib/tokenPrices';
 import { useWalletManager } from '../hooks/useWalletManager';
 import { WalletAddressInput } from './wallet/WalletAddressInput';
 import { useRealtimePrices } from '../hooks/useRealtimePrices';
+import { useMarketPrice } from '../hooks/useMarketPrice';
 
 interface SwapFormProps {
   onOrderCreated: () => Promise<void>;
@@ -46,12 +51,34 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     importedTx
   } = formState;
 
+  const { marketPrice, deviation, isMarketPrice, deviationClass } = useMarketPrice(
+    isRxdToToken ? 'RXD' : selectedToken.symbol,
+    isRxdToToken ? selectedToken.symbol : 'RXD',
+    isRxdToToken ? rxdAmount : tokenAmount,
+    isRxdToToken ? tokenAmount : rxdAmount
+  );
+
+  // Update token amount when RXD amount changes
+  useEffect(() => {
+    if (rxdAmount) {
+      const rxdValue = parseInt(rxdAmount);
+      if (!isNaN(rxdValue) && rxdValue >= 1) {
+        const calculatedAmount = isRxdToToken 
+          ? Math.floor(rxdValue * 1000).toString()
+          : Math.floor(rxdValue / 1000).toString();
+        if (calculatedAmount !== tokenAmount) {
+          updateFormState({ tokenAmount: calculatedAmount });
+        }
+      }
+    }
+  }, [rxdAmount, isRxdToToken]);
+
   // Update form when context token changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (contextSelectedToken.symbol !== selectedToken.symbol) {
       updateFormState({ selectedToken: contextSelectedToken });
     }
-  }, [contextSelectedToken, selectedToken.symbol, updateFormState]);
+  }, [contextSelectedToken, selectedToken.symbol]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,10 +89,41 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     await originalHandleSubmit(e, walletAddress);
   };
 
-  const calculateUSDValue = (amount: string, symbol: string): string => {
-    const price = prices[symbol] || 0;
-    const value = parseFloat(amount) * price;
-    return formatPriceUSD(value);
+  const handleTokenAmountChange = (value: string) => {
+    const numValue = parseInt(value) || 0;
+    if (numValue >= 1) {
+      if (isRxdToToken) {
+        updateFormState({ tokenAmount: value });
+      } else {
+        const rxdValue = Math.ceil(numValue / 1000);
+        updateFormState({ 
+          tokenAmount: value,
+          rxdAmount: rxdValue.toString()
+        });
+      }
+    }
+  };
+
+  const handleSliderChange = (value: number) => {
+    const baseAmount = parseInt(isRxdToToken ? rxdAmount : tokenAmount);
+    if (!isNaN(baseAmount)) {
+      const newAmount = Math.floor(baseAmount * (value / 1000));
+      if (newAmount >= 1) {
+        handleTokenAmountChange(newAmount.toString());
+      }
+    }
+  };
+
+  const handleSwitchDirection = () => {
+    // Preserve amounts when switching directions
+    const currentRxd = rxdAmount;
+    const currentToken = tokenAmount;
+    
+    updateFormState({ 
+      isRxdToToken: !isRxdToToken,
+      rxdAmount: currentToken,
+      tokenAmount: currentRxd
+    });
   };
 
   return (
@@ -101,70 +159,64 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
             <label className="block text-yellow-600 mb-2">
               {isRxdToToken ? 'RXD Amount' : `${selectedToken.symbol} Amount`}
             </label>
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2">
-                <img
-                  src={isRxdToToken ? RXD_TOKEN.imageUrl : selectedToken.imageUrl}
-                  alt=""
-                  className="w-6 h-6"
-                />
-                <input
-                  type="number"
-                  value={isRxdToToken ? rxdAmount : tokenAmount}
-                  onChange={(e) => updateFormState(
-                    isRxdToToken 
-                      ? { rxdAmount: e.target.value }
-                      : { tokenAmount: e.target.value }
-                  )}
-                  className="flex-1 bg-transparent focus:outline-none"
-                  placeholder="Enter amount"
-                  required
-                />
-              </div>
-              <div className="text-sm text-yellow-600/80 px-2">
-                ≈ {calculateUSDValue(
-                  isRxdToToken ? rxdAmount : tokenAmount,
-                  isRxdToToken ? 'RXD' : selectedToken.symbol
-                )}
-              </div>
-            </div>
+            <TokenAmountInput
+              amount={isRxdToToken ? rxdAmount : tokenAmount}
+              token={isRxdToToken ? RXD_TOKEN : selectedToken}
+              onChange={(value) => updateFormState(
+                isRxdToToken ? { rxdAmount: value } : { tokenAmount: value }
+              )}
+              usdValue={formatPriceUSD(
+                parseFloat(isRxdToToken ? rxdAmount : tokenAmount) * 
+                (prices[isRxdToToken ? 'RXD' : selectedToken.symbol] || 0)
+              )}
+            />
           </div>
 
           <div>
             <label className="block text-yellow-600 mb-2">You Will Receive</label>
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2">
-                <img
-                  src={isRxdToToken ? selectedToken.imageUrl : RXD_TOKEN.imageUrl}
-                  alt=""
-                  className="w-6 h-6"
-                />
-                <input
-                  type="number"
-                  value={isRxdToToken ? tokenAmount : rxdAmount}
-                  onChange={(e) => updateFormState(
-                    isRxdToToken 
-                      ? { tokenAmount: e.target.value }
-                      : { rxdAmount: e.target.value }
-                  )}
-                  className="flex-1 bg-transparent focus:outline-none"
-                  placeholder="Enter amount"
-                  required
-                />
-              </div>
-              <div className="text-sm text-yellow-600/80 px-2">
-                ≈ {calculateUSDValue(
-                  isRxdToToken ? tokenAmount : rxdAmount,
-                  isRxdToToken ? selectedToken.symbol : 'RXD'
-                )}
-              </div>
+            <TokenAmountInput
+              amount={isRxdToToken ? tokenAmount : rxdAmount}
+              token={isRxdToToken ? selectedToken : RXD_TOKEN}
+              onChange={handleTokenAmountChange}
+              usdValue={formatPriceUSD(
+                parseFloat(isRxdToToken ? tokenAmount : rxdAmount) * 
+                (prices[isRxdToToken ? selectedToken.symbol : 'RXD'] || 0)
+              )}
+            />
+            <div className="mt-2">
+              <Slider
+                min={900}
+                max={1100}
+                defaultValue={1000}
+                onChange={handleSliderChange}
+                railStyle={{ backgroundColor: 'rgba(202, 138, 4, 0.2)' }}
+                trackStyle={{ backgroundColor: 'rgb(202, 138, 4)' }}
+                handleStyle={{
+                  borderColor: 'rgb(202, 138, 4)',
+                  backgroundColor: 'rgb(202, 138, 4)'
+                }}
+              />
             </div>
           </div>
         </div>
 
+        {/* Market price indicator */}
+        {marketPrice > 0 && (
+          <div className={`text-center mb-4 ${deviationClass}`}>
+            {isMarketPrice ? (
+              <span>Trading at market price</span>
+            ) : (
+              <span>
+                Trading {deviation > 0 ? 'above' : 'below'} market price by{' '}
+                {Math.abs(deviation).toFixed(2)}%
+              </span>
+            )}
+          </div>
+        )}
+
         <button
           type="button"
-          onClick={() => updateFormState({ isRxdToToken: !isRxdToToken })}
+          onClick={handleSwitchDirection}
           className="w-full flex items-center justify-center gap-2 bg-yellow-600/20 text-yellow-600 rounded-lg px-6 py-3 font-semibold hover:bg-yellow-600/30 transition-all mb-6"
         >
           <ArrowUpDown size={20} />
