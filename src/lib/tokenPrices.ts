@@ -1,15 +1,37 @@
-// Constants
-export const RXD_PRICE_USD = 0.000894;
-export const GLYPH_TO_RXD_RATIO = 0.001; // 1 glyph = 0.001 RXD
+import { Token } from '../types';
+import axios from 'axios';
 
-// Calculate USD price of a glyph token
-export const calculateGlyphTokenUsdPrice = (): number => {
-  return RXD_PRICE_USD * GLYPH_TO_RXD_RATIO; // Should be 0.000000894
+// Constants
+export const RXD_FLOOR_PRICE = 0.001; // 1 token = 0.001 RXD
+let RXD_PRICE_USD = 0.000894; // Initial price, will be updated from CoinGecko
+
+// Fetch RXD price from CoinGecko
+export const updateRXDPrice = async () => {
+  try {
+    const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=radiant&vs_currencies=usd');
+    if (response.data?.radiant?.usd) {
+      RXD_PRICE_USD = response.data.radiant.usd;
+      // Update all token prices after RXD price update
+      Object.keys(TOKEN_PRICES).forEach(symbol => {
+        TOKEN_PRICES[symbol] = calculateTokenPrice(symbol);
+      });
+    }
+    return TOKEN_PRICES;
+  } catch (error) {
+    console.error('Error fetching RXD price:', error);
+    return TOKEN_PRICES;
+  }
 };
 
-// Calculate market cap for a token
-export const calculateMarketCap = (totalSupply: number): number => {
-  const tokenPrice = calculateGlyphTokenUsdPrice();
+// Calculate token price (1 token = 0.001 RXD)
+export const calculateTokenPrice = (symbol: string): number => {
+  if (symbol === 'RXD') return RXD_PRICE_USD;
+  return RXD_PRICE_USD * RXD_FLOOR_PRICE;
+};
+
+// Calculate market cap
+export const calculateMarketCap = (symbol: string, totalSupply: number): number => {
+  const tokenPrice = calculateTokenPrice(symbol);
   return tokenPrice * totalSupply;
 };
 
@@ -26,7 +48,7 @@ export const formatPriceUSD = (price: number): string => {
 
 // Format market cap with appropriate suffix
 export const formatMarketCap = (marketCap: number): string => {
-  if (isNaN(marketCap) || !isFinite(marketCap)) return '$0.00';
+  if (isNaN(marketCap) || !isFinite(marketCap)) return '$0';
   
   if (marketCap >= 1_000_000_000) {
     return `$${(marketCap / 1_000_000_000).toFixed(2)}B`;
@@ -46,12 +68,6 @@ export const TOKEN_PRICES: Record<string, number> = {
 // Initialize token prices
 export const initializeTokenPrices = (tokens: Token[]): void => {
   tokens.forEach(token => {
-    if (token.symbol === 'RXD') {
-      TOKEN_PRICES[token.symbol] = RXD_PRICE_USD;
-    } else {
-      // Each token's price is based on the RXD exchange rate
-      const tokenPrice = calculateGlyphTokenUsdPrice();
-      TOKEN_PRICES[token.symbol] = tokenPrice;
-    }
+    TOKEN_PRICES[token.symbol] = calculateTokenPrice(token.symbol);
   });
 };

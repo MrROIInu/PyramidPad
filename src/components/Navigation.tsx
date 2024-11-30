@@ -7,7 +7,8 @@ export const Navigation: React.FC = () => {
   const links = [
     { to: '/', label: 'Swap' },
     { to: '/tokens', label: 'Token List' },
-    { to: '/latest', label: 'Latest Orders' }
+    { to: '/latest', label: 'Latest Orders' },
+    { to: '/my-orders', label: 'My Orders' }
   ];
   
   return (

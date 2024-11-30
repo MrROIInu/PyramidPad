@@ -4,15 +4,36 @@ import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
 import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
 import { Order } from '../types';
+import { WalletAddressInput } from './wallet/WalletAddressInput';
+import { useWalletManager } from '../hooks/useWalletManager';
 
 interface OrderListProps {
   orders: Order[];
   onCancel: (id: number) => void;
   onClaim: (id: number) => void;
   loading?: boolean;
+  showCancelButton?: boolean;
+  userWalletAddress?: string;
 }
 
-export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim, loading = false }) => {
+export const OrderList: React.FC<OrderListProps> = ({ 
+  orders, 
+  onCancel, 
+  onClaim, 
+  loading = false,
+  showCancelButton = false,
+  userWalletAddress
+}) => {
+  const {
+    walletAddress,
+    isWalletChecked,
+    isWalletValid,
+    copied,
+    handleWalletChange,
+    checkWallet,
+    copyFeeWallet
+  } = useWalletManager();
+
   const handleCopy = async (text: string) => {
     await navigator.clipboard.writeText(text);
     alert('TX copied to clipboard. Claim order when you have made swap in Photonic Wallet.');
@@ -44,6 +65,20 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim,
       <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
         Open Orders
       </h2>
+
+      {!userWalletAddress && (
+        <div className="mb-6">
+          <WalletAddressInput
+            walletAddress={walletAddress}
+            isWalletChecked={isWalletChecked}
+            isWalletValid={isWalletValid}
+            copied={copied}
+            onWalletChange={handleWalletChange}
+            onCopyFeeWallet={copyFeeWallet}
+          />
+        </div>
+      )}
+
       <div className="space-y-4">
         {orders.map(order => {
           const fromToken = order.from_token === 'RXD' ? RXD_TOKEN : TOKENS.find(t => t.symbol === order.from_token);
@@ -54,6 +89,9 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim,
           const orderPrice = order.to_amount / order.from_amount;
           const floorPrice = TOKEN_PRICES[order.to_token];
           const priceDeviation = ((orderPrice - floorPrice) / floorPrice) * 100;
+
+          const canCancel = showCancelButton && order.wallet_address === (userWalletAddress || walletAddress);
+          const canClaim = isWalletValid || (userWalletAddress && userWalletAddress === order.wallet_address);
 
           return (
             <div
@@ -87,38 +125,44 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onCancel, onClaim,
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => onClaim(order.id)}
-                    className="px-4 py-2 bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg hover:from-yellow-500 hover:to-amber-700 transition-all"
-                  >
-                    Claim
-                  </button>
-                  <button
-                    onClick={() => onCancel(order.id)}
-                    className="px-4 py-2 bg-red-600/20 text-red-500 rounded-lg hover:bg-red-600/30 transition-colors"
-                  >
-                    Cancel
-                  </button>
+                  {canClaim && (
+                    <button
+                      onClick={() => onClaim(order.id)}
+                      className="px-4 py-2 bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg hover:from-yellow-500 hover:to-amber-700 transition-all"
+                    >
+                      Claim
+                    </button>
+                  )}
+                  {canCancel && (
+                    <button
+                      onClick={() => onCancel(order.id)}
+                      className="px-4 py-2 bg-red-600/20 text-red-500 rounded-lg hover:bg-red-600/30 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <div className="relative">
-                <p className="text-yellow-600 mb-2">Copy TX to Photonic Wallet. Claim after P2PSwap is done.</p>
-                <div 
-                  className="flex items-start gap-2 bg-black/30 border border-yellow-600/30 rounded-lg p-4 cursor-pointer group"
-                  onClick={() => handleCopy(order.swap_tx)}
-                >
-                  <code className="flex-1 text-sm break-all">{order.swap_tx}</code>
-                  <button className="text-yellow-600 hover:text-yellow-500 p-1">
-                    <Copy size={20} />
-                  </button>
-                </div>
-                {Math.abs(priceDeviation) >= 10 && (
-                  <div className="mt-2 text-red-500 font-bold">
-                    Warning: Price is {priceDeviation.toFixed(2)}% {priceDeviation > 0 ? 'above' : 'below'} floor price
+              {canClaim && (
+                <div className="relative">
+                  <p className="text-yellow-600 mb-2">Copy TX to Photonic Wallet. Claim after P2PSwap is done.</p>
+                  <div 
+                    className="flex items-start gap-2 bg-black/30 border border-yellow-600/30 rounded-lg p-4 cursor-pointer group"
+                    onClick={() => handleCopy(order.swap_tx)}
+                  >
+                    <code className="flex-1 text-sm break-all">{order.swap_tx}</code>
+                    <button className="text-yellow-600 hover:text-yellow-500 p-1">
+                      <Copy size={20} />
+                    </button>
                   </div>
-                )}
-              </div>
+                  {Math.abs(priceDeviation) >= 10 && (
+                    <div className="mt-2 text-red-500 font-bold">
+                      Warning: Price is {priceDeviation.toFixed(2)}% {priceDeviation > 0 ? 'above' : 'below'} floor price
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}

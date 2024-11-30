@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Bell } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { TOKENS } from '../data/tokens';
-import { RXD_TOKEN } from '../constants/tokens';
+import { supabase } from '../../lib/supabase';
+import { TOKENS } from '../../data/tokens';
+import { RXD_TOKEN } from '../../constants/tokens';
+import { ActivityItem } from './ActivityItem';
 
 interface Activity {
   id: string;
@@ -64,14 +65,11 @@ export const ActivityFeed: React.FC = () => {
       <div className="space-y-2">
         {activities.length > 0 ? (
           activities.map(activity => (
-            <div 
-              key={activity.id} 
-              className={`${
-                newActivity ? 'bg-yellow-600 text-white' : 'text-yellow-600/80'
-              } py-1 px-2 rounded transition-colors duration-300`}
-            >
-              {activity.message}
-            </div>
+            <ActivityItem
+              key={activity.id}
+              message={activity.message}
+              isNew={newActivity}
+            />
           ))
         ) : (
           <p className="text-yellow-600/80">Waiting for new orders...</p>

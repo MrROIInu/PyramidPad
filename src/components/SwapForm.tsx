@@ -6,6 +6,8 @@ import { RXD_TOKEN } from '../constants/tokens';
 import { useSwapForm } from '../hooks/useSwapForm';
 import { useSwapContext } from '../contexts/SwapContext';
 import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
+import { useWalletManager } from '../hooks/useWalletManager';
+import { WalletAddressInput } from './wallet/WalletAddressInput';
 
 interface SwapFormProps {
   onOrderCreated: () => Promise<void>;
@@ -13,13 +15,22 @@ interface SwapFormProps {
 
 export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
   const { selectedToken: contextSelectedToken } = useSwapContext();
+  const {
+    walletAddress,
+    isWalletChecked,
+    isWalletValid,
+    copied,
+    handleWalletChange,
+    checkWallet,
+    copyFeeWallet
+  } = useWalletManager();
   
   const {
     formState,
     loading,
     error,
     updateFormState,
-    handleSubmit,
+    handleSubmit: originalHandleSubmit,
   } = useSwapForm(onOrderCreated);
 
   const {
@@ -38,26 +49,13 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     }
   }, [contextSelectedToken, selectedToken.symbol, updateFormState]);
 
-  const handleImportedTxChange = (text: string) => {
-    if (!text.includes('🔁 Swap:') || !text.includes('➔') || !text.includes('📋')) return;
-    
-    updateFormState({ importedTx: text });
-    
-    const match = text.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([^\s🟦]+)/);
-    
-    if (match) {
-      const [, amount1, token1, amount2, token2, tx] = match;
-      const token = TOKENS.find(t => t.symbol === token2);
-      
-      if (token) {
-        updateFormState({
-          selectedToken: token,
-          rxdAmount: amount1,
-          tokenAmount: amount2,
-          transactionId: tx
-        });
-      }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isWalletChecked || !isWalletValid) {
+      await checkWallet();
+      return;
     }
+    await originalHandleSubmit(e, walletAddress);
   };
 
   const calculateUSDValue = (amount: string, symbol: string): string => {
@@ -74,6 +72,15 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
             {error}
           </div>
         )}
+
+        <WalletAddressInput
+          walletAddress={walletAddress}
+          isWalletChecked={isWalletChecked}
+          isWalletValid={isWalletValid}
+          copied={copied}
+          onWalletChange={handleWalletChange}
+          onCopyFeeWallet={copyFeeWallet}
+        />
 
         <div className="mb-6">
           <label className="block text-yellow-600 mb-2">Select Token</label>
@@ -165,7 +172,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
           </label>
           <textarea
             value={importedTx}
-            onChange={(e) => handleImportedTxChange(e.target.value)}
+            onChange={(e) => updateFormState({ importedTx: e.target.value })}
             className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-2"
             placeholder="Example: 🔁 Swap: 1000 RXD ➔ 1000 DOGE 📋01000000015c🟦"
             rows={3}
@@ -187,7 +194,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !isWalletChecked || !isWalletValid}
           className="w-full bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg px-6 py-3 font-semibold hover:from-yellow-500 hover:to-amber-700 transition-all mt-6 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {loading ? (

@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { TOKENS } from '../data/tokens';
-import { calculateGlyphTokenUsdPrice, calculateMarketCap } from './tokenPrices';
+import { calculateTokenPrice, calculateMarketCap } from './tokenPrices';
 import { getMiningData } from './tokenData';
 
 const supabaseUrl = 'https://vmlrhtccpuhttgaszymo.supabase.co';
@@ -9,6 +9,14 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: false
+  },
+  db: {
+    schema: 'public'
+  },
+  global: {
+    headers: {
+      'Content-Type': 'application/json'
+    }
   }
 });
 
@@ -18,11 +26,11 @@ export const initializeDatabase = async () => {
     const { error: createError } = await supabase.rpc('create_tables');
     if (createError) throw createError;
 
-    // Initialize token data
+    // Initialize token data with batch insert
     const tokenData = TOKENS.map(token => {
       const miningData = getMiningData(token.symbol);
-      const price = token.symbol === 'RXD' ? RXD_PRICE_USD : calculateGlyphTokenUsdPrice();
-      const marketCap = calculateMarketCap(token.totalSupply);
+      const price = calculateTokenPrice(token.symbol);
+      const marketCap = calculateMarketCap(token.symbol, token.totalSupply);
 
       return {
         symbol: token.symbol,
@@ -33,12 +41,13 @@ export const initializeDatabase = async () => {
         market_cap: marketCap,
         volume_24h: 0,
         price_change_7d: 0,
-        preminted: 0,
-        minted: miningData.mined,
+        preminted: miningData.preminted,
+        minted: miningData.minted,
         open_orders: 0
       };
     });
 
+    // Use upsert with onConflict strategy
     const { error: tokenError } = await supabase
       .from('tokens')
       .upsert(tokenData, { 

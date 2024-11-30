@@ -31,7 +31,7 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
     setError(null);
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, walletAddress: string) => {
     e.preventDefault();
     setError(null);
     
@@ -50,7 +50,8 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
         swap_tx: formState.transactionId,
         claimed: false,
         claim_count: 0,
-        status: 'active'
+        status: 'active',
+        wallet_address: walletAddress
       };
 
       const { error: supabaseError } = await supabase

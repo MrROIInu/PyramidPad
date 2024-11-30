@@ -1,15 +1,16 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TOKENS } from '../data/tokens';
-import { TOKEN_PRICES, formatPriceUSD, formatMarketCap } from '../lib/tokenPrices';
+import { TOKEN_PRICES, formatPriceUSD, formatMarketCap, calculateMarketCap } from '../lib/tokenPrices';
 import { getMiningData } from '../lib/tokenData';
 import { useOrders } from '../hooks/useOrders';
 import { useSwapContext } from '../contexts/SwapContext';
 
 export const CollectionChart: React.FC = () => {
+  const navigate = useNavigate();
   const { updateSelectedToken } = useSwapContext();
   const { orders } = useOrders();
 
-  // Sort tokens to ensure RADCAT is first and exclude RXD
   const displayTokens = [...TOKENS]
     .filter(token => token.symbol !== 'RXD')
     .sort((a, b) => {
@@ -44,14 +45,14 @@ export const CollectionChart: React.FC = () => {
               <th className="px-2 py-2 text-left">Ticker</th>
               <th className="px-2 py-2 text-left">Price (USD)</th>
               <th className="px-2 py-2 text-left">Market Cap</th>
-              <th className="px-2 py-2 text-left">Mining Progress</th>
+              <th className="px-2 py-2 text-left">Preminted</th>
+              <th className="px-2 py-2 text-left">Minted</th>
               <th className="px-2 py-2 text-left">Open Orders</th>
             </tr>
           </thead>
           <tbody className="text-sm">
             {displayTokens.map((token, index) => {
               const miningData = getMiningData(token.symbol);
-              const openOrders = getOpenOrderCount(token.symbol);
               
               return (
                 <tr 
@@ -67,21 +68,24 @@ export const CollectionChart: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-2 py-2">{formatPriceUSD(TOKEN_PRICES[token.symbol])}</td>
-                  <td className="px-2 py-2">{formatMarketCap(token.totalSupply)}</td>
+                  <td className="px-2 py-2">
+                    {formatMarketCap(calculateMarketCap(token.symbol, token.totalSupply))}
+                  </td>
+                  <td className="px-2 py-2">{miningData.preminted}%</td>
                   <td className="px-2 py-2">
                     <div className="flex items-center gap-2">
                       <div className="w-16 h-1.5 bg-black/30 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-gradient-to-r from-yellow-600 to-amber-800"
-                          style={{ width: `${miningData.mined}%` }}
+                          style={{ width: `${miningData.minted}%` }}
                         />
                       </div>
-                      <span className="text-xs">{miningData.mined}%</span>
+                      <span className="text-xs">{miningData.minted}%</span>
                     </div>
                   </td>
                   <td className="px-2 py-2">
-                    <span className={openOrders > 0 ? 'text-green-500' : ''}>
-                      {openOrders}
+                    <span className={getOpenOrderCount(token.symbol) > 0 ? 'text-green-500' : ''}>
+                      {getOpenOrderCount(token.symbol)}
                     </span>
                   </td>
                 </tr>

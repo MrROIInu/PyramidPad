@@ -5,7 +5,8 @@ import { TokenList } from './pages/TokenList';
 import { Navigation } from './components/Navigation';
 import { GlyphSwapLogo } from './components/GlyphSwapLogo';
 import { LatestOrders } from './pages/LatestOrders';
-import { ActivityFeed } from './components/ActivityFeed';
+import { MyOrders } from './pages/MyOrders';
+import { ActivityFeed } from './components/activity/ActivityFeed';
 import { TopGainers } from './components/TopGainers';
 import { CollectionChart } from './components/CollectionChart';
 import { SwapProvider } from './contexts/SwapContext';
@@ -58,6 +59,7 @@ const App: React.FC = () => {
               } />
               <Route path="/tokens" element={<TokenList />} />
               <Route path="/latest" element={<LatestOrders />} />
+              <Route path="/my-orders" element={<MyOrders />} />
             </Routes>
           </div>
         </div>
