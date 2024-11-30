@@ -1,3 +1,23 @@
+-- Drop existing objects if they exist
+drop trigger if exists handle_updated_at_tokens on public.tokens;
+drop trigger if exists handle_updated_at_orders on public.orders;
+drop trigger if exists handle_updated_at_wallet_addresses on public.wallet_addresses;
+drop function if exists handle_updated_at cascade;
+drop table if exists public.tokens cascade;
+drop table if exists public.orders cascade;
+drop table if exists public.wallet_addresses cascade;
+
+-- Create updated_at trigger function
+create or replace function handle_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc'::text, now());
+  return new;
+end;
+$$;
+
 -- Create tables
 create table if not exists public.tokens (
   symbol text primary key,
@@ -38,16 +58,6 @@ create table if not exists public.wallet_addresses (
 );
 
 -- Add triggers
-create or replace function handle_updated_at()
-returns trigger
-language plpgsql
-as $$
-begin
-  new.updated_at = timezone('utc'::text, now());
-  return new;
-end;
-$$;
-
 create trigger handle_updated_at_tokens
   before update on public.tokens
   for each row
@@ -72,8 +82,20 @@ alter table public.wallet_addresses enable row level security;
 create policy "Enable read access for all users" on public.tokens
   for select to anon using (true);
 
+create policy "Enable insert for all users" on public.tokens
+  for insert to anon with check (true);
+
+create policy "Enable update for all users" on public.tokens
+  for update to anon using (true);
+
 create policy "Enable read access for all users" on public.orders
   for select to anon using (true);
+
+create policy "Enable insert for all users" on public.orders
+  for insert to anon with check (true);
+
+create policy "Enable update for all users" on public.orders
+  for update to anon using (true);
 
 create policy "Enable read access for all users" on public.wallet_addresses
   for select to anon using (true);
