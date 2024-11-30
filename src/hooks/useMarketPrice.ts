@@ -31,7 +31,7 @@ export const useMarketPrice = (
 
     // Calculate market price based on direction
     const marketPrice = fromToken === 'RXD' ? 1000 : 1/1000;
-    const currentPrice = toValue / fromValue;
+    const currentPrice = fromToken === 'RXD' ? toValue / fromValue : fromValue / toValue;
     
     // Calculate deviation percentage
     const deviation = ((currentPrice - marketPrice) / marketPrice) * 100;

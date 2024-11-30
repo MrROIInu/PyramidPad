@@ -29,10 +29,18 @@ export const OrderList: React.FC<OrderListProps> = ({
     isWalletChecked,
     isWalletValid,
     copied,
+    isLoading,
     handleWalletChange,
     checkWallet,
     copyFeeWallet
-  } = useWalletManager();
+  } = useWalletManager(false);
+
+  const [cancelledOrders, setCancelledOrders] = React.useState<Record<number, boolean>>({});
+
+  const handleCancel = async (id: number) => {
+    await onCancel(id);
+    setCancelledOrders(prev => ({ ...prev, [id]: true }));
+  };
 
   const handleCopy = async (text: string) => {
     await navigator.clipboard.writeText(text);
@@ -73,8 +81,11 @@ export const OrderList: React.FC<OrderListProps> = ({
             isWalletChecked={isWalletChecked}
             isWalletValid={isWalletValid}
             copied={copied}
+            isLoading={isLoading}
             onWalletChange={handleWalletChange}
             onCopyFeeWallet={copyFeeWallet}
+            onCheck={checkWallet}
+            showCheckButton={true}
           />
         </div>
       )}
@@ -92,6 +103,7 @@ export const OrderList: React.FC<OrderListProps> = ({
 
           const canCancel = showCancelButton && order.wallet_address === (userWalletAddress || walletAddress);
           const canClaim = isWalletValid || (userWalletAddress && userWalletAddress === order.wallet_address);
+          const isCancelled = cancelledOrders[order.id];
 
           return (
             <div
@@ -125,7 +137,7 @@ export const OrderList: React.FC<OrderListProps> = ({
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  {canClaim && (
+                  {canClaim && !isCancelled && (
                     <button
                       onClick={() => onClaim(order.id)}
                       className="px-4 py-2 bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg hover:from-yellow-500 hover:to-amber-700 transition-all"
@@ -133,18 +145,23 @@ export const OrderList: React.FC<OrderListProps> = ({
                       Claim
                     </button>
                   )}
-                  {canCancel && (
+                  {canCancel && !isCancelled && (
                     <button
-                      onClick={() => onCancel(order.id)}
+                      onClick={() => handleCancel(order.id)}
                       className="px-4 py-2 bg-red-600/20 text-red-500 rounded-lg hover:bg-red-600/30 transition-colors"
                     >
                       Cancel
                     </button>
                   )}
+                  {isCancelled && (
+                    <span className="px-4 py-2 bg-red-600/20 text-red-500 rounded-lg">
+                      Order Canceled
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {canClaim && (
+              {canClaim && !isCancelled && (
                 <div className="relative">
                   <p className="text-yellow-600 mb-2">Copy TX to Photonic Wallet. Claim after P2PSwap is done.</p>
                   <div 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
-import { TOKEN_PRICES } from '../lib/tokenPrices';
+import Slider from 'rc-slider';
+import 'rc-slider/assets/index.css';
 
 interface TokenAmountInputProps {
   amount: string;
@@ -13,6 +14,7 @@ interface TokenAmountInputProps {
   disabled?: boolean;
   readOnly?: boolean;
   baseAmount?: string;
+  showSlider?: boolean;
 }
 
 export const TokenAmountInput: React.FC<TokenAmountInputProps> = ({
@@ -22,15 +24,16 @@ export const TokenAmountInput: React.FC<TokenAmountInputProps> = ({
   usdValue,
   disabled = false,
   readOnly = false,
-  baseAmount
+  baseAmount,
+  showSlider = false
 }) => {
+  const currentValue = parseInt(amount) || 0;
+
   const handleIncrease = () => {
-    const currentValue = parseInt(amount) || 0;
     onChange((currentValue + 1).toString());
   };
 
   const handleDecrease = () => {
-    const currentValue = parseInt(amount) || 0;
     if (currentValue > 1) {
       onChange((currentValue - 1).toString());
     }
@@ -47,6 +50,10 @@ export const TokenAmountInput: React.FC<TokenAmountInputProps> = ({
         onChange(value);
       }
     }
+  };
+
+  const handleSliderChange = (value: number) => {
+    onChange(value.toString());
   };
 
   return (
@@ -91,6 +98,22 @@ export const TokenAmountInput: React.FC<TokenAmountInputProps> = ({
           </div>
         )}
       </div>
+      {showSlider && currentValue > 0 && (
+        <div className="px-2 py-3">
+          <Slider
+            min={Math.max(1, currentValue - 100)}
+            max={currentValue + 100}
+            value={currentValue}
+            onChange={handleSliderChange}
+            railStyle={{ backgroundColor: 'rgba(202, 138, 4, 0.2)' }}
+            trackStyle={{ backgroundColor: 'rgb(202, 138, 4)' }}
+            handleStyle={{
+              borderColor: 'rgb(202, 138, 4)',
+              backgroundColor: 'rgb(202, 138, 4)'
+            }}
+          />
+        </div>
+      )}
       <div className="text-sm text-yellow-600/80 px-2">
         ≈ {usdValue}
         {baseAmount && (

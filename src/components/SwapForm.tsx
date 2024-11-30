@@ -1,10 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { ArrowUpDown, Loader2 } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
-import Slider from 'rc-slider';
-import 'rc-slider/assets/index.css';
 import { TokenSelect } from './TokenSelect';
-import { TokenAmountInput } from './TokenAmountInput';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
 import { useSwapForm } from '../hooks/useSwapForm';
@@ -12,7 +8,8 @@ import { useSwapContext } from '../contexts/SwapContext';
 import { formatPriceUSD } from '../lib/tokenPrices';
 import { useWalletManager } from '../hooks/useWalletManager';
 import { WalletAddressInput } from './wallet/WalletAddressInput';
-import { useRealtimePrices } from '../hooks/useRealtimePrices';
+import { TokenAmountInput } from './TokenAmountInput';
+import { useTransactionImport } from '../hooks/useTransactionImport';
 import { useMarketPrice } from '../hooks/useMarketPrice';
 
 interface SwapFormProps {
@@ -21,8 +18,6 @@ interface SwapFormProps {
 
 export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
   const { selectedToken: contextSelectedToken } = useSwapContext();
-  const prices = useRealtimePrices();
-  
   const {
     walletAddress,
     isWalletChecked,
@@ -51,6 +46,27 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     importedTx
   } = formState;
 
+  // Handle transaction import
+  const handleTransactionImport = useCallback((data: any) => {
+    const isRxdFrom = data.fromToken === 'RXD';
+    const selectedTokenSymbol = isRxdFrom ? data.toToken : data.fromToken;
+    const token = TOKENS.find(t => t.symbol === selectedTokenSymbol);
+    
+    if (token) {
+      updateFormState({
+        selectedToken: token,
+        isRxdToToken: isRxdFrom,
+        rxdAmount: isRxdFrom ? data.fromAmount : data.toAmount,
+        tokenAmount: isRxdFrom ? data.toAmount : data.fromAmount,
+        transactionId: data.transactionId,
+        importedTx: `🔁 Swap: ${data.fromAmount} ${data.fromToken} ➔ ${data.toAmount} ${data.toToken} 📋${data.transactionId}🟦`
+      });
+    }
+  }, [updateFormState]);
+
+  const { parseTransaction } = useTransactionImport(handleTransactionImport);
+
+  // Calculate market price and deviation
   const { marketPrice, deviation, isMarketPrice, deviationClass } = useMarketPrice(
     isRxdToToken ? 'RXD' : selectedToken.symbol,
     isRxdToToken ? selectedToken.symbol : 'RXD',
@@ -58,27 +74,32 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     isRxdToToken ? tokenAmount : rxdAmount
   );
 
-  // Update token amount when RXD amount changes
-  useEffect(() => {
-    if (rxdAmount) {
-      const rxdValue = parseInt(rxdAmount);
-      if (!isNaN(rxdValue) && rxdValue >= 1) {
-        const calculatedAmount = isRxdToToken 
-          ? Math.floor(rxdValue * 1000).toString()
-          : Math.floor(rxdValue / 1000).toString();
-        if (calculatedAmount !== tokenAmount) {
-          updateFormState({ tokenAmount: calculatedAmount });
-        }
-      }
-    }
-  }, [rxdAmount, isRxdToToken]);
-
   // Update form when context token changes
   useEffect(() => {
     if (contextSelectedToken.symbol !== selectedToken.symbol) {
-      updateFormState({ selectedToken: contextSelectedToken });
+      updateFormState({ 
+        selectedToken: contextSelectedToken,
+        tokenAmount: rxdAmount ? '1000' : '',
+        rxdAmount: tokenAmount ? '1' : ''
+      });
     }
-  }, [contextSelectedToken, selectedToken.symbol]);
+  }, [contextSelectedToken, selectedToken.symbol, rxdAmount, tokenAmount]);
+
+  // Handle RXD amount change
+  const handleRxdAmountChange = useCallback((value: string) => {
+    updateFormState({ 
+      rxdAmount: value,
+      tokenAmount: value ? (parseInt(value) * 1000).toString() : ''
+    });
+  }, [updateFormState]);
+
+  // Handle token amount change
+  const handleTokenAmountChange = useCallback((value: string) => {
+    updateFormState({ 
+      tokenAmount: value,
+      rxdAmount: value ? Math.ceil(parseInt(value) / 1000).toString() : ''
+    });
+  }, [updateFormState]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,41 +110,12 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     await originalHandleSubmit(e, walletAddress);
   };
 
-  const handleTokenAmountChange = (value: string) => {
-    const numValue = parseInt(value) || 0;
-    if (numValue >= 1) {
-      if (isRxdToToken) {
-        updateFormState({ tokenAmount: value });
-      } else {
-        const rxdValue = Math.ceil(numValue / 1000);
-        updateFormState({ 
-          tokenAmount: value,
-          rxdAmount: rxdValue.toString()
-        });
-      }
+  const handleImportedTxChange = (text: string) => {
+    updateFormState({ importedTx: text });
+    const data = parseTransaction(text);
+    if (data) {
+      handleTransactionImport(data);
     }
-  };
-
-  const handleSliderChange = (value: number) => {
-    const baseAmount = parseInt(isRxdToToken ? rxdAmount : tokenAmount);
-    if (!isNaN(baseAmount)) {
-      const newAmount = Math.floor(baseAmount * (value / 1000));
-      if (newAmount >= 1) {
-        handleTokenAmountChange(newAmount.toString());
-      }
-    }
-  };
-
-  const handleSwitchDirection = () => {
-    // Preserve amounts when switching directions
-    const currentRxd = rxdAmount;
-    const currentToken = tokenAmount;
-    
-    updateFormState({ 
-      isRxdToToken: !isRxdToToken,
-      rxdAmount: currentToken,
-      tokenAmount: currentRxd
-    });
   };
 
   return (
@@ -162,13 +154,12 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
             <TokenAmountInput
               amount={isRxdToToken ? rxdAmount : tokenAmount}
               token={isRxdToToken ? RXD_TOKEN : selectedToken}
-              onChange={(value) => updateFormState(
-                isRxdToToken ? { rxdAmount: value } : { tokenAmount: value }
-              )}
+              onChange={isRxdToToken ? handleRxdAmountChange : handleTokenAmountChange}
               usdValue={formatPriceUSD(
                 parseFloat(isRxdToToken ? rxdAmount : tokenAmount) * 
-                (prices[isRxdToToken ? 'RXD' : selectedToken.symbol] || 0)
+                (isRxdToToken ? 0.000894 : 0.000894 * 0.001)
               )}
+              showSlider={true}
             />
           </div>
 
@@ -177,46 +168,29 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
             <TokenAmountInput
               amount={isRxdToToken ? tokenAmount : rxdAmount}
               token={isRxdToToken ? selectedToken : RXD_TOKEN}
-              onChange={handleTokenAmountChange}
+              onChange={isRxdToToken ? handleTokenAmountChange : handleRxdAmountChange}
               usdValue={formatPriceUSD(
                 parseFloat(isRxdToToken ? tokenAmount : rxdAmount) * 
-                (prices[isRxdToToken ? selectedToken.symbol : 'RXD'] || 0)
+                (isRxdToToken ? 0.000894 * 0.001 : 0.000894)
               )}
+              showSlider={true}
             />
-            <div className="mt-2">
-              <Slider
-                min={900}
-                max={1100}
-                defaultValue={1000}
-                onChange={handleSliderChange}
-                railStyle={{ backgroundColor: 'rgba(202, 138, 4, 0.2)' }}
-                trackStyle={{ backgroundColor: 'rgb(202, 138, 4)' }}
-                handleStyle={{
-                  borderColor: 'rgb(202, 138, 4)',
-                  backgroundColor: 'rgb(202, 138, 4)'
-                }}
-              />
-            </div>
           </div>
         </div>
 
-        {/* Market price indicator */}
-        {marketPrice > 0 && (
-          <div className={`text-center mb-4 ${deviationClass}`}>
+        {rxdAmount && tokenAmount && (
+          <div className={`text-center mb-6 ${deviationClass}`}>
             {isMarketPrice ? (
-              <span>Trading at market price</span>
+              'Trading at market price'
             ) : (
-              <span>
-                Trading {deviation > 0 ? 'above' : 'below'} market price by{' '}
-                {Math.abs(deviation).toFixed(2)}%
-              </span>
+              `Trading ${deviation > 0 ? 'above' : 'below'} market price by ${Math.abs(deviation).toFixed(2)}%`
             )}
           </div>
         )}
 
         <button
           type="button"
-          onClick={handleSwitchDirection}
+          onClick={() => updateFormState({ isRxdToToken: !isRxdToToken })}
           className="w-full flex items-center justify-center gap-2 bg-yellow-600/20 text-yellow-600 rounded-lg px-6 py-3 font-semibold hover:bg-yellow-600/30 transition-all mb-6"
         >
           <ArrowUpDown size={20} />
@@ -229,7 +203,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
           </label>
           <textarea
             value={importedTx}
-            onChange={(e) => updateFormState({ importedTx: e.target.value })}
+            onChange={(e) => handleImportedTxChange(e.target.value)}
             className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-2"
             placeholder="Example: 🔁 Swap: 1000 RXD ➔ 1000 DOGE 📋01000000015c🟦"
             rows={3}

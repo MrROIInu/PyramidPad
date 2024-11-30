@@ -10,6 +10,10 @@ interface Activity {
   type: 'new_order' | 'claim';
   message: string;
   timestamp: string;
+  fromToken: string;
+  toToken: string;
+  fromAmount: number;
+  toAmount: number;
 }
 
 export const ActivityFeed: React.FC = () => {
@@ -22,12 +26,24 @@ export const ActivityFeed: React.FC = () => {
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'orders' },
         (payload: any) => {
+          const fromToken = payload.new.from_token === 'RXD' ? RXD_TOKEN : 
+            TOKENS.find(t => t.symbol === payload.new.from_token);
+          const toToken = payload.new.to_token === 'RXD' ? RXD_TOKEN : 
+            TOKENS.find(t => t.symbol === payload.new.to_token);
+
+          if (!fromToken || !toToken) return;
+
           const newActivity: Activity = {
             id: `${payload.new.id}-${Date.now()}`,
             type: payload.eventType === 'INSERT' ? 'new_order' : 'claim',
             message: getActivityMessage(payload),
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            fromToken: fromToken.symbol,
+            toToken: toToken.symbol,
+            fromAmount: payload.new.from_amount,
+            toAmount: payload.new.to_amount
           };
+
           setActivities(prev => [newActivity, ...prev].slice(0, 10));
           setNewActivity(true);
           setTimeout(() => setNewActivity(false), 3000);
@@ -49,9 +65,9 @@ export const ActivityFeed: React.FC = () => {
     if (!fromToken || !toToken) return '';
 
     if (payload.eventType === 'INSERT') {
-      return `New order: ${payload.new.from_amount} ${fromToken.symbol} ➔ ${payload.new.to_amount} ${toToken.symbol}`;
+      return `New Order: ${payload.new.from_amount} ${fromToken.symbol} ➔ ${payload.new.to_amount} ${toToken.symbol}`;
     } else if (payload.eventType === 'UPDATE' && payload.new.claimed) {
-      return `Order claimed: ${payload.new.from_amount} ${fromToken.symbol} ➔ ${payload.new.to_amount} ${toToken.symbol}`;
+      return `Order Claimed: ${payload.new.from_amount} ${fromToken.symbol} ➔ ${payload.new.to_amount} ${toToken.symbol}`;
     }
     return '';
   };
@@ -67,7 +83,7 @@ export const ActivityFeed: React.FC = () => {
           activities.map(activity => (
             <ActivityItem
               key={activity.id}
-              message={activity.message}
+              activity={activity}
               isNew={newActivity}
             />
           ))
