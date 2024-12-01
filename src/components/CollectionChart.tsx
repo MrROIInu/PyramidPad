@@ -6,12 +6,14 @@ import { getMiningData } from '../lib/tokenData';
 import { useOrders } from '../hooks/useOrders';
 import { useSwapContext } from '../contexts/SwapContext';
 import { useRealtimePrices } from '../hooks/useRealtimePrices';
+import { usePriceHistory } from '../hooks/usePriceHistory';
 
 export const CollectionChart: React.FC = () => {
   const navigate = useNavigate();
   const { updateSelectedToken } = useSwapContext();
   const { orders } = useOrders();
   const prices = useRealtimePrices();
+  const { priceHistory, priceChanges } = usePriceHistory();
 
   // Show all tokens, sorted with RADCAT first
   const displayTokens = [...TOKENS]
@@ -43,6 +45,12 @@ export const CollectionChart: React.FC = () => {
     return price * totalSupply;
   };
 
+  const getPriceChangeClass = (change: number) => {
+    if (change > 0) return 'text-green-500';
+    if (change < 0) return 'text-red-500';
+    return 'text-yellow-600';
+  };
+
   return (
     <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm">
       <div className="overflow-x-auto">
@@ -53,6 +61,7 @@ export const CollectionChart: React.FC = () => {
               <th className="px-2 py-2 text-left">Ticker</th>
               <th className="px-2 py-2 text-left">Price (USD)</th>
               <th className="px-2 py-2 text-left">Market Cap</th>
+              <th className="px-2 py-2 text-left">Last 7 Days</th>
               <th className="px-2 py-2 text-left">Preminted</th>
               <th className="px-2 py-2 text-left">Minted</th>
               <th className="px-2 py-2 text-left">Open Orders</th>
@@ -62,6 +71,7 @@ export const CollectionChart: React.FC = () => {
             {displayTokens.map((token, index) => {
               const miningData = getMiningData(token.symbol);
               const marketCap = calculateMarketCap(token.symbol, token.totalSupply);
+              const priceChange = priceChanges[token.symbol] || 0;
               
               return (
                 <tr 
@@ -78,6 +88,9 @@ export const CollectionChart: React.FC = () => {
                   </td>
                   <td className="px-2 py-2">{formatPriceUSD(prices[token.symbol])}</td>
                   <td className="px-2 py-2">{formatMarketCap(marketCap)}</td>
+                  <td className={`px-2 py-2 ${getPriceChangeClass(priceChange)}`}>
+                    {priceChange > 0 ? '+' : ''}{priceChange.toFixed(2)}%
+                  </td>
                   <td className="px-2 py-2">{miningData.preminted}%</td>
                   <td className="px-2 py-2">
                     <div className="flex items-center gap-2">

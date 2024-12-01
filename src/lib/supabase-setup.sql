@@ -106,3 +106,29 @@ values
   ('1PhM4yjL9PXGoJxo6qfx8JbaEM3NPaF5Bt'),
   ('1LqoPnuUm3kdKvPJrELoe6JY3mJc9C7d1e')
 on conflict (address) do nothing;
+
+-- Initialize token data
+insert into public.tokens (symbol, name, total_supply, contract_address, price_usd, market_cap)
+select 
+  t.symbol,
+  t.name,
+  t.total_supply,
+  t.contract_address,
+  0.000894 * 0.001 as price_usd,
+  (0.000894 * 0.001 * t.total_supply) as market_cap
+from (
+  select 'RADCAT' as symbol, 'RADCAT' as name, 21000000 as total_supply,
+    '01a61182dd9c5162bc547e6140d4d9c78f78316b32a2ef0c6063954be87ed10900000000' as contract_address
+  union all
+  select 'PILIM', 'Pilim', 100000000000,
+    'dd9e3fc687377232d2f454e106d91be9dff2f3df67ae69e475609b3dc21debab00000000'
+  -- Add all other tokens here
+) t
+on conflict (symbol) do update
+set 
+  name = excluded.name,
+  total_supply = excluded.total_supply,
+  contract_address = excluded.contract_address,
+  price_usd = excluded.price_usd,
+  market_cap = excluded.market_cap,
+  updated_at = now();
