@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { TOKEN_PRICES } from '../lib/tokenPrices';
 
 export const useMarketPrice = (
   fromToken: string,
