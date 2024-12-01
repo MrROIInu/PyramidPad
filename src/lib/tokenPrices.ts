@@ -10,32 +10,42 @@ export const TOKEN_PRICES: Record<string, number> = {
   'RXD': RXD_PRICE_USD
 };
 
-// Calculate token price
-export const calculateTokenPrice = (symbol: string): number => {
+// Calculate token price to achieve $20 market cap
+export const calculateTokenPrice = (symbol: string, totalSupply: number): number => {
   if (symbol === 'RXD') return RXD_PRICE_USD;
-  return RXD_PRICE_USD * RXD_FLOOR_PRICE;
+  
+  // Target market cap of $20
+  const TARGET_MARKET_CAP = 20;
+  
+  // Calculate price needed to achieve $20 market cap
+  return TARGET_MARKET_CAP / totalSupply;
 };
 
-// Calculate market cap
+// Calculate market cap using total supply
 export const calculateMarketCap = (symbol: string, totalSupply: number): number => {
-  const price = calculateTokenPrice(symbol);
-  return price * totalSupply;
+  const tokenPrice = TOKEN_PRICES[symbol] || calculateTokenPrice(symbol, totalSupply);
+  return tokenPrice * totalSupply;
 };
 
-// Format USD price with 9 decimals
+// Format USD price with up to 12 decimals
 export const formatPriceUSD = (price: number): string => {
-  if (!price || isNaN(price) || !isFinite(price)) return '$0.000000000';
-  return new Intl.NumberFormat('en-US', {
+  if (!price || isNaN(price) || !isFinite(price)) return '$0.000000000000';
+  
+  // Format with maximum precision
+  const formatted = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 9,
-    maximumFractionDigits: 9
+    minimumFractionDigits: 12,
+    maximumFractionDigits: 12
   }).format(price);
+
+  // Remove trailing zeros after decimal point
+  return formatted.replace(/\.?0+$/, '');
 };
 
-// Format market cap with appropriate suffix
+// Format market cap with appropriate suffix and 2 decimals
 export const formatMarketCap = (marketCap: number): string => {
-  if (!marketCap || isNaN(marketCap) || !isFinite(marketCap)) return '$0';
+  if (!marketCap || isNaN(marketCap) || !isFinite(marketCap)) return '$0.00';
   
   if (marketCap >= 1_000_000_000) {
     return `$${(marketCap / 1_000_000_000).toFixed(2)}B`;
@@ -55,10 +65,10 @@ export const updateRXDPrice = async () => {
       RXD_PRICE_USD = response.data.radiant.usd;
       TOKEN_PRICES['RXD'] = RXD_PRICE_USD;
       
-      // Update all token prices
-      Object.keys(TOKEN_PRICES).forEach(symbol => {
-        if (symbol !== 'RXD') {
-          TOKEN_PRICES[symbol] = RXD_PRICE_USD * RXD_FLOOR_PRICE;
+      // Update all token prices to maintain $20 market cap
+      TOKENS.forEach(token => {
+        if (token.symbol !== 'RXD') {
+          TOKEN_PRICES[token.symbol] = calculateTokenPrice(token.symbol, token.totalSupply);
         }
       });
     }
@@ -72,6 +82,6 @@ export const updateRXDPrice = async () => {
 // Initialize token prices
 export const initializeTokenPrices = (tokens: Token[]): void => {
   tokens.forEach(token => {
-    TOKEN_PRICES[token.symbol] = calculateTokenPrice(token.symbol);
+    TOKEN_PRICES[token.symbol] = calculateTokenPrice(token.symbol, token.totalSupply);
   });
 };

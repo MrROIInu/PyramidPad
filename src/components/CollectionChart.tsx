@@ -13,9 +13,8 @@ export const CollectionChart: React.FC = () => {
   const { updateSelectedToken } = useSwapContext();
   const { orders } = useOrders();
   const prices = useRealtimePrices();
-  const { priceHistory, priceChanges } = usePriceHistory();
+  const { priceChanges } = usePriceHistory();
 
-  // Show all tokens, sorted with RADCAT first
   const displayTokens = [...TOKENS]
     .filter(token => token.symbol !== 'RXD')
     .sort((a, b) => {
@@ -32,6 +31,12 @@ export const CollectionChart: React.FC = () => {
     ).length;
   };
 
+  const getPriceChangeClass = (change: number) => {
+    if (change > 0) return 'text-green-500';
+    if (change < 0) return 'text-red-500';
+    return 'text-yellow-600';
+  };
+
   const handleTokenClick = (symbol: string) => {
     const token = TOKENS.find(t => t.symbol === symbol);
     if (token) {
@@ -40,80 +45,71 @@ export const CollectionChart: React.FC = () => {
     }
   };
 
-  const calculateMarketCap = (symbol: string, totalSupply: number): number => {
-    const price = prices[symbol] || 0;
-    return price * totalSupply;
-  };
-
-  const getPriceChangeClass = (change: number) => {
-    if (change > 0) return 'text-green-500';
-    if (change < 0) return 'text-red-500';
-    return 'text-yellow-600';
-  };
-
   return (
-    <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-yellow-600 border-b border-yellow-600/20">
-              <th className="px-2 py-2 text-left">#</th>
-              <th className="px-2 py-2 text-left">Ticker</th>
-              <th className="px-2 py-2 text-left">Price (USD)</th>
-              <th className="px-2 py-2 text-left">Market Cap</th>
-              <th className="px-2 py-2 text-left">Last 7 Days</th>
-              <th className="px-2 py-2 text-left">Preminted</th>
-              <th className="px-2 py-2 text-left">Minted</th>
-              <th className="px-2 py-2 text-left">Open Orders</th>
-            </tr>
-          </thead>
-          <tbody className="text-sm">
-            {displayTokens.map((token, index) => {
-              const miningData = getMiningData(token.symbol);
-              const marketCap = calculateMarketCap(token.symbol, token.totalSupply);
-              const priceChange = priceChanges[token.symbol] || 0;
-              
-              return (
-                <tr 
-                  key={token.symbol} 
-                  className="border-b border-yellow-600/10 hover:bg-yellow-600/5 cursor-pointer"
-                  onClick={() => handleTokenClick(token.symbol)}
-                >
-                  <td className="px-2 py-2">{index + 1}</td>
-                  <td className="px-2 py-2">
-                    <div className="flex items-center gap-2">
-                      <img src={token.imageUrl} alt={token.symbol} className="w-6 h-6 rounded-full" />
-                      <span>{token.symbol}</span>
+    <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-yellow-600 border-b border-yellow-600/20">
+            <th className="px-4 py-3 text-left whitespace-nowrap">#</th>
+            <th className="px-4 py-3 text-left whitespace-nowrap">Ticker</th>
+            <th className="px-4 py-3 text-left whitespace-nowrap min-w-[200px]">Price (USD)</th>
+            <th className="px-4 py-3 text-left whitespace-nowrap min-w-[150px]">Market Cap</th>
+            <th className="px-4 py-3 text-left whitespace-nowrap">Last 7 Days</th>
+            <th className="px-4 py-3 text-left whitespace-nowrap">Preminted</th>
+            <th className="px-4 py-3 text-left whitespace-nowrap">Minted</th>
+            <th className="px-4 py-3 text-left whitespace-nowrap">Open Orders</th>
+          </tr>
+        </thead>
+        <tbody>
+          {displayTokens.map((token, index) => {
+            const miningData = getMiningData(token.symbol);
+            const marketCap = (prices[token.symbol] || 0) * token.totalSupply;
+            const priceChange = priceChanges[token.symbol] || 0;
+            
+            return (
+              <tr 
+                key={token.symbol}
+                onClick={() => handleTokenClick(token.symbol)}
+                className="border-b border-yellow-600/10 hover:bg-yellow-600/5 cursor-pointer"
+              >
+                <td className="px-4 py-3 whitespace-nowrap">{index + 1}</td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <img src={token.imageUrl} alt={token.symbol} className="w-6 h-6 rounded-full" />
+                    <span>{token.symbol}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap font-mono">
+                  {formatPriceUSD(prices[token.symbol] || 0)}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  {formatMarketCap(marketCap)}
+                </td>
+                <td className={`px-4 py-3 whitespace-nowrap ${getPriceChangeClass(priceChange)}`}>
+                  {priceChange > 0 ? '+' : ''}{priceChange.toFixed(2)}%
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">{miningData.preminted}%</td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-1.5 bg-black/30 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-yellow-600 to-amber-800"
+                        style={{ width: `${miningData.minted}%` }}
+                      />
                     </div>
-                  </td>
-                  <td className="px-2 py-2">{formatPriceUSD(prices[token.symbol])}</td>
-                  <td className="px-2 py-2">{formatMarketCap(marketCap)}</td>
-                  <td className={`px-2 py-2 ${getPriceChangeClass(priceChange)}`}>
-                    {priceChange > 0 ? '+' : ''}{priceChange.toFixed(2)}%
-                  </td>
-                  <td className="px-2 py-2">{miningData.preminted}%</td>
-                  <td className="px-2 py-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-1.5 bg-black/30 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-yellow-600 to-amber-800"
-                          style={{ width: `${miningData.minted}%` }}
-                        />
-                      </div>
-                      <span className="text-xs">{miningData.minted}%</span>
-                    </div>
-                  </td>
-                  <td className="px-2 py-2">
-                    <span className={getOpenOrderCount(token.symbol) > 0 ? 'text-green-500' : ''}>
-                      {getOpenOrderCount(token.symbol)}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                    <span className="text-xs">{miningData.minted}%</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <span className={getOpenOrderCount(token.symbol) > 0 ? 'text-green-500' : ''}>
+                    {getOpenOrderCount(token.symbol)}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 };

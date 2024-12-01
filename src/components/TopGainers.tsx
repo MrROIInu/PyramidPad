@@ -2,8 +2,8 @@ import React from 'react';
 import { TrendingUp } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
 import { formatPriceUSD } from '../lib/tokenPrices';
-import { useRealtimePrices } from '../hooks/useRealtimePrices';
 import { useSwapContext } from '../contexts/SwapContext';
+import { useRealtimePrices } from '../hooks/useRealtimePrices';
 
 export const TopGainers: React.FC = () => {
   const { updateSelectedToken } = useSwapContext();
@@ -13,8 +13,8 @@ export const TopGainers: React.FC = () => {
   const topTokens = [...TOKENS]
     .filter(token => token.symbol !== 'RXD')
     .sort((a, b) => {
-      const marketCapA = prices[a.symbol] * a.totalSupply;
-      const marketCapB = prices[b.symbol] * b.totalSupply;
+      const marketCapA = (prices[a.symbol] || 0) * a.totalSupply;
+      const marketCapB = (prices[b.symbol] || 0) * b.totalSupply;
       return marketCapB - marketCapA;
     })
     .slice(0, 3);
@@ -38,12 +38,12 @@ export const TopGainers: React.FC = () => {
             onClick={() => handleTokenClick(token)}
           >
             <div className="flex items-center gap-2">
-              <span className="text-yellow-600/80">#{index + 1}</span>
+              <span className="text-yellow-600/80 w-6">{index + 1}</span>
               <img src={token.imageUrl} alt={token.symbol} className="w-6 h-6 rounded-full" />
-              <span>{token.symbol}</span>
+              <span className="w-20">{token.symbol}</span>
             </div>
-            <span className="text-green-500">
-              {formatPriceUSD(prices[token.symbol])}
+            <span className="text-green-500 font-mono whitespace-nowrap">
+              {formatPriceUSD(prices[token.symbol] || 0)}
             </span>
           </div>
         ))}
