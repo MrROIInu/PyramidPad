@@ -60,4 +60,3 @@ export const MINING_DATA: Record<string, MiningData> = {
 
 export const getMiningData = (symbol: string): MiningData => {
 return MINING_DATA[symbol] || { preminted: 0, minted: 0, difficulty: 1 };
-};
