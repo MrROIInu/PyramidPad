@@ -11,10 +11,8 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION update_price_history()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF NEW.price_usd != OLD.price_usd THEN
-    INSERT INTO price_history (token_symbol, price_usd)
-    VALUES (NEW.symbol, NEW.price_usd);
-  END IF;
+  INSERT INTO price_history (token_symbol, price_usd)
+  VALUES (NEW.symbol, NEW.price_usd);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -25,6 +23,8 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
+DECLARE
+  trigger_exists boolean;
 BEGIN
   -- Create tokens table
   CREATE TABLE IF NOT EXISTS public.tokens (
@@ -76,30 +76,49 @@ BEGIN
   );
 
   -- Add triggers
-  DROP TRIGGER IF EXISTS handle_updated_at_tokens ON public.tokens;
-  CREATE TRIGGER handle_updated_at_tokens
-    BEFORE UPDATE ON public.tokens
-    FOR EACH ROW
-    EXECUTE FUNCTION handle_updated_at();
+  SELECT EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgname = 'handle_updated_at_tokens'
+  ) INTO trigger_exists;
+  
+  IF NOT trigger_exists THEN
+    CREATE TRIGGER handle_updated_at_tokens
+      BEFORE UPDATE ON public.tokens
+      FOR EACH ROW
+      EXECUTE FUNCTION handle_updated_at();
+  END IF;
 
-  DROP TRIGGER IF EXISTS handle_updated_at_orders ON public.orders;
-  CREATE TRIGGER handle_updated_at_orders
-    BEFORE UPDATE ON public.orders
-    FOR EACH ROW
-    EXECUTE FUNCTION handle_updated_at();
+  SELECT EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgname = 'handle_updated_at_orders'
+  ) INTO trigger_exists;
+  
+  IF NOT trigger_exists THEN
+    CREATE TRIGGER handle_updated_at_orders
+      BEFORE UPDATE ON public.orders
+      FOR EACH ROW
+      EXECUTE FUNCTION handle_updated_at();
+  END IF;
 
-  DROP TRIGGER IF EXISTS handle_updated_at_wallet_addresses ON public.wallet_addresses;
-  CREATE TRIGGER handle_updated_at_wallet_addresses
-    BEFORE UPDATE ON public.wallet_addresses
-    FOR EACH ROW
-    EXECUTE FUNCTION handle_updated_at();
+  SELECT EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgname = 'handle_updated_at_wallet_addresses'
+  ) INTO trigger_exists;
+  
+  IF NOT trigger_exists THEN
+    CREATE TRIGGER handle_updated_at_wallet_addresses
+      BEFORE UPDATE ON public.wallet_addresses
+      FOR EACH ROW
+      EXECUTE FUNCTION handle_updated_at();
+  END IF;
 
-  DROP TRIGGER IF EXISTS handle_price_history ON public.tokens;
-  CREATE TRIGGER handle_price_history
-    AFTER UPDATE ON public.tokens
-    FOR EACH ROW
-    WHEN (NEW.price_usd IS DISTINCT FROM OLD.price_usd)
-    EXECUTE FUNCTION update_price_history();
+  SELECT EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgname = 'handle_price_history'
+  ) INTO trigger_exists;
+  
+  IF NOT trigger_exists THEN
+    CREATE TRIGGER handle_price_history
+      AFTER UPDATE ON public.tokens
+      FOR EACH ROW
+      EXECUTE FUNCTION update_price_history();
+  END IF;
 
   -- Enable RLS
   ALTER TABLE public.tokens ENABLE ROW LEVEL SECURITY;
