@@ -9,13 +9,18 @@ export const GlyphSwapLogo: React.FC = () => {
           alt="GlyphSwap Logo"
           className="h-16 w-16 object-contain"
         />
-        <div className="flex items-center font-red-hat text-white ml-4">
-          <span className="text-3xl font-bold">
-            Glyph
-          </span>
-          <span className="text-3xl font-normal italic">
-            Swap
-          </span>
+        <div className="flex flex-col ml-4">
+          <div className="flex items-center font-red-hat text-white">
+            <span className="text-3xl font-bold">
+              Glyph
+            </span>
+            <span className="text-3xl font-normal italic">
+              Swap
+            </span>
+          </div>
+          <p className="text-sm text-yellow-600/80 mt-1">
+            Radiant RXD20 Glyph token P2P swaps on chain
+          </p>
         </div>
       </div>
     </div>
