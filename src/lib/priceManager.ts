@@ -38,7 +38,7 @@ export async function updateTokenPriceAfterClaim(order: Order) {
     if (updates.length > 0) {
       const { error } = await supabase
         .from('tokens')
-        .upsert(updates, { onConflict: 'symbol' });
+        .upsert(updates);
 
       if (error) throw error;
     }
