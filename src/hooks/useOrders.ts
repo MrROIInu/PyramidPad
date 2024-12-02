@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { updateTokenPriceAfterClaim } from '../lib/priceManager';
 import { Order } from '../types';
 
 export const useOrders = () => {
@@ -30,12 +31,35 @@ export const useOrders = () => {
   const onClaim = useCallback(async (id: number) => {
     try {
       setError(null);
+      
+      // Get order before updating
+      const { data: order, error: getError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (getError) throw getError;
+
+      // Prevent claiming own orders
+      if (order && order.wallet_address === localStorage.getItem('walletAddress')) {
+        setError('You cannot claim your own orders');
+        return;
+      }
+
+      // Update order status
       const { error: updateError } = await supabase
         .from('orders')
         .update({ claimed: true })
         .eq('id', id);
 
       if (updateError) throw updateError;
+
+      // Update token prices
+      if (order) {
+        await updateTokenPriceAfterClaim(order);
+      }
+
       await fetchOrders();
     } catch (err) {
       console.warn('Error claiming order:', err);

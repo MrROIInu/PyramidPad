@@ -8,11 +8,11 @@ export async function updateTokenPriceAfterClaim(order: Order) {
   try {
     const { from_token, to_token, from_amount, to_amount } = order;
     
-    // Calculate price impact
+    // Calculate price impact based on order size
     const fromTokenImpact = (from_amount / to_amount) * PRICE_IMPACT_FACTOR;
     const toTokenImpact = (to_amount / from_amount) * PRICE_IMPACT_FACTOR;
 
-    // Update prices
+    // Update prices in memory
     if (from_token !== 'RXD') {
       TOKEN_PRICES[from_token] *= (1 - fromTokenImpact);
     }
@@ -43,9 +43,9 @@ export async function updateTokenPriceAfterClaim(order: Order) {
       if (error) throw error;
     }
 
-    return TOKEN_PRICES;
+    return { ...TOKEN_PRICES };
   } catch (error) {
-    console.error('Error updating token prices:', error);
-    return TOKEN_PRICES;
+    console.warn('Error updating token prices:', error);
+    return { ...TOKEN_PRICES };
   }
 }

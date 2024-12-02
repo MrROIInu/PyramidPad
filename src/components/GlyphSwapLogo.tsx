@@ -19,7 +19,7 @@ export const GlyphSwapLogo: React.FC = () => {
             </span>
           </div>
           <p className="text-sm text-yellow-600/80 mt-1">
-            Radiant RXD20 Glyph token P2P swaps on chain utilizing Photonic Wallet
+            Radiant RXD20 Glyph token P2P swaps on chain
           </p>
         </div>
       </div>
