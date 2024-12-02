@@ -13,6 +13,7 @@ interface TokenAmountInputProps {
   usdValue: string;
   disabled?: boolean;
   readOnly?: boolean;
+  baseAmount?: string;
   showSlider?: boolean;
 }
 
@@ -23,6 +24,7 @@ export const TokenAmountInput: React.FC<TokenAmountInputProps> = ({
   usdValue,
   disabled = false,
   readOnly = false,
+  baseAmount,
   showSlider = false
 }) => {
   const currentValue = parseInt(amount) || 0;
@@ -114,6 +116,11 @@ export const TokenAmountInput: React.FC<TokenAmountInputProps> = ({
       )}
       <div className="text-sm text-yellow-600/80 px-2">
         ≈ {usdValue}
+        {baseAmount && (
+          <span className="ml-2">
+            ({parseInt(amount) / parseInt(baseAmount)}:1)
+          </span>
+        )}
       </div>
     </div>
   );

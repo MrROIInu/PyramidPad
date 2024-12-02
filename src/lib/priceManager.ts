@@ -8,11 +8,11 @@ export async function updateTokenPriceAfterClaim(order: Order) {
   try {
     const { from_token, to_token, from_amount, to_amount } = order;
     
-    // Calculate price impact based on order size
+    // Calculate price impact
     const fromTokenImpact = (from_amount / to_amount) * PRICE_IMPACT_FACTOR;
     const toTokenImpact = (to_amount / from_amount) * PRICE_IMPACT_FACTOR;
 
-    // Update prices in memory
+    // Update prices
     if (from_token !== 'RXD') {
       TOKEN_PRICES[from_token] *= (1 - fromTokenImpact);
     }
@@ -38,14 +38,14 @@ export async function updateTokenPriceAfterClaim(order: Order) {
     if (updates.length > 0) {
       const { error } = await supabase
         .from('tokens')
-        .upsert(updates);
+        .upsert(updates, { onConflict: 'symbol' });
 
       if (error) throw error;
     }
 
-    return { ...TOKEN_PRICES };
+    return TOKEN_PRICES;
   } catch (error) {
-    console.warn('Error updating token prices:', error);
-    return { ...TOKEN_PRICES };
+    console.error('Error updating token prices:', error);
+    return TOKEN_PRICES;
   }
 }

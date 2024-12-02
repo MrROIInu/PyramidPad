@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { TOKENS } from '../data/tokens';
 
 const SWAP_REGEX = /🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([^\s🟦]+)/;
@@ -11,7 +11,7 @@ interface TransactionData {
   transactionId: string;
 }
 
-export const useTransactionImport = (onImport: (data: TransactionData) => void) => {
+export const useTransactionImport = (callback: (data: TransactionData) => void) => {
   const parseTransaction = useCallback((text: string): TransactionData | null => {
     const match = text.match(SWAP_REGEX);
     if (!match) return null;
@@ -24,17 +24,49 @@ export const useTransactionImport = (onImport: (data: TransactionData) => void) 
     
     if (!isToken1Valid || !isToken2Valid) return null;
 
-    const data = {
+    return {
       fromAmount: amount1,
       fromToken: token1,
       toAmount: amount2,
       toToken: token2,
       transactionId: tx
     };
+  }, []);
 
-    onImport(data);
-    return data;
-  }, [onImport]);
+  const handleClipboardChange = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const data = parseTransaction(text);
+      if (data) {
+        callback(data);
+      }
+    } catch (error) {
+      // Ignore clipboard read errors
+    }
+  }, [callback, parseTransaction]);
+
+  const handlePaste = useCallback((e: ClipboardEvent) => {
+    const text = e.clipboardData?.getData('text');
+    if (text) {
+      const data = parseTransaction(text);
+      if (data) {
+        callback(data);
+      }
+    }
+  }, [callback, parseTransaction]);
+
+  useEffect(() => {
+    const pasteHandler = (e: ClipboardEvent) => handlePaste(e);
+    document.addEventListener('paste', pasteHandler);
+    
+    // Poll clipboard for changes
+    const interval = setInterval(handleClipboardChange, 1000);
+
+    return () => {
+      document.removeEventListener('paste', pasteHandler);
+      clearInterval(interval);
+    };
+  }, [handlePaste, handleClipboardChange]);
 
   return { parseTransaction };
 };

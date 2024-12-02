@@ -1,47 +1,21 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { TOKENS } from '../data/tokens';
-import { useRXDPrice } from './useRXDPrice';
+import { updateRXDPrice, TOKEN_PRICES } from '../lib/tokenPrices';
 
 export const useTokenPrices = () => {
-  const rxdPrice = useRXDPrice();
-  const [tokenPrices, setTokenPrices] = useState<Record<string, number>>({});
+  const [prices, setPrices] = useState(TOKEN_PRICES);
 
   useEffect(() => {
-    // Initialize token prices with $20 market cap
-    const prices: Record<string, number> = {
-      RXD: rxdPrice
+    const fetchPrices = async () => {
+      const newPrices = await updateRXDPrice();
+      setPrices(newPrices);
     };
 
-    TOKENS.forEach(token => {
-      if (token.symbol !== 'RXD') {
-        // Calculate price for $20 market cap
-        prices[token.symbol] = 20 / token.totalSupply;
-      }
-    });
+    // Update prices every 5 minutes
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 5 * 60 * 1000);
 
-    setTokenPrices(prices);
+    return () => clearInterval(interval);
+  }, []);
 
-    // Subscribe to price updates
-    const subscription = supabase
-      .channel('token-prices')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'tokens' },
-        (payload) => {
-          if (payload.new?.symbol && payload.new?.price_usd) {
-            setTokenPrices(prev => ({
-              ...prev,
-              [payload.new.symbol]: payload.new.price_usd
-            }));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [rxdPrice]);
-
-  return tokenPrices;
+  return prices;
 };
