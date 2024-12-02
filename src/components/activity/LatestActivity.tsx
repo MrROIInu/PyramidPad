@@ -16,45 +16,38 @@ interface ActivityItem {
 }
 
 export const LatestActivity: React.FC = () => {
-  const [latestActivity, setLatestActivity] = useState<ActivityItem | null>(null);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [flash, setFlash] = useState(false);
 
-  // Fetch initial activity
+  // Fetch initial activities
   useEffect(() => {
-    const fetchLatestActivity = async () => {
+    const fetchLatestActivities = async () => {
       const { data, error } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(3);
 
       if (error) {
-        console.warn('Error fetching latest activity:', error);
+        console.warn('Error fetching latest activities:', error);
         return;
       }
 
       if (data) {
-        const fromToken = data.from_token === 'RXD' ? RXD_TOKEN : 
-          TOKENS.find(t => t.symbol === data.from_token);
-        const toToken = data.to_token === 'RXD' ? RXD_TOKEN : 
-          TOKENS.find(t => t.symbol === data.to_token);
-
-        if (!fromToken || !toToken) return;
-
-        setLatestActivity({
-          id: `${data.id}-initial`,
-          type: data.claimed ? 'claim' : 'new_order',
-          fromToken: data.from_token,
-          toToken: data.to_token,
-          fromAmount: data.from_amount,
-          toAmount: data.to_amount,
-          timestamp: data.created_at
-        });
+        const newActivities = data.map(item => ({
+          id: `${item.id}-initial`,
+          type: item.claimed ? 'claim' : 'new_order',
+          fromToken: item.from_token,
+          toToken: item.to_token,
+          fromAmount: item.from_amount,
+          toAmount: item.to_amount,
+          timestamp: item.created_at
+        }));
+        setActivities(newActivities);
       }
     };
 
-    fetchLatestActivity();
+    fetchLatestActivities();
   }, []);
 
   // Subscribe to real-time updates
@@ -74,7 +67,7 @@ export const LatestActivity: React.FC = () => {
             timestamp: new Date().toISOString()
           };
 
-          setLatestActivity(newActivity);
+          setActivities(prev => [newActivity, ...prev.slice(0, 2)]);
           
           // Start flash animation
           setFlash(true);
@@ -97,54 +90,58 @@ export const LatestActivity: React.FC = () => {
     <motion.div 
       className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm"
       animate={flash ? {
-        backgroundColor: ['rgba(202, 138, 4, 0.3)', 'rgba(202, 138, 4, 0)'],
+        backgroundColor: ['rgba(255, 215, 0, 0.5)', 'rgba(202, 138, 4, 0.3)'],
       } : {}}
-      transition={{ duration: 0.5, repeat: 5, repeatType: 'reverse' }}
+      transition={{ duration: 0.3, repeat: 5, repeatType: 'reverse' }}
     >
       <div className="flex items-center gap-2 mb-4">
         <Activity className="text-yellow-600" />
         <h3 className="text-lg font-semibold text-yellow-600">Latest Activity</h3>
       </div>
-      <AnimatePresence mode="wait">
-        {latestActivity ? (
-          <motion.div 
-            key={latestActivity.id}
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="flex items-center gap-2"
-          >
-            <div className="flex items-center gap-2">
-              <img 
-                src={getTokenImage(latestActivity.fromToken)}
-                alt={latestActivity.fromToken}
-                className="w-6 h-6 rounded-full"
-              />
-              <span>{latestActivity.fromAmount} {latestActivity.fromToken}</span>
-            </div>
-            <span className="text-yellow-600">➔</span>
-            <div className="flex items-center gap-2">
-              <img 
-                src={getTokenImage(latestActivity.toToken)}
-                alt={latestActivity.toToken}
-                className="w-6 h-6 rounded-full"
-              />
-              <span>{latestActivity.toAmount} {latestActivity.toToken}</span>
-            </div>
-            <span className={`ml-auto ${latestActivity.type === 'new_order' ? 'text-green-500' : 'text-yellow-600'}`}>
-              {latestActivity.type === 'new_order' ? '🔄 New Order' : '✅ Claimed'}
-            </span>
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-yellow-600/80"
-          >
-            Loading latest activity...
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="space-y-3">
+        <AnimatePresence mode="sync">
+          {activities.length > 0 ? (
+            activities.map((activity) => (
+              <motion.div 
+                key={activity.id}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="flex items-center gap-2 bg-black/20 rounded-lg p-2"
+              >
+                <div className="flex items-center gap-2">
+                  <img 
+                    src={getTokenImage(activity.fromToken)}
+                    alt={activity.fromToken}
+                    className="w-6 h-6 rounded-full"
+                  />
+                  <span>{activity.fromAmount} {activity.fromToken}</span>
+                </div>
+                <span className="text-yellow-600">➔</span>
+                <div className="flex items-center gap-2">
+                  <img 
+                    src={getTokenImage(activity.toToken)}
+                    alt={activity.toToken}
+                    className="w-6 h-6 rounded-full"
+                  />
+                  <span>{activity.toAmount} {activity.toToken}</span>
+                </div>
+                <span className={`ml-auto ${activity.type === 'new_order' ? 'text-green-500' : 'text-yellow-600'}`}>
+                  {activity.type === 'new_order' ? '🔄 New' : '✅ Claimed'}
+                </span>
+              </motion.div>
+            ))
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-yellow-600/80 text-center"
+            >
+              Waiting for activity...
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </motion.div>
   );
 };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TOKENS } from '../data/tokens';
 import { formatPriceUSD, formatMarketCap } from '../lib/tokenPrices';
@@ -14,6 +14,7 @@ export const CollectionChart: React.FC = () => {
   const { orders } = useOrders();
   const prices = useRealtimePrices();
   const { priceChanges } = usePriceHistory();
+  const [timeframe, setTimeframe] = useState<'1d' | '7d'>('7d');
 
   const displayTokens = [...TOKENS]
     .filter(token => token.symbol !== 'RXD')
@@ -47,6 +48,32 @@ export const CollectionChart: React.FC = () => {
 
   return (
     <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm overflow-x-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold text-yellow-600">RXD20 Token Chart</h2>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setTimeframe('1d')}
+            className={`px-3 py-1 rounded-lg transition-colors ${
+              timeframe === '1d'
+                ? 'bg-yellow-600 text-white'
+                : 'text-yellow-600 hover:bg-yellow-600/10'
+            }`}
+          >
+            1D
+          </button>
+          <button
+            onClick={() => setTimeframe('7d')}
+            className={`px-3 py-1 rounded-lg transition-colors ${
+              timeframe === '7d'
+                ? 'bg-yellow-600 text-white'
+                : 'text-yellow-600 hover:bg-yellow-600/10'
+            }`}
+          >
+            7D
+          </button>
+        </div>
+      </div>
+
       <table className="w-full text-sm">
         <thead>
           <tr className="text-yellow-600 border-b border-yellow-600/20">
@@ -54,7 +81,7 @@ export const CollectionChart: React.FC = () => {
             <th className="px-4 py-3 text-left whitespace-nowrap">Ticker</th>
             <th className="px-4 py-3 text-left whitespace-nowrap min-w-[200px]">Price (USD)</th>
             <th className="px-4 py-3 text-left whitespace-nowrap min-w-[150px]">Market Cap</th>
-            <th className="px-4 py-3 text-left whitespace-nowrap">Last 7 Days</th>
+            <th className="px-4 py-3 text-left whitespace-nowrap">Last {timeframe === '1d' ? '24h' : '7 Days'}</th>
             <th className="px-4 py-3 text-left whitespace-nowrap">Preminted</th>
             <th className="px-4 py-3 text-left whitespace-nowrap">Minted</th>
             <th className="px-4 py-3 text-left whitespace-nowrap">Open Orders</th>
