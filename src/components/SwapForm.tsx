@@ -11,6 +11,7 @@ import { WalletAddressInput } from './wallet/WalletAddressInput';
 import { TokenAmountInput } from './TokenAmountInput';
 import { useTransactionImport } from '../hooks/useTransactionImport';
 import { useMarketPrice } from '../hooks/useMarketPrice';
+import { useRealtimePrices } from '../hooks/useRealtimePrices';
 
 interface SwapFormProps {
   onOrderCreated: () => Promise<void>;
@@ -18,6 +19,8 @@ interface SwapFormProps {
 
 export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
   const { selectedToken: contextSelectedToken } = useSwapContext();
+  const prices = useRealtimePrices();
+  
   const {
     walletAddress,
     isWalletChecked,
@@ -45,6 +48,13 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     transactionId,
     importedTx
   } = formState;
+
+  // Calculate USD values
+  const calculateUSDValue = useCallback((amount: string, symbol: string) => {
+    const numAmount = parseFloat(amount) || 0;
+    const price = prices[symbol] || 0;
+    return formatPriceUSD(numAmount * price);
+  }, [prices]);
 
   // Handle transaction import
   const handleTransactionImport = useCallback((data: any) => {
@@ -84,22 +94,6 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
       });
     }
   }, [contextSelectedToken, selectedToken.symbol, rxdAmount, tokenAmount]);
-
-  // Handle RXD amount change
-  const handleRxdAmountChange = useCallback((value: string) => {
-    updateFormState({ 
-      rxdAmount: value,
-      tokenAmount: value ? (parseInt(value) * 1000).toString() : ''
-    });
-  }, [updateFormState]);
-
-  // Handle token amount change
-  const handleTokenAmountChange = useCallback((value: string) => {
-    updateFormState({ 
-      tokenAmount: value,
-      rxdAmount: value ? Math.ceil(parseInt(value) / 1000).toString() : ''
-    });
-  }, [updateFormState]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,10 +148,12 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
             <TokenAmountInput
               amount={isRxdToToken ? rxdAmount : tokenAmount}
               token={isRxdToToken ? RXD_TOKEN : selectedToken}
-              onChange={isRxdToToken ? handleRxdAmountChange : handleTokenAmountChange}
-              usdValue={formatPriceUSD(
-                parseFloat(isRxdToToken ? rxdAmount : tokenAmount) * 
-                (isRxdToToken ? 0.000894 : 0.000894 * 0.001)
+              onChange={(value) => updateFormState(
+                isRxdToToken ? { rxdAmount: value } : { tokenAmount: value }
+              )}
+              usdValue={calculateUSDValue(
+                isRxdToToken ? rxdAmount : tokenAmount,
+                isRxdToToken ? 'RXD' : selectedToken.symbol
               )}
               showSlider={true}
             />
@@ -168,10 +164,12 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
             <TokenAmountInput
               amount={isRxdToToken ? tokenAmount : rxdAmount}
               token={isRxdToToken ? selectedToken : RXD_TOKEN}
-              onChange={isRxdToToken ? handleTokenAmountChange : handleRxdAmountChange}
-              usdValue={formatPriceUSD(
-                parseFloat(isRxdToToken ? tokenAmount : rxdAmount) * 
-                (isRxdToToken ? 0.000894 * 0.001 : 0.000894)
+              onChange={(value) => updateFormState(
+                isRxdToToken ? { tokenAmount: value } : { rxdAmount: value }
+              )}
+              usdValue={calculateUSDValue(
+                isRxdToToken ? tokenAmount : rxdAmount,
+                isRxdToToken ? selectedToken.symbol : 'RXD'
               )}
               showSlider={true}
             />
