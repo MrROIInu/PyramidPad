@@ -6,7 +6,7 @@ import { Navigation } from './components/Navigation';
 import { GlyphSwapLogo } from './components/GlyphSwapLogo';
 import { LatestOrders } from './pages/LatestOrders';
 import { MyOrders } from './pages/MyOrders';
-import { ActivityFeed } from './components/activity/ActivityFeed';
+import { LatestActivity } from './components/activity/LatestActivity';
 import { TopGainers } from './components/TopGainers';
 import { CollectionChart } from './components/CollectionChart';
 import { SwapProvider } from './contexts/SwapContext';
@@ -45,7 +45,7 @@ const App: React.FC = () => {
                 <div className="container mx-auto px-4">
                   <GlyphSwapLogo />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                    <ActivityFeed />
+                    <LatestActivity />
                     <TopGainers />
                   </div>
                   <OrderBookSwap />

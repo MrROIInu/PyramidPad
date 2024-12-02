@@ -25,20 +25,25 @@ export async function updateTokenPriceAfterClaim(order: Order) {
     if (from_token !== 'RXD') {
       updates.push({
         symbol: from_token,
-        price_usd: TOKEN_PRICES[from_token]
+        price_usd: TOKEN_PRICES[from_token],
+        last_updated: new Date().toISOString()
       });
     }
     if (to_token !== 'RXD') {
       updates.push({
         symbol: to_token,
-        price_usd: TOKEN_PRICES[to_token]
+        price_usd: TOKEN_PRICES[to_token],
+        last_updated: new Date().toISOString()
       });
     }
 
     if (updates.length > 0) {
       const { error } = await supabase
         .from('tokens')
-        .upsert(updates);
+        .upsert(updates, {
+          onConflict: 'symbol',
+          ignoreDuplicates: false
+        });
 
       if (error) throw error;
     }

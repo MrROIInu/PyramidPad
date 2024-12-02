@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Copy, Loader2 } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
@@ -35,7 +35,7 @@ export const OrderList: React.FC<OrderListProps> = ({
     copyFeeWallet
   } = useWalletManager(false);
 
-  const [cancelledOrders, setCancelledOrders] = React.useState<Record<number, boolean>>({});
+  const [cancelledOrders, setCancelledOrders] = useState<Record<number, boolean>>({});
 
   const handleCancel = async (id: number) => {
     await onCancel(id);
@@ -45,6 +45,23 @@ export const OrderList: React.FC<OrderListProps> = ({
   const handleCopy = async (text: string) => {
     await navigator.clipboard.writeText(text);
     alert('TX copied to clipboard. Claim order when you have made swap in Photonic Wallet.');
+  };
+
+  const calculatePriceDeviation = (order: Order) => {
+    // Get market prices
+    const fromPrice = TOKEN_PRICES[order.from_token] || 0;
+    const toPrice = TOKEN_PRICES[order.to_token] || 0;
+    
+    if (fromPrice === 0 || toPrice === 0) return 0;
+
+    // Calculate order rate (how many to_tokens per from_token)
+    const orderRate = order.to_amount / order.from_amount;
+    
+    // Calculate market rate (how many to_tokens per from_token at current prices)
+    const marketRate = fromPrice / toPrice;
+    
+    // Calculate deviation percentage
+    return ((orderRate / marketRate) - 1) * 100;
   };
 
   if (loading) {
@@ -97,10 +114,7 @@ export const OrderList: React.FC<OrderListProps> = ({
 
           if (!fromToken || !toToken) return null;
 
-          const orderPrice = order.to_amount / order.from_amount;
-          const floorPrice = TOKEN_PRICES[order.to_token];
-          const priceDeviation = ((orderPrice - floorPrice) / floorPrice) * 100;
-
+          const priceDeviation = calculatePriceDeviation(order);
           const canCancel = showCancelButton && order.wallet_address === (userWalletAddress || walletAddress);
           const canClaim = isWalletValid || (userWalletAddress && userWalletAddress === order.wallet_address);
           const isCancelled = cancelledOrders[order.id];
@@ -161,6 +175,12 @@ export const OrderList: React.FC<OrderListProps> = ({
                 </div>
               </div>
 
+              {Math.abs(priceDeviation) > 0 && (
+                <div className={`text-center mb-4 ${Math.abs(priceDeviation) >= 10 ? 'text-red-500 font-bold' : 'text-yellow-600'}`}>
+                  Trading {priceDeviation > 0 ? 'above' : 'below'} market price by {Math.abs(priceDeviation).toFixed(2)}%
+                </div>
+              )}
+
               {canClaim && !isCancelled && (
                 <div className="relative">
                   <p className="text-yellow-600 mb-2">Copy TX to Photonic Wallet. Claim after P2PSwap is done.</p>
@@ -173,11 +193,6 @@ export const OrderList: React.FC<OrderListProps> = ({
                       <Copy size={20} />
                     </button>
                   </div>
-                  {Math.abs(priceDeviation) >= 10 && (
-                    <div className="mt-2 text-red-500 font-bold">
-                      Warning: Price is {priceDeviation.toFixed(2)}% {priceDeviation > 0 ? 'above' : 'below'} floor price
-                    </div>
-                  )}
                 </div>
               )}
             </div>
