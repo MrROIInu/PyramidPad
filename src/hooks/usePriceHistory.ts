@@ -16,54 +16,67 @@ export const usePriceHistory = () => {
   const [priceChanges, setPriceChanges] = useState<PriceChanges>({});
 
   useEffect(() => {
-    // Initialize price history for all tokens
-    const initialHistory: PriceHistory = {};
-    TOKENS.forEach(token => {
-      initialHistory[token.symbol] = [TOKEN_PRICES[token.symbol]];
-    });
-    setPriceHistory(initialHistory);
+    // Initialize price history
+    const fetchInitialPrices = async () => {
+      const { data, error } = await supabase
+        .from('token_price_history')
+        .select('*')
+        .order('timestamp', { ascending: true });
 
-    // Subscribe to order updates
+      if (!error && data) {
+        const history: PriceHistory = {};
+        const changes: PriceChanges = {};
+
+        TOKENS.forEach(token => {
+          const tokenPrices = data
+            .filter(p => p.symbol === token.symbol)
+            .map(p => p.price_usd);
+
+          history[token.symbol] = tokenPrices;
+
+          // Calculate price change
+          if (tokenPrices.length >= 2) {
+            const oldPrice = tokenPrices[0];
+            const newPrice = tokenPrices[tokenPrices.length - 1];
+            changes[token.symbol] = ((newPrice - oldPrice) / oldPrice) * 100;
+          } else {
+            changes[token.symbol] = 0;
+          }
+        });
+
+        setPriceHistory(history);
+        setPriceChanges(changes);
+      }
+    };
+
+    fetchInitialPrices();
+
+    // Subscribe to price updates
     const subscription = supabase
-      .channel('orders-channel')
+      .channel('token-prices')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'orders' },
+        { event: '*', schema: 'public', table: 'tokens' },
         (payload) => {
-          if (payload.eventType === 'UPDATE' && payload.new.claimed) {
-            const { from_token, to_token, from_amount, to_amount } = payload.new;
-            
+          if (payload.new?.symbol && payload.new?.price_usd) {
+            const symbol = payload.new.symbol;
+            const newPrice = payload.new.price_usd;
+
             setPriceHistory(prev => {
-              const newHistory = { ...prev };
-              
-              // Update price history
-              if (from_token !== 'RXD') {
-                const prices = [...(prev[from_token] || [])];
-                prices.push(TOKEN_PRICES[from_token]);
-                newHistory[from_token] = prices.slice(-168); // Keep last 7 days (24 * 7)
-              }
-              
-              if (to_token !== 'RXD') {
-                const prices = [...(prev[to_token] || [])];
-                prices.push(TOKEN_PRICES[to_token]);
-                newHistory[to_token] = prices.slice(-168);
-              }
-              
-              return newHistory;
+              const prices = [...(prev[symbol] || []), newPrice];
+              return {
+                ...prev,
+                [symbol]: prices.slice(-168) // Keep last 7 days worth of data points
+              };
             });
 
-            // Calculate 7-day price changes
             setPriceChanges(prev => {
-              const newChanges = { ...prev };
-              
-              Object.entries(priceHistory).forEach(([symbol, prices]) => {
-                if (prices.length >= 2) {
-                  const oldPrice = prices[0];
-                  const newPrice = prices[prices.length - 1];
-                  newChanges[symbol] = ((newPrice - oldPrice) / oldPrice) * 100;
-                }
-              });
-              
-              return newChanges;
+              const prices = priceHistory[symbol] || [];
+              if (prices.length > 0) {
+                const oldPrice = prices[0];
+                const change = ((newPrice - oldPrice) / oldPrice) * 100;
+                return { ...prev, [symbol]: change };
+              }
+              return prev;
             });
           }
         }

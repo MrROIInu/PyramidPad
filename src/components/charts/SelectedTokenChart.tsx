@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -31,17 +31,29 @@ export const SelectedTokenChart: React.FC = () => {
   const { selectedToken } = useSwapContext();
   const prices = useRealtimePrices();
   const { priceHistory } = usePriceHistory();
+  const [timeframe, setTimeframe] = useState<'1d' | '7d'>('7d');
 
   const chartData = React.useMemo(() => {
     const history = priceHistory[selectedToken.symbol] || [];
-    const timestamps = history.map((_, index) => {
+    const dataPoints = timeframe === '1d' ? 24 : 168; // 24 hours or 7 days
+    const relevantHistory = history.slice(-dataPoints);
+    
+    const timestamps = relevantHistory.map((_, index) => {
       const date = new Date();
-      date.setHours(date.getHours() - (history.length - index - 1));
-      return date.toLocaleString('en-US', {
-        hour: 'numeric',
-        minute: 'numeric',
-        hour12: true
-      });
+      if (timeframe === '1d') {
+        date.setHours(date.getHours() - (relevantHistory.length - index - 1));
+        return date.toLocaleString('en-US', {
+          hour: 'numeric',
+          minute: 'numeric',
+          hour12: true
+        });
+      } else {
+        date.setDate(date.getDate() - (relevantHistory.length - index - 1));
+        return date.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric'
+        });
+      }
     });
 
     return {
@@ -49,7 +61,7 @@ export const SelectedTokenChart: React.FC = () => {
       datasets: [
         {
           label: `${selectedToken.symbol} Price`,
-          data: history,
+          data: relevantHistory,
           borderColor: '#CA8A04',
           backgroundColor: 'rgba(202, 138, 4, 0.1)',
           fill: true,
@@ -59,7 +71,7 @@ export const SelectedTokenChart: React.FC = () => {
         }
       ]
     };
-  }, [selectedToken.symbol, priceHistory]);
+  }, [selectedToken.symbol, priceHistory, timeframe]);
 
   const options = {
     responsive: true,
@@ -113,15 +125,39 @@ export const SelectedTokenChart: React.FC = () => {
 
   return (
     <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
-      <div className="flex items-center gap-4 mb-6">
-        <img 
-          src={selectedToken.imageUrl} 
-          alt={selectedToken.symbol} 
-          className="w-8 h-8 rounded-full"
-        />
-        <div>
-          <h3 className="text-lg font-semibold">{selectedToken.symbol} Price Chart</h3>
-          <p className="text-yellow-600">Current Price: {formatPriceUSD(prices[selectedToken.symbol])}</p>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <img 
+            src={selectedToken.imageUrl} 
+            alt={selectedToken.symbol} 
+            className="w-8 h-8 rounded-full"
+          />
+          <div>
+            <h3 className="text-lg font-semibold">{selectedToken.symbol} Price Chart</h3>
+            <p className="text-yellow-600">Current Price: {formatPriceUSD(prices[selectedToken.symbol])}</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setTimeframe('1d')}
+            className={`px-3 py-1 rounded-lg transition-colors ${
+              timeframe === '1d'
+                ? 'bg-yellow-600 text-white'
+                : 'text-yellow-600 hover:bg-yellow-600/10'
+            }`}
+          >
+            1D
+          </button>
+          <button
+            onClick={() => setTimeframe('7d')}
+            className={`px-3 py-1 rounded-lg transition-colors ${
+              timeframe === '7d'
+                ? 'bg-yellow-600 text-white'
+                : 'text-yellow-600 hover:bg-yellow-600/10'
+            }`}
+          >
+            7D
+          </button>
         </div>
       </div>
       <div style={{ height: '400px' }}>

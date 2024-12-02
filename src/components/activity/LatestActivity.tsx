@@ -86,6 +86,10 @@ export const LatestActivity: React.FC = () => {
     return token?.imageUrl || '';
   };
 
+  const getActivityLabel = (type: 'new_order' | 'claim') => {
+    return type === 'new_order' ? '🔄 New Order' : '✅ New Claim';
+  };
+
   return (
     <motion.div 
       className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm"
@@ -127,7 +131,7 @@ export const LatestActivity: React.FC = () => {
                   <span>{activity.toAmount} {activity.toToken}</span>
                 </div>
                 <span className={`ml-auto ${activity.type === 'new_order' ? 'text-green-500' : 'text-yellow-600'}`}>
-                  {activity.type === 'new_order' ? '🔄 New' : '✅ Claimed'}
+                  {getActivityLabel(activity.type)}
                 </span>
               </motion.div>
             ))

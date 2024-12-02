@@ -1,28 +1,49 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { TOKEN_PRICES, updateRXDPrice } from '../lib/tokenPrices';
+import { TOKENS } from '../data/tokens';
 
 export const useRealtimePrices = () => {
   const [prices, setPrices] = useState(TOKEN_PRICES);
 
   useEffect(() => {
-    // Initial price update
-    updateRXDPrice().then(newPrices => setPrices({ ...newPrices }));
+    // Initial price fetch from database
+    const fetchPrices = async () => {
+      const { data, error } = await supabase
+        .from('tokens')
+        .select('symbol,price_usd,last_updated')
+        .order('last_updated', { ascending: false });
+
+      if (!error && data) {
+        const newPrices = { ...TOKEN_PRICES };
+        data.forEach(token => {
+          newPrices[token.symbol] = token.price_usd;
+        });
+        setPrices(newPrices);
+      }
+    };
+
+    fetchPrices();
 
     // Subscribe to price updates
     const subscription = supabase
       .channel('token-prices')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'tokens' },
-        () => {
-          updateRXDPrice().then(newPrices => setPrices({ ...newPrices }));
+        async (payload) => {
+          if (payload.new?.symbol && payload.new?.price_usd) {
+            setPrices(prev => ({
+              ...prev,
+              [payload.new.symbol]: payload.new.price_usd
+            }));
+          }
         }
       )
       .subscribe();
 
-    // Update prices every minute
+    // Update RXD price every minute
     const interval = setInterval(() => {
-      updateRXDPrice().then(newPrices => setPrices({ ...newPrices }));
+      updateRXDPrice().then(newPrices => setPrices(newPrices));
     }, 60000);
 
     return () => {
