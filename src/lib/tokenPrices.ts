@@ -2,7 +2,7 @@ import { Token } from '../types';
 import axios from 'axios';
 
 // Constants
-const RXD_TO_TOKEN_RATIO = 1000; // 1 RXD = 1000 tokens
+export const RXD_FLOOR_PRICE = 0.001; // 1 token = 0.001 RXD
 let RXD_PRICE_USD = 0.001202; // Initial price from CoinGecko
 
 // Initialize token prices
@@ -10,15 +10,20 @@ export const TOKEN_PRICES: Record<string, number> = {
   'RXD': RXD_PRICE_USD
 };
 
-// Calculate initial token price based on RXD ratio
-export const calculateTokenPrice = (symbol: string): number => {
+// Calculate token price to achieve $20 market cap
+export const calculateTokenPrice = (symbol: string, totalSupply: number): number => {
   if (symbol === 'RXD') return RXD_PRICE_USD;
-  return RXD_PRICE_USD / RXD_TO_TOKEN_RATIO;
+  
+  // Target market cap of $20
+  const TARGET_MARKET_CAP = 20;
+  
+  // Calculate price needed to achieve $20 market cap
+  return TARGET_MARKET_CAP / totalSupply;
 };
 
-// Calculate market cap
+// Calculate market cap using total supply
 export const calculateMarketCap = (symbol: string, totalSupply: number): number => {
-  const tokenPrice = TOKEN_PRICES[symbol] || calculateTokenPrice(symbol);
+  const tokenPrice = TOKEN_PRICES[symbol] || calculateTokenPrice(symbol, totalSupply);
   return tokenPrice * totalSupply;
 };
 
@@ -38,7 +43,7 @@ export const formatPriceUSD = (price: number): string => {
   return formatted.replace(/\.?0+$/, '');
 };
 
-// Format market cap with appropriate suffix
+// Format market cap with appropriate suffix and 2 decimals
 export const formatMarketCap = (marketCap: number): string => {
   if (!marketCap || isNaN(marketCap) || !isFinite(marketCap)) return '$0.00';
   
@@ -64,10 +69,10 @@ export const updateRXDPrice = async () => {
       RXD_PRICE_USD = response.data.radiant.usd;
       TOKEN_PRICES['RXD'] = RXD_PRICE_USD;
       
-      // Initialize all token prices based on RXD ratio
+      // Update all token prices to maintain $20 market cap
       TOKENS.forEach(token => {
         if (token.symbol !== 'RXD') {
-          TOKEN_PRICES[token.symbol] = RXD_PRICE_USD / RXD_TO_TOKEN_RATIO;
+          TOKEN_PRICES[token.symbol] = calculateTokenPrice(token.symbol, token.totalSupply);
         }
       });
     }
@@ -81,7 +86,7 @@ export const updateRXDPrice = async () => {
 // Initialize token prices
 export const initializeTokenPrices = (tokens: Token[]): void => {
   tokens.forEach(token => {
-    TOKEN_PRICES[token.symbol] = calculateTokenPrice(token.symbol);
+    TOKEN_PRICES[token.symbol] = calculateTokenPrice(token.symbol, token.totalSupply);
   });
   
   // Start periodic price updates
