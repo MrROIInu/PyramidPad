@@ -12,9 +12,9 @@ interface TransactionData {
 }
 
 export const useTransactionImport = (onImport: (data: TransactionData) => void) => {
-  const parseTransaction = useCallback((text: string) => {
+  const parseTransaction = useCallback((text: string): TransactionData | null => {
     const match = text.match(SWAP_REGEX);
-    if (!match) return;
+    if (!match) return null;
 
     const [, amount1, token1, amount2, token2, tx] = match;
     
@@ -22,7 +22,7 @@ export const useTransactionImport = (onImport: (data: TransactionData) => void) 
     const isToken1Valid = token1 === 'RXD' || TOKENS.some(t => t.symbol === token1);
     const isToken2Valid = token2 === 'RXD' || TOKENS.some(t => t.symbol === token2);
     
-    if (!isToken1Valid || !isToken2Valid) return;
+    if (!isToken1Valid || !isToken2Valid) return null;
 
     const data = {
       fromAmount: amount1,
@@ -33,6 +33,7 @@ export const useTransactionImport = (onImport: (data: TransactionData) => void) 
     };
 
     onImport(data);
+    return data;
   }, [onImport]);
 
   return { parseTransaction };
