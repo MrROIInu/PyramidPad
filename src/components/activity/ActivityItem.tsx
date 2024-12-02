@@ -35,7 +35,7 @@ export const ActivityItem: React.FC<ActivityItemProps> = ({ activity, isNew }) =
         }}
         className={`
           py-2 px-3 rounded-lg transition-colors duration-300
-          ${isNew ? 'animate-shake' : ''}
+          ${isNew ? 'activity-flash' : ''}
         `}
       >
         <div className="flex items-center gap-2">

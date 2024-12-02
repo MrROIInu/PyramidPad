@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bell } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import { TOKENS } from '../../data/tokens';
 import { RXD_TOKEN } from '../../constants/tokens';
@@ -33,7 +34,7 @@ export const ActivityFeed: React.FC = () => {
 
           if (!fromToken || !toToken) return;
 
-          const newActivity: Activity = {
+          const newActivity = {
             id: `${payload.new.id}-${Date.now()}`,
             type: payload.eventType === 'INSERT' ? 'new_order' : 'claim',
             message: getActivityMessage(payload),
@@ -46,7 +47,13 @@ export const ActivityFeed: React.FC = () => {
 
           setActivities(prev => [newActivity, ...prev].slice(0, 10));
           setNewActivity(true);
-          setTimeout(() => setNewActivity(false), 3000);
+
+          // Trigger page shake
+          document.body.classList.add('animate-shake');
+          setTimeout(() => {
+            document.body.classList.remove('animate-shake');
+            setNewActivity(false);
+          }, 1500);
         }
       )
       .subscribe();
@@ -73,24 +80,30 @@ export const ActivityFeed: React.FC = () => {
   };
 
   return (
-    <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm">
+    <motion.div 
+      className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm"
+      animate={newActivity ? { scale: [1, 1.02, 1] } : {}}
+      transition={{ duration: 0.3 }}
+    >
       <div className="flex items-center gap-2 mb-4">
         <Bell className="text-yellow-600" />
         <h3 className="text-lg font-semibold text-yellow-600">Recent Activity</h3>
       </div>
-      <div className="space-y-2">
-        {activities.length > 0 ? (
-          activities.map(activity => (
-            <ActivityItem
-              key={activity.id}
-              activity={activity}
-              isNew={newActivity}
-            />
-          ))
-        ) : (
-          <p className="text-yellow-600/80">Waiting for new orders...</p>
-        )}
-      </div>
-    </div>
+      <AnimatePresence>
+        <div className="space-y-2">
+          {activities.length > 0 ? (
+            activities.map(activity => (
+              <ActivityItem
+                key={activity.id}
+                activity={activity}
+                isNew={newActivity}
+              />
+            ))
+          ) : (
+            <p className="text-yellow-600/80">Waiting for new orders...</p>
+          )}
+        </div>
+      </AnimatePresence>
+    </motion.div>
   );
 };
