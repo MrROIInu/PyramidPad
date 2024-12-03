@@ -1,7 +1,5 @@
-```typescript
 import { useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { motion } from 'framer-motion';
 
 export const useRealtimeOrders = (onUpdate: () => void) => {
   useEffect(() => {
@@ -14,7 +12,7 @@ export const useRealtimeOrders = (onUpdate: () => void) => {
           document.body.classList.add('animate-shake');
           setTimeout(() => {
             document.body.classList.remove('animate-shake');
-          }, 1500);
+          }, 2500);
           
           // Update orders
           onUpdate();
@@ -27,4 +25,3 @@ export const useRealtimeOrders = (onUpdate: () => void) => {
     };
   }, [onUpdate]);
 };
-```

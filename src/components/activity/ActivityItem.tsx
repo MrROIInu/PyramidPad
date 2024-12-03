@@ -20,15 +20,9 @@ export const ActivityItem: React.FC<ActivityItemProps> = ({ activity, isNew }) =
         initial={isNew ? { scale: 0.95, opacity: 0 } : false}
         animate={{ 
           scale: 1, 
-          opacity: 1,
-          backgroundColor: isNew ? ['rgba(202, 138, 4, 0.5)', 'rgba(202, 138, 4, 0.2)'] : 'transparent'
+          opacity: 1
         }}
         transition={{ 
-          duration: 5,
-          backgroundColor: {
-            duration: 5,
-            repeat: 0
-          },
           type: 'spring',
           stiffness: 500,
           damping: 30
