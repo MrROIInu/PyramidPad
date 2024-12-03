@@ -83,22 +83,13 @@ export const LatestActivity: React.FC = () => {
 
   const handleActivityClick = async (orderId: number) => {
     setSelectedOrder(orderId);
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('id', orderId)
-      .single();
-
-    if (!error && data) {
-      // Scroll to the order in the list
-      const orderElement = document.getElementById(`order-${orderId}`);
-      if (orderElement) {
-        orderElement.scrollIntoView({ behavior: 'smooth' });
-        orderElement.classList.add('highlight-order');
-        setTimeout(() => {
-          orderElement.classList.remove('highlight-order');
-        }, 3000);
-      }
+    const orderElement = document.getElementById(`order-${orderId}`);
+    if (orderElement) {
+      orderElement.scrollIntoView({ behavior: 'smooth' });
+      orderElement.classList.add('highlight-order');
+      setTimeout(() => {
+        orderElement.classList.remove('highlight-order');
+      }, 3000);
     }
   };
 

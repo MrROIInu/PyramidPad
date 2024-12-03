@@ -34,12 +34,15 @@ export const TokenCard: React.FC<TokenCardProps> = ({ token, onCopy, isCopied })
                 x={token.social?.x}
                 discord={token.social?.discord}
                 telegram={token.social?.telegram}
-              />
+              /> ```
             </div>
           </div>
         </div>
 
         <div className="lg:col-span-2">
+          {token.description && (
+            <p className="text-sm text-yellow-600/80 mb-4">{token.description}</p>
+          )}
           <p className="text-sm text-yellow-600/80 break-all mb-2">
             Contract Address: {token.contractAddress}
           </p>
@@ -62,7 +65,7 @@ export const TokenCard: React.FC<TokenCardProps> = ({ token, onCopy, isCopied })
             <p className="font-medium">{formatPriceUSD(prices[token.symbol])}</p>
           </div>
           <div>
-            <p className="text-sm text-yellow-600/80">Real-Time RXD Ratio</p>
+            <p className="text-sm text-yellow-600/80">RXD Ratio</p>
             <p className="font-medium">{calculateRXDRatio(prices[token.symbol], prices.RXD)}</p>
           </div>
           <div>
@@ -78,7 +81,7 @@ export const TokenCard: React.FC<TokenCardProps> = ({ token, onCopy, isCopied })
                   style={{ width: `${miningData.minted}%` }}
                 />
               </div>
-              <span className="text-sm whitespace-nowrap">{miningData.minted}%</span>
+              <span className="text-xs whitespace-nowrap">{miningData.minted}%</span>
             </div>
           </div>
         </div>

@@ -8,7 +8,7 @@ const FLOOR_PRICE = 0.000001202; // Base floor price for all tokens
 const PRICE_IMPACT_FACTOR = 0.001; // 0.1% price impact per order
 
 // Fetch RXD price from CoinGecko
-async function fetchRXDPrice(): Promise<number> {
+export async function fetchRXDPrice(): Promise<number> {
   try {
     const response = await axios.get(
       'https://api.coingecko.com/api/v3/simple/price?ids=radiant&vs_currencies=usd',
@@ -39,6 +39,7 @@ export async function initializeTokenPrices() {
       };
     });
 
+    // Update prices in database
     const { error } = await supabase
       .from('tokens')
       .upsert(updates, {
@@ -48,16 +49,8 @@ export async function initializeTokenPrices() {
 
     if (error) throw error;
 
-    // Initialize price history
-    const historyUpdates = updates.map(update => ({
-      symbol: update.symbol,
-      price_usd: update.price_usd,
-      timestamp: new Date().toISOString()
-    }));
-
-    await supabase
-      .from('token_price_history')
-      .insert(historyUpdates);
+    // Start real-time price updates
+    startRealtimePriceUpdates();
 
     return { ...TOKEN_PRICES };
   } catch (error) {
@@ -66,10 +59,37 @@ export async function initializeTokenPrices() {
   }
 }
 
+// Start real-time price updates
+function startRealtimePriceUpdates() {
+  // Update RXD price every minute
+  setInterval(async () => {
+    const rxdPrice = await fetchRXDPrice();
+    TOKEN_PRICES['RXD'] = rxdPrice;
+
+    // Update RXD price in database
+    await supabase
+      .from('tokens')
+      .upsert({
+        symbol: 'RXD',
+        price_usd: rxdPrice,
+        last_updated: new Date().toISOString()
+      });
+
+    // Update price history
+    await supabase
+      .from('token_price_history')
+      .insert({
+        symbol: 'RXD',
+        price_usd: rxdPrice,
+        timestamp: new Date().toISOString()
+      });
+  }, 60000);
+}
+
 // Update token price after claim
 export async function updateTokenPriceAfterClaim(order: Order) {
   try {
-    const { from_token, to_token, from_amount, to_amount } = order;
+    const { from_token, to_token } = order;
     
     const updates = [];
     
@@ -97,25 +117,21 @@ export async function updateTokenPriceAfterClaim(order: Order) {
     }
 
     if (updates.length > 0) {
+      // Update prices in database
       const { error } = await supabase
         .from('tokens')
-        .upsert(updates, {
-          onConflict: 'symbol',
-          ignoreDuplicates: false
-        });
+        .upsert(updates);
 
       if (error) throw error;
 
       // Update price history
-      const historyUpdates = updates.map(update => ({
-        symbol: update.symbol,
-        price_usd: update.price_usd,
-        timestamp: new Date().toISOString()
-      }));
-
       await supabase
         .from('token_price_history')
-        .insert(historyUpdates);
+        .insert(updates.map(update => ({
+          symbol: update.symbol,
+          price_usd: update.price_usd,
+          timestamp: update.last_updated
+        })));
     }
 
     return { ...TOKEN_PRICES };
