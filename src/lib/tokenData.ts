@@ -11,7 +11,7 @@ export const MINING_DATA: Record<string, MiningData> = {
   "PEPE": { preminted: 0, minted: 0.57, difficulty: 1 },
   "DOGE": { preminted: 0, minted: 100, difficulty: 1 },
   "φῶς": { preminted: 9.2, minted: 100, difficulty: 1 },
-  "NEP": { preminted: 20, minted: 16.60, difficulty: 40 },
+  "NEP": { preminted: 0, minted: 16.60, difficulty: 40 },
   "DJANGO": { preminted: 10, minted: 8.24, difficulty: 100 },
   "BTC": { preminted: 10, minted: 4.11, difficulty: 349 },
   "SERPENTX": { preminted: 50, minted: 100, difficulty: 1 },
@@ -42,7 +42,7 @@ export const MINING_DATA: Record<string, MiningData> = {
   "OP_CAT": { preminted: 0, minted: 2.35, difficulty: 7 },
   "UȻME": { preminted: 0, minted: 0, difficulty: 16 },
   "GOAT": { preminted: 1, minted: 84.61, difficulty: 100 },
-  "XD": { preminted: 100, minted: 100, difficulty: 0 }, // XD is 100% preminted
+  "XD": { preminted: 100, minted: 100, difficulty: 0 },
   "GRAVITY": { preminted: 10, minted: 2.50, difficulty: 10 },
   "POW": { preminted: 0, minted: 5.38, difficulty: 1 },
   "NEOX": { preminted: 47.14, minted: 0.01, difficulty: 699 },
