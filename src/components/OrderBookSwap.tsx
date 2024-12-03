@@ -5,6 +5,7 @@ import { TransactionHistory } from './TransactionHistory';
 import { useOrders } from '../hooks/useOrders';
 import { useSwapContext } from '../contexts/SwapContext';
 import { SelectedTokenChart } from './charts/SelectedTokenChart';
+import { CollectionChart } from './CollectionChart';
 
 export const OrderBookSwap: React.FC = () => {
   const { orders, loading, error, onClaim, onCancel, fetchOrders } = useOrders();
@@ -17,9 +18,6 @@ export const OrderBookSwap: React.FC = () => {
     (order.from_token === selectedToken.symbol || order.to_token === selectedToken.symbol)
   );
 
-  // Get claimed orders
-  const claimedOrders = orders.filter(order => order.claimed);
-
   return (
     <div className="container mx-auto px-4">
       <SwapForm onOrderCreated={fetchOrders} />
@@ -31,6 +29,8 @@ export const OrderBookSwap: React.FC = () => {
           </div>
         )}
         
+        <SelectedTokenChart />
+        
         <OrderList
           orders={filteredOrders}
           onCancel={onCancel}
@@ -38,14 +38,12 @@ export const OrderBookSwap: React.FC = () => {
           loading={loading}
         />
 
+        <CollectionChart />
+
         <TransactionHistory 
           transactions={[]}
           orders={orders}
         />
-
-        {claimedOrders.length > 0 && (
-          <SelectedTokenChart />
-        )}
       </div>
     </div>
   );

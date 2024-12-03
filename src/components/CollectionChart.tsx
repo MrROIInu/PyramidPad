@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { TOKENS } from '../data/tokens';
 import { formatPriceUSD, calculateRXDRatio } from '../lib/tokenPrices';
 import { getMiningData } from '../lib/tokenData';
@@ -8,10 +7,8 @@ import { useSwapContext } from '../contexts/SwapContext';
 import { useRealtimePrices } from '../hooks/useRealtimePrices';
 import { usePriceHistory } from '../hooks/usePriceHistory';
 import { RXD_TOKEN } from '../constants/tokens';
-import { Token } from '../types';
 
 export const CollectionChart: React.FC = () => {
-  const navigate = useNavigate();
   const { updateSelectedToken } = useSwapContext();
   const { orders } = useOrders();
   const prices = useRealtimePrices();
@@ -40,7 +37,7 @@ export const CollectionChart: React.FC = () => {
     return 'text-yellow-600';
   };
 
-  const handleTokenClick = (token: Token) => {
+  const handleTokenClick = (token: typeof TOKENS[0]) => {
     updateSelectedToken(token);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -90,8 +87,8 @@ export const CollectionChart: React.FC = () => {
             <th className="px-4 py-3 text-left whitespace-nowrap min-w-[200px]">Price (USD)</th>
             <th className="px-4 py-3 text-left whitespace-nowrap min-w-[150px]">RXD Ratio</th>
             <th className="px-4 py-3 text-left whitespace-nowrap">Last {timeframe === '1d' ? '24h' : '7 Days'}</th>
+            <th className="px-4 py-3 text-left whitespace-nowrap">Preminted</th>
             <th className="px-4 py-3 text-left whitespace-nowrap">Minted</th>
-            <th className="px-4 py-3 text-left whitespace-nowrap">Difficulty</th>
             <th className="px-4 py-3 text-left whitespace-nowrap">Orders</th>
           </tr>
         </thead>
@@ -123,6 +120,7 @@ export const CollectionChart: React.FC = () => {
                 <td className={`px-4 py-3 whitespace-nowrap ${getPriceChangeClass(priceChange)}`}>
                   {priceChange > 0 ? '+' : ''}{priceChange.toFixed(2)}%
                 </td>
+                <td className="px-4 py-3 whitespace-nowrap">{miningData.preminted}%</td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     <div className="w-16 h-1.5 bg-black/30 rounded-full overflow-hidden">
@@ -134,7 +132,6 @@ export const CollectionChart: React.FC = () => {
                     <span className="text-xs">{miningData.minted}%</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap">{miningData.difficulty}</td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   <span className={getOpenOrderCount(token.symbol) > 0 ? 'text-green-500' : ''}>
                     {getOpenOrderCount(token.symbol)}

@@ -14,7 +14,7 @@ export interface Token {
 }
 
 export interface MiningData {
-  premintedAmount: number;
+  preminted: number;
   minted: number;
   difficulty: number;
 }
