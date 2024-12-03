@@ -89,6 +89,7 @@ export const CollectionChart: React.FC = () => {
             <th className="px-4 py-3 text-left whitespace-nowrap">Last {timeframe === '1d' ? '24h' : '7 Days'}</th>
             <th className="px-4 py-3 text-left whitespace-nowrap">Preminted</th>
             <th className="px-4 py-3 text-left whitespace-nowrap">Minted</th>
+            <th className="px-4 py-3 text-left whitespace-nowrap">Difficulty</th>
             <th className="px-4 py-3 text-left whitespace-nowrap">Orders</th>
           </tr>
         </thead>
@@ -120,7 +121,7 @@ export const CollectionChart: React.FC = () => {
                 <td className={`px-4 py-3 whitespace-nowrap ${getPriceChangeClass(priceChange)}`}>
                   {priceChange > 0 ? '+' : ''}{priceChange.toFixed(2)}%
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap">{miningData.preminted}%</td>
+                <td className="px-4 py-3 whitespace-nowrap">{miningData.preminted.toLocaleString()}</td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     <div className="w-16 h-1.5 bg-black/30 rounded-full overflow-hidden">
@@ -132,6 +133,7 @@ export const CollectionChart: React.FC = () => {
                     <span className="text-xs">{miningData.minted}%</span>
                   </div>
                 </td>
+                <td className="px-4 py-3 whitespace-nowrap">{miningData.difficulty}</td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   <span className={getOpenOrderCount(token.symbol) > 0 ? 'text-green-500' : ''}>
                     {getOpenOrderCount(token.symbol)}

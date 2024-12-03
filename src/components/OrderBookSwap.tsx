@@ -29,8 +29,6 @@ export const OrderBookSwap: React.FC = () => {
           </div>
         )}
         
-        <SelectedTokenChart />
-        
         <OrderList
           orders={filteredOrders}
           onCancel={onCancel}
@@ -38,12 +36,12 @@ export const OrderBookSwap: React.FC = () => {
           loading={loading}
         />
 
-        <CollectionChart />
-
         <TransactionHistory 
           transactions={[]}
           orders={orders}
         />
+
+        <CollectionChart />
       </div>
     </div>
   );
