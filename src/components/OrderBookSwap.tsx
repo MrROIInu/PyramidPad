@@ -2,7 +2,6 @@ import React from 'react';
 import { SwapForm } from './SwapForm';
 import { OrderList } from './OrderList';
 import { TransactionHistory } from './TransactionHistory';
-import { SelectedTokenChart } from './charts/SelectedTokenChart';
 import { useOrders } from '../hooks/useOrders';
 
 export const OrderBookSwap: React.FC = () => {
@@ -11,10 +10,6 @@ export const OrderBookSwap: React.FC = () => {
   return (
     <div className="container mx-auto px-4">
       <SwapForm onOrderCreated={fetchOrders} />
-
-      <div className="mb-12">
-        <SelectedTokenChart />
-      </div>
 
       <div className="space-y-12">
         {error && (

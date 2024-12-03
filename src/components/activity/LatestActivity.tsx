@@ -17,13 +17,12 @@ interface ActivityItem {
 }
 
 export const LatestActivity: React.FC = () => {
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [activity, setActivity] = useState<ActivityItem | null>(null);
   const [flash, setFlash] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<number | null>(null);
 
   useEffect(() => {
-    // Fetch initial activities
-    const fetchLatestActivities = async () => {
+    // Fetch initial activity
+    const fetchLatestActivity = async () => {
       const { data, error } = await supabase
         .from('orders')
         .select('*')
@@ -31,7 +30,7 @@ export const LatestActivity: React.FC = () => {
         .limit(1);
 
       if (error) {
-        console.warn('Error fetching latest activities:', error);
+        console.warn('Error fetching latest activity:', error);
         return;
       }
 
@@ -46,11 +45,11 @@ export const LatestActivity: React.FC = () => {
           timestamp: data[0].created_at,
           orderId: data[0].id
         };
-        setActivities([newActivity]);
+        setActivity(newActivity);
       }
     };
 
-    fetchLatestActivities();
+    fetchLatestActivity();
 
     // Subscribe to real-time updates
     const subscription = supabase
@@ -69,9 +68,15 @@ export const LatestActivity: React.FC = () => {
             orderId: payload.new.id
           };
 
-          setActivities([newActivity]);
+          setActivity(newActivity);
           setFlash(true);
           setTimeout(() => setFlash(false), 5000);
+
+          // Trigger page shake animation
+          document.body.classList.add('animate-shake');
+          setTimeout(() => {
+            document.body.classList.remove('animate-shake');
+          }, 1500);
         }
       )
       .subscribe();
@@ -81,8 +86,7 @@ export const LatestActivity: React.FC = () => {
     };
   }, []);
 
-  const handleActivityClick = async (orderId: number) => {
-    setSelectedOrder(orderId);
+  const handleActivityClick = (orderId: number) => {
     const orderElement = document.getElementById(`order-${orderId}`);
     if (orderElement) {
       orderElement.scrollIntoView({ behavior: 'smooth' });
@@ -98,9 +102,19 @@ export const LatestActivity: React.FC = () => {
     return token?.imageUrl || '';
   };
 
-  const getActivityLabel = (type: 'new_order' | 'claim') => {
-    return type === 'new_order' ? '🔄 New Order' : '✅ New Claim';
-  };
+  if (!activity) {
+    return (
+      <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <Activity className="text-yellow-600" />
+          <h3 className="text-lg font-semibold text-yellow-600">Latest Activity</h3>
+        </div>
+        <div className="text-yellow-600/80 text-center py-4">
+          Waiting for activity...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div 
@@ -114,51 +128,38 @@ export const LatestActivity: React.FC = () => {
         <Activity className="text-yellow-600" />
         <h3 className="text-lg font-semibold text-yellow-600">Latest Activity</h3>
       </div>
-      <div className="space-y-3">
-        <AnimatePresence mode="sync">
-          {activities.length > 0 ? (
-            activities.map((activity) => (
-              <motion.div 
-                key={activity.id}
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                className="flex items-center gap-2 bg-black/20 rounded-lg p-2 cursor-pointer hover:bg-black/30 transition-colors"
-                onClick={() => handleActivityClick(activity.orderId)}
-              >
-                <div className="flex items-center gap-2">
-                  <img 
-                    src={getTokenImage(activity.fromToken)}
-                    alt={activity.fromToken}
-                    className="w-6 h-6 rounded-full"
-                  />
-                  <span>{activity.fromAmount} {activity.fromToken}</span>
-                </div>
-                <span className="text-yellow-600">➔</span>
-                <div className="flex items-center gap-2">
-                  <img 
-                    src={getTokenImage(activity.toToken)}
-                    alt={activity.toToken}
-                    className="w-6 h-6 rounded-full"
-                  />
-                  <span>{activity.toAmount} {activity.toToken}</span>
-                </div>
-                <span className={`ml-auto ${activity.type === 'new_order' ? 'text-green-500' : 'text-yellow-600'}`}>
-                  {getActivityLabel(activity.type)}
-                </span>
-              </motion.div>
-            ))
-          ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-yellow-600/80 text-center"
-            >
-              Waiting for activity...
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+
+      <AnimatePresence mode="sync">
+        <motion.div 
+          key={activity.id}
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="flex items-center gap-2 bg-black/20 rounded-lg p-2 cursor-pointer hover:bg-black/30 transition-colors"
+          onClick={() => handleActivityClick(activity.orderId)}
+        >
+          <div className="flex items-center gap-2">
+            <img 
+              src={getTokenImage(activity.fromToken)}
+              alt={activity.fromToken}
+              className="w-6 h-6 rounded-full"
+            />
+            <span>{activity.fromAmount} {activity.fromToken}</span>
+          </div>
+          <span className="text-yellow-600">➔</span>
+          <div className="flex items-center gap-2">
+            <img 
+              src={getTokenImage(activity.toToken)}
+              alt={activity.toToken}
+              className="w-6 h-6 rounded-full"
+            />
+            <span>{activity.toAmount} {activity.toToken}</span>
+          </div>
+          <span className={`ml-auto ${activity.type === 'new_order' ? 'text-green-500' : 'text-yellow-600'}`}>
+            {activity.type === 'new_order' ? '🔄 New Order' : '✅ New Claim'}
+          </span>
+        </motion.div>
+      </AnimatePresence>
     </motion.div>
   );
 };

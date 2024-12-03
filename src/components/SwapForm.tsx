@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { ArrowUpDown, Loader2 } from 'lucide-react';
 import { TokenSelect } from './TokenSelect';
 import { TOKENS } from '../data/tokens';
@@ -9,7 +9,7 @@ import { formatPriceUSD } from '../lib/tokenPrices';
 import { useWalletManager } from '../hooks/useWalletManager';
 import { WalletAddressInput } from './wallet/WalletAddressInput';
 import { TokenAmountInput } from './TokenAmountInput';
-import { useTransactionImport } from '../hooks/useTransactionImport';
+import { useClipboard } from '../hooks/useClipboard';
 import { useMarketPrice } from '../hooks/useMarketPrice';
 import { useRealtimePrices } from '../hooks/useRealtimePrices';
 
@@ -18,7 +18,6 @@ interface SwapFormProps {
 }
 
 export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
-  const { selectedToken: contextSelectedToken } = useSwapContext();
   const prices = useRealtimePrices();
   
   const {
@@ -38,6 +37,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     error,
     updateFormState,
     handleSubmit: originalHandleSubmit,
+    handleClipboardData
   } = useSwapForm(onOrderCreated);
 
   const {
@@ -56,25 +56,8 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     return formatPriceUSD(numAmount * price);
   }, [prices]);
 
-  // Handle transaction import
-  const handleTransactionImport = useCallback((data: any) => {
-    const isRxdFrom = data.fromToken === 'RXD';
-    const selectedTokenSymbol = isRxdFrom ? data.toToken : data.fromToken;
-    const token = TOKENS.find(t => t.symbol === selectedTokenSymbol);
-    
-    if (token) {
-      updateFormState({
-        selectedToken: token,
-        isRxdToToken: isRxdFrom,
-        rxdAmount: isRxdFrom ? data.fromAmount : data.toAmount,
-        tokenAmount: isRxdFrom ? data.toAmount : data.fromAmount,
-        transactionId: data.transactionId,
-        importedTx: `🔁 Swap: ${data.fromAmount} ${data.fromToken} ➔ ${data.toAmount} ${data.toToken} 📋${data.transactionId}🟦`
-      });
-    }
-  }, [updateFormState]);
-
-  const { parseTransaction } = useTransactionImport(handleTransactionImport);
+  // Use clipboard hook
+  useClipboard(handleClipboardData);
 
   // Calculate market price and deviation
   const { marketPrice, deviation, isMarketPrice, deviationClass } = useMarketPrice(
@@ -84,17 +67,6 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     isRxdToToken ? tokenAmount : rxdAmount
   );
 
-  // Update form when context token changes
-  useEffect(() => {
-    if (contextSelectedToken.symbol !== selectedToken.symbol) {
-      updateFormState({ 
-        selectedToken: contextSelectedToken,
-        tokenAmount: rxdAmount ? '1000' : '',
-        rxdAmount: tokenAmount ? '1' : ''
-      });
-    }
-  }, [contextSelectedToken, selectedToken.symbol, rxdAmount, tokenAmount]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isWalletChecked || !isWalletValid) {
@@ -102,14 +74,6 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
       return;
     }
     await originalHandleSubmit(e, walletAddress);
-  };
-
-  const handleImportedTxChange = (text: string) => {
-    updateFormState({ importedTx: text });
-    const data = parseTransaction(text);
-    if (data) {
-      handleTransactionImport(data);
-    }
   };
 
   return (
@@ -201,7 +165,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
           </label>
           <textarea
             value={importedTx}
-            onChange={(e) => handleImportedTxChange(e.target.value)}
+            onChange={(e) => updateFormState({ importedTx: e.target.value })}
             className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-2"
             placeholder="Example: 🔁 Swap: 1000 RXD ➔ 1000 DOGE 📋01000000015c🟦"
             rows={3}

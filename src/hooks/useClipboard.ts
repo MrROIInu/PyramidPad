@@ -2,14 +2,34 @@ import { useEffect } from 'react';
 
 const SWAP_REGEX = /🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([^\s🟦]+)/;
 
-export function useClipboard(callback: (text: string) => void) {
+interface ClipboardData {
+  fromAmount: string;
+  fromToken: string;
+  toAmount: string;
+  toToken: string;
+  transactionId: string;
+}
+
+export function useClipboard(callback: (data: ClipboardData) => void) {
   useEffect(() => {
+    const handleClipboardData = (text: string) => {
+      const match = text.match(SWAP_REGEX);
+      if (match) {
+        const [, fromAmount, fromToken, toAmount, toToken, tx] = match;
+        callback({
+          fromAmount,
+          fromToken,
+          toAmount,
+          toToken,
+          transactionId: tx
+        });
+      }
+    };
+
     const handleClipboardChange = async () => {
       try {
         const text = await navigator.clipboard.readText();
-        if (SWAP_REGEX.test(text)) {
-          callback(text);
-        }
+        handleClipboardData(text);
       } catch (error) {
         // Ignore clipboard read errors
       }
@@ -17,15 +37,12 @@ export function useClipboard(callback: (text: string) => void) {
 
     const handlePaste = (e: ClipboardEvent) => {
       const text = e.clipboardData?.getData('text');
-      if (text && SWAP_REGEX.test(text)) {
-        callback(text);
+      if (text) {
+        handleClipboardData(text);
       }
     };
 
-    // Listen for paste events
     document.addEventListener('paste', handlePaste);
-
-    // Poll clipboard for changes
     const interval = setInterval(handleClipboardChange, 1000);
 
     return () => {

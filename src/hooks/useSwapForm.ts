@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Token } from '../types';
-import { DEFAULT_TOKEN } from '../data/tokens';
+import { TOKENS } from '../data/tokens';
+import { RXD_TOKEN } from '../constants/tokens';
 
 interface SwapFormState {
   selectedToken: Token;
@@ -13,7 +14,7 @@ interface SwapFormState {
 }
 
 const initialState: SwapFormState = {
-  selectedToken: DEFAULT_TOKEN,
+  selectedToken: TOKENS[0],
   isRxdToToken: true,
   rxdAmount: '',
   tokenAmount: '',
@@ -29,6 +30,29 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
   const resetForm = useCallback(() => {
     setFormState(initialState);
     setError(null);
+  }, []);
+
+  const handleClipboardData = useCallback((data: { 
+    fromAmount: string;
+    fromToken: string;
+    toAmount: string;
+    toToken: string;
+    transactionId: string;
+  }) => {
+    const { fromToken, toToken } = data;
+    const isRxdFrom = fromToken === 'RXD';
+    const targetToken = isRxdFrom ? toToken : fromToken;
+    const selectedToken = TOKENS.find(t => t.symbol.toUpperCase() === targetToken.toUpperCase()) || RXD_TOKEN;
+
+    setFormState(prev => ({
+      ...prev,
+      selectedToken,
+      isRxdToToken: isRxdFrom,
+      rxdAmount: isRxdFrom ? data.fromAmount : data.toAmount,
+      tokenAmount: isRxdFrom ? data.toAmount : data.fromAmount,
+      transactionId: data.transactionId,
+      importedTx: `🔁 Swap: ${data.fromAmount} ${data.fromToken} ➔ ${data.toAmount} ${data.toToken} 📋${data.transactionId}🟦`
+    }));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent, walletAddress: string) => {
@@ -81,6 +105,7 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
     error,
     updateFormState,
     handleSubmit,
-    resetForm
+    resetForm,
+    handleClipboardData
   };
 };
