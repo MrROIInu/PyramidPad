@@ -87,7 +87,7 @@ export const CollectionChart: React.FC = () => {
             <th className="px-4 py-3 text-left whitespace-nowrap min-w-[200px]">Price (USD)</th>
             <th className="px-4 py-3 text-left whitespace-nowrap min-w-[150px]">RXD Ratio</th>
             <th className="px-4 py-3 text-left whitespace-nowrap">Last {timeframe === '1d' ? '24h' : '7 Days'}</th>
-            <th className="px-4 py-3 text-left whitespace-nowrap">Preminted</th>
+            <th className="px-4 py-3 text-left whitespace-nowrap">Premined</th>
             <th className="px-4 py-3 text-left whitespace-nowrap">Minted</th>
             <th className="px-4 py-3 text-left whitespace-nowrap">Orders</th>
           </tr>

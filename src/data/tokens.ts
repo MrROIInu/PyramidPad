@@ -88,7 +88,7 @@ symbol: "NEP",
 name: "NEP",
 description: "Beyond the Moon",
 imageUrl: "https://static.wixstatic.com/media/c0fd9f_a376f26b2f66430d9f1faab068f01043~mv2.png",
-totalSupply: 10000000000,
+totalSupply: 100000000000,
 contractAddress: "8f0e8626e1a0ccddd7d2775d13cfe8702087752d4ad3cad82acbef5e8698675600000000"
 },
 {

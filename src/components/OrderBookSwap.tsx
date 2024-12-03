@@ -5,7 +5,6 @@ import { TransactionHistory } from './TransactionHistory';
 import { useOrders } from '../hooks/useOrders';
 import { useSwapContext } from '../contexts/SwapContext';
 import { SelectedTokenChart } from './charts/SelectedTokenChart';
-import { CollectionChart } from './CollectionChart';
 
 export const OrderBookSwap: React.FC = () => {
   const { orders, loading, error, onClaim, onCancel, fetchOrders } = useOrders();
@@ -30,15 +29,13 @@ export const OrderBookSwap: React.FC = () => {
         )}
         
         <SelectedTokenChart />
-        
+
         <OrderList
           orders={filteredOrders}
           onCancel={onCancel}
           onClaim={onClaim}
           loading={loading}
         />
-
-        <CollectionChart />
 
         <TransactionHistory 
           transactions={[]}

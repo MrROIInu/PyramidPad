@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Copy } from 'lucide-react';
 import { Token } from '../types';
 import { formatPriceUSD, calculateRXDRatio } from '../lib/tokenPrices';
@@ -34,7 +34,7 @@ export const TokenCard: React.FC<TokenCardProps> = ({ token, onCopy, isCopied })
                 x={token.social?.x}
                 discord={token.social?.discord}
                 telegram={token.social?.telegram}
-              />
+              /> ```
             </div>
           </div>
         </div>
@@ -69,7 +69,7 @@ export const TokenCard: React.FC<TokenCardProps> = ({ token, onCopy, isCopied })
             <p className="font-medium">{calculateRXDRatio(prices[token.symbol], prices.RXD)}</p>
           </div>
           <div>
-            <p className="text-sm text-yellow-600/80">Preminted</p>
+            <p className="text-sm text-yellow-600/80">Premined</p>
             <p className="font-medium">{miningData.preminted}%</p>
           </div>
           <div>
@@ -83,10 +83,6 @@ export const TokenCard: React.FC<TokenCardProps> = ({ token, onCopy, isCopied })
               </div>
               <span className="text-xs whitespace-nowrap">{miningData.minted}%</span>
             </div>
-          </div>
-          <div>
-            <p className="text-sm text-yellow-600/80">Difficulty</p>
-            <p className="font-medium">{miningData.difficulty}</p>
           </div>
         </div>
       </div>
