@@ -13,50 +13,51 @@ interface ActivityItem {
   fromAmount: number;
   toAmount: number;
   timestamp: string;
+  orderId: number;
 }
 
 export const LatestActivity: React.FC = () => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [flash, setFlash] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<number | null>(null);
 
-  // Fetch initial activities
   useEffect(() => {
+    // Fetch initial activities
     const fetchLatestActivities = async () => {
       const { data, error } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(3);
+        .limit(1);
 
       if (error) {
         console.warn('Error fetching latest activities:', error);
         return;
       }
 
-      if (data) {
-        const newActivities = data.map(item => ({
-          id: `${item.id}-initial`,
-          type: item.claimed ? 'claim' : 'new_order',
-          fromToken: item.from_token,
-          toToken: item.to_token,
-          fromAmount: item.from_amount,
-          toAmount: item.to_amount,
-          timestamp: item.created_at
-        }));
-        setActivities(newActivities);
+      if (data && data.length > 0) {
+        const newActivity = {
+          id: `${data[0].id}-initial`,
+          type: data[0].claimed ? 'claim' : 'new_order',
+          fromToken: data[0].from_token,
+          toToken: data[0].to_token,
+          fromAmount: data[0].from_amount,
+          toAmount: data[0].to_amount,
+          timestamp: data[0].created_at,
+          orderId: data[0].id
+        };
+        setActivities([newActivity]);
       }
     };
 
     fetchLatestActivities();
-  }, []);
 
-  // Subscribe to real-time updates
-  useEffect(() => {
+    // Subscribe to real-time updates
     const subscription = supabase
       .channel('orders-channel')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'orders' },
-        (payload: any) => {
+        (payload) => {
           const newActivity = {
             id: `${payload.new.id}-${Date.now()}`,
             type: payload.eventType === 'INSERT' ? 'new_order' : 'claim',
@@ -64,14 +65,13 @@ export const LatestActivity: React.FC = () => {
             toToken: payload.new.to_token,
             fromAmount: payload.new.from_amount,
             toAmount: payload.new.to_amount,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            orderId: payload.new.id
           };
 
-          setActivities(prev => [newActivity, ...prev.slice(0, 2)]);
-          
-          // Start flash animation
+          setActivities([newActivity]);
           setFlash(true);
-          setTimeout(() => setFlash(false), 1000);
+          setTimeout(() => setFlash(false), 5000);
         }
       )
       .subscribe();
@@ -80,6 +80,27 @@ export const LatestActivity: React.FC = () => {
       subscription.unsubscribe();
     };
   }, []);
+
+  const handleActivityClick = async (orderId: number) => {
+    setSelectedOrder(orderId);
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .single();
+
+    if (!error && data) {
+      // Scroll to the order in the list
+      const orderElement = document.getElementById(`order-${orderId}`);
+      if (orderElement) {
+        orderElement.scrollIntoView({ behavior: 'smooth' });
+        orderElement.classList.add('highlight-order');
+        setTimeout(() => {
+          orderElement.classList.remove('highlight-order');
+        }, 3000);
+      }
+    }
+  };
 
   const getTokenImage = (symbol: string) => {
     const token = symbol === 'RXD' ? RXD_TOKEN : TOKENS.find(t => t.symbol === symbol);
@@ -111,7 +132,8 @@ export const LatestActivity: React.FC = () => {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                className="flex items-center gap-2 bg-black/20 rounded-lg p-2"
+                className="flex items-center gap-2 bg-black/20 rounded-lg p-2 cursor-pointer hover:bg-black/30 transition-colors"
+                onClick={() => handleActivityClick(activity.orderId)}
               >
                 <div className="flex items-center gap-2">
                   <img 

@@ -8,15 +8,16 @@ import { LatestOrders } from './pages/LatestOrders';
 import { MyOrders } from './pages/MyOrders';
 import { LatestActivity } from './components/activity/LatestActivity';
 import { TopGainers } from './components/TopGainers';
-import { CollectionChart } from './components/CollectionChart';
 import { SwapProvider } from './contexts/SwapContext';
+import { Footer } from './components/Footer';
+import { CollectionChart } from './components/charts/CollectionChart';
 
 const App: React.FC = () => {
   return (
     <SwapProvider>
       <Router>
-        <div className="min-h-screen">
-          <div className="min-h-screen">
+        <div className="min-h-screen flex flex-col">
+          <div className="flex-grow">
             <div className="container mx-auto px-4 py-4">
               <div className="flex justify-between items-center mb-4">
                 <Navigation />
@@ -51,7 +52,7 @@ const App: React.FC = () => {
                   <OrderBookSwap />
                   <div className="mt-12">
                     <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-                      RXD20 Glyph Token Chart
+                      RXD20 Token Chart
                     </h2>
                     <CollectionChart />
                   </div>
@@ -62,6 +63,7 @@ const App: React.FC = () => {
               <Route path="/my-orders" element={<MyOrders />} />
             </Routes>
           </div>
+          <Footer />
         </div>
       </Router>
     </SwapProvider>

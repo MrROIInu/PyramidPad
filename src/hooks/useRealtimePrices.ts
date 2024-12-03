@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { TOKEN_PRICES, updateRXDPrice } from '../lib/tokenPrices';
+import { TOKEN_PRICES } from '../lib/tokenPrices';
 import { TOKENS } from '../data/tokens';
 
 export const useRealtimePrices = () => {
@@ -41,14 +41,8 @@ export const useRealtimePrices = () => {
       )
       .subscribe();
 
-    // Update RXD price every minute
-    const interval = setInterval(() => {
-      updateRXDPrice().then(newPrices => setPrices(newPrices));
-    }, 60000);
-
     return () => {
       subscription.unsubscribe();
-      clearInterval(interval);
     };
   }, []);
 

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Copy, Loader2 } from 'lucide-react';
+import { Copy, Loader2, ArrowUp, ArrowDown } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
 import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
 import { Order } from '../types';
 import { WalletAddressInput } from './wallet/WalletAddressInput';
 import { useWalletManager } from '../hooks/useWalletManager';
+import Slider from 'rc-slider';
+import 'rc-slider/assets/index.css';
 
 interface OrderListProps {
   orders: Order[];
@@ -14,6 +16,7 @@ interface OrderListProps {
   loading?: boolean;
   showCancelButton?: boolean;
   userWalletAddress?: string;
+  type?: 'active' | 'claimed' | 'cancelled';
 }
 
 export const OrderList: React.FC<OrderListProps> = ({ 
@@ -22,7 +25,8 @@ export const OrderList: React.FC<OrderListProps> = ({
   onClaim, 
   loading = false,
   showCancelButton = false,
-  userWalletAddress
+  userWalletAddress,
+  type = 'active'
 }) => {
   const {
     walletAddress,
@@ -36,6 +40,7 @@ export const OrderList: React.FC<OrderListProps> = ({
   } = useWalletManager(false);
 
   const [cancelledOrders, setCancelledOrders] = useState<Record<number, boolean>>({});
+  const [visibleOrders, setVisibleOrders] = useState(3);
 
   const handleCancel = async (id: number) => {
     await onCancel(id);
@@ -48,20 +53,27 @@ export const OrderList: React.FC<OrderListProps> = ({
   };
 
   const calculatePriceDeviation = (order: Order) => {
-    // Get market prices
     const fromPrice = TOKEN_PRICES[order.from_token] || 0;
     const toPrice = TOKEN_PRICES[order.to_token] || 0;
     
     if (fromPrice === 0 || toPrice === 0) return 0;
 
-    // Calculate order rate (how many to_tokens per from_token)
     const orderRate = order.to_amount / order.from_amount;
-    
-    // Calculate market rate (how many to_tokens per from_token at current prices)
     const marketRate = fromPrice / toPrice;
     
-    // Calculate deviation percentage
     return ((orderRate / marketRate) - 1) * 100;
+  };
+
+  const getDeviationDisplay = (deviation: number) => {
+    if (Math.abs(deviation) < 0.1) {
+      return "Trading at market price";
+    }
+    return (
+      <div className="flex items-center gap-1">
+        Trading {deviation > 0 ? 'above' : 'below'} market price by {Math.abs(deviation).toFixed(2)}%
+        {deviation > 0 ? <ArrowUp className="text-green-500" /> : <ArrowDown className="text-red-500" />}
+      </div>
+    );
   };
 
   if (loading) {
@@ -72,14 +84,18 @@ export const OrderList: React.FC<OrderListProps> = ({
     );
   }
 
+  const title = type === 'active' ? 'Open Orders' : 
+                type === 'claimed' ? 'Claimed Orders' : 
+                'Cancelled Orders';
+
   if (orders.length === 0) {
     return (
       <div>
         <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-          Open Orders
+          {title}
         </h2>
         <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm text-center">
-          <p className="text-yellow-600">No active orders</p>
+          <p className="text-yellow-600">No {type} orders</p>
         </div>
       </div>
     );
@@ -88,10 +104,10 @@ export const OrderList: React.FC<OrderListProps> = ({
   return (
     <div>
       <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-        Open Orders
+        {title}
       </h2>
 
-      {!userWalletAddress && (
+      {!userWalletAddress && type === 'active' && (
         <div className="mb-6">
           <WalletAddressInput
             walletAddress={walletAddress}
@@ -108,7 +124,7 @@ export const OrderList: React.FC<OrderListProps> = ({
       )}
 
       <div className="space-y-4">
-        {orders.map(order => {
+        {orders.slice(0, visibleOrders).map(order => {
           const fromToken = order.from_token === 'RXD' ? RXD_TOKEN : TOKENS.find(t => t.symbol === order.from_token);
           const toToken = order.to_token === 'RXD' ? RXD_TOKEN : TOKENS.find(t => t.symbol === order.to_token);
 
@@ -122,6 +138,7 @@ export const OrderList: React.FC<OrderListProps> = ({
           return (
             <div
               key={order.id}
+              id={`order-${order.id}`}
               className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm"
             >
               <div className="flex items-center justify-between mb-4">
@@ -151,7 +168,7 @@ export const OrderList: React.FC<OrderListProps> = ({
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  {canClaim && !isCancelled && (
+                  {canClaim && !isCancelled && type === 'active' && (
                     <button
                       onClick={() => onClaim(order.id)}
                       className="px-4 py-2 bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg hover:from-yellow-500 hover:to-amber-700 transition-all"
@@ -159,7 +176,7 @@ export const OrderList: React.FC<OrderListProps> = ({
                       Claim
                     </button>
                   )}
-                  {canCancel && !isCancelled && (
+                  {canCancel && !isCancelled && type === 'active' && (
                     <button
                       onClick={() => handleCancel(order.id)}
                       className="px-4 py-2 bg-red-600/20 text-red-500 rounded-lg hover:bg-red-600/30 transition-colors"
@@ -169,19 +186,17 @@ export const OrderList: React.FC<OrderListProps> = ({
                   )}
                   {isCancelled && (
                     <span className="px-4 py-2 bg-red-600/20 text-red-500 rounded-lg">
-                      Order Canceled
+                      Order Cancelled
                     </span>
                   )}
                 </div>
               </div>
 
-              {Math.abs(priceDeviation) > 0 && (
-                <div className={`text-center mb-4 ${Math.abs(priceDeviation) >= 10 ? 'text-red-500 font-bold' : 'text-yellow-600'}`}>
-                  Trading {priceDeviation > 0 ? 'above' : 'below'} market price by {Math.abs(priceDeviation).toFixed(2)}%
-                </div>
-              )}
+              <div className={`text-center mb-4 ${Math.abs(priceDeviation) >= 10 ? 'text-red-500 font-bold' : 'text-yellow-600'}`}>
+                {getDeviationDisplay(priceDeviation)}
+              </div>
 
-              {canClaim && !isCancelled && (
+              {canClaim && !isCancelled && type === 'active' && (
                 <div className="relative">
                   <p className="text-yellow-600 mb-2">Copy TX to Photonic Wallet. Claim after P2PSwap is done.</p>
                   <div 
@@ -199,6 +214,26 @@ export const OrderList: React.FC<OrderListProps> = ({
           );
         })}
       </div>
+
+      {orders.length > 3 && (
+        <div className="mt-6 px-4">
+          <Slider
+            min={3}
+            max={orders.length}
+            value={visibleOrders}
+            onChange={(value) => setVisibleOrders(typeof value === 'number' ? value : 3)}
+            railStyle={{ backgroundColor: 'rgba(202, 138, 4, 0.2)' }}
+            trackStyle={{ backgroundColor: 'rgb(202, 138, 4)' }}
+            handleStyle={{
+              borderColor: 'rgb(202, 138, 4)',
+              backgroundColor: 'rgb(202, 138, 4)'
+            }}
+          />
+          <div className="text-center text-sm text-yellow-600 mt-2">
+            Showing {visibleOrders} of {orders.length} orders
+          </div>
+        </div>
+      )}
     </div>
   );
 };

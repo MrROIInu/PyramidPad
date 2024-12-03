@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TOKENS } from '../data/tokens';
-import { formatPriceUSD, calculateRXDRatio } from '../lib/tokenPrices';
-import { getMiningData } from '../lib/tokenData';
-import { useOrders } from '../hooks/useOrders';
-import { useSwapContext } from '../contexts/SwapContext';
-import { useRealtimePrices } from '../hooks/useRealtimePrices';
-import { usePriceHistory } from '../hooks/usePriceHistory';
+import { TOKENS } from '../../data/tokens';
+import { formatPriceUSD, calculateRXDRatio } from '../../lib/tokenPrices';
+import { getMiningData } from '../../lib/tokenData';
+import { useOrders } from '../../hooks/useOrders';
+import { useSwapContext } from '../../contexts/SwapContext';
+import { useRealtimePrices } from '../../hooks/useRealtimePrices';
+import { usePriceHistory } from '../../hooks/usePriceHistory';
 
 export const CollectionChart: React.FC = () => {
   const navigate = useNavigate();

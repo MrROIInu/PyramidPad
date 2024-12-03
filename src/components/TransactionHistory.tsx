@@ -3,6 +3,8 @@ import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
 import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
 import { Order } from '../types';
+import Slider from 'rc-slider';
+import 'rc-slider/assets/index.css';
 
 interface TransactionHistoryProps {
   transactions: any[];
@@ -11,6 +13,7 @@ interface TransactionHistoryProps {
 
 export const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions, orders = [] }) => {
   const [activeTab, setActiveTab] = useState<'claimed' | 'cancelled'>('claimed');
+  const [visibleOrders, setVisibleOrders] = useState(3);
 
   // Get claimed and cancelled orders
   const claimedOrders = orders.filter(order => order.claimed).map(order => ({
@@ -60,12 +63,12 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transact
               : 'text-yellow-600 hover:bg-yellow-600/10'
           }`}
         >
-          Canceled Orders
+          Cancelled Orders
         </button>
       </div>
 
       <div className="space-y-4">
-        {displayOrders.map(order => {
+        {displayOrders.slice(0, visibleOrders).map(order => {
           const fromToken = order.from_token === 'RXD' ? RXD_TOKEN : TOKENS.find(t => t.symbol === order.from_token);
           const toToken = order.to_token === 'RXD' ? RXD_TOKEN : TOKENS.find(t => t.symbol === order.to_token);
 
@@ -112,7 +115,7 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transact
                   {new Date(order.created_at).toLocaleString()}
                 </div>
                 <div className={`text-sm ${order.status === 'claimed' ? 'text-yellow-600' : 'text-red-500'}`}>
-                  {order.status === 'claimed' ? 'Claimed Order' : 'Canceled Order'}
+                  {order.status === 'claimed' ? 'Claimed Order' : 'Cancelled Order'}
                 </div>
               </div>
             </div>
@@ -122,6 +125,26 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transact
         {displayOrders.length === 0 && (
           <div className="text-center text-yellow-600 py-4">
             No {activeTab} orders found
+          </div>
+        )}
+
+        {displayOrders.length > 3 && (
+          <div className="mt-6 px-4">
+            <Slider
+              min={3}
+              max={displayOrders.length}
+              value={visibleOrders}
+              onChange={(value) => setVisibleOrders(typeof value === 'number' ? value : 3)}
+              railStyle={{ backgroundColor: 'rgba(202, 138, 4, 0.2)' }}
+              trackStyle={{ backgroundColor: 'rgb(202, 138, 4)' }}
+              handleStyle={{
+                borderColor: 'rgb(202, 138, 4)',
+                backgroundColor: 'rgb(202, 138, 4)'
+              }}
+            />
+            <div className="text-center text-sm text-yellow-600 mt-2">
+              Showing {visibleOrders} of {displayOrders.length} orders
+            </div>
           </div>
         )}
       </div>

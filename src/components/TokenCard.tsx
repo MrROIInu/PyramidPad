@@ -1,7 +1,7 @@
 import React from 'react';
 import { Copy } from 'lucide-react';
 import { Token } from '../types';
-import { formatPriceUSD, formatMarketCap } from '../lib/tokenPrices';
+import { formatPriceUSD, calculateRXDRatio } from '../lib/tokenPrices';
 import { getMiningData } from '../lib/tokenData';
 import { SocialIcons } from './SocialIcons';
 import { useRealtimePrices } from '../hooks/useRealtimePrices';
@@ -15,7 +15,6 @@ interface TokenCardProps {
 export const TokenCard: React.FC<TokenCardProps> = ({ token, onCopy, isCopied }) => {
   const prices = useRealtimePrices();
   const miningData = getMiningData(token.symbol);
-  const marketCap = (prices[token.symbol] || 0) * token.totalSupply;
 
   return (
     <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
@@ -63,24 +62,24 @@ export const TokenCard: React.FC<TokenCardProps> = ({ token, onCopy, isCopied })
             <p className="font-medium">{formatPriceUSD(prices[token.symbol])}</p>
           </div>
           <div>
-            <p className="text-sm text-yellow-600/80">Market Cap</p>
-            <p className="font-medium">{formatMarketCap(marketCap)}</p>
+            <p className="text-sm text-yellow-600/80">Real-Time RXD Ratio</p>
+            <p className="font-medium">{calculateRXDRatio(prices[token.symbol], prices.RXD)}</p>
           </div>
           <div>
-            <p className="text-sm text-yellow-600/80">Mining Progress</p>
+            <p className="text-sm text-yellow-600/80">Premined</p>
+            <p className="font-medium">{miningData.preminted}%</p>
+          </div>
+          <div>
+            <p className="text-sm text-yellow-600/80">Minted</p>
             <div className="flex items-center gap-2">
               <div className="w-full h-2 bg-black/30 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-yellow-600 to-amber-800"
-                  style={{ width: `${miningData.mined}%` }}
+                  style={{ width: `${miningData.minted}%` }}
                 />
               </div>
-              <span className="text-sm whitespace-nowrap">{miningData.mined}%</span>
+              <span className="text-sm whitespace-nowrap">{miningData.minted}%</span>
             </div>
-          </div>
-          <div>
-            <p className="text-sm text-yellow-600/80">Difficulty</p>
-            <p className="font-medium">{miningData.difficulty}</p>
           </div>
         </div>
       </div>
