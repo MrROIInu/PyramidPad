@@ -38,12 +38,9 @@ export const CollectionChart: React.FC = () => {
     return 'text-yellow-600';
   };
 
-  const handleTokenClick = (symbol: string) => {
-    const token = TOKENS.find(t => t.symbol === symbol);
-    if (token) {
-      updateSelectedToken(token);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+  const handleTokenClick = (token: Token) => {
+    updateSelectedToken(token);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -96,7 +93,7 @@ export const CollectionChart: React.FC = () => {
             return (
               <tr 
                 key={token.symbol}
-                onClick={() => handleTokenClick(token.symbol)}
+                onClick={() => handleTokenClick(token)}
                 className="border-b border-yellow-600/10 hover:bg-yellow-600/5 cursor-pointer"
               >
                 <td className="px-4 py-3 whitespace-nowrap">{index + 1}</td>

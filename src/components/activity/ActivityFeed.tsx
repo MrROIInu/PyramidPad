@@ -53,7 +53,7 @@ export const ActivityFeed: React.FC = () => {
           setTimeout(() => {
             document.body.classList.remove('animate-shake');
             setNewActivity(false);
-          }, 1500);
+          }, 2500);
         }
       )
       .subscribe();

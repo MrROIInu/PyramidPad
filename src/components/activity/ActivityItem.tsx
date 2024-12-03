@@ -18,17 +18,14 @@ export const ActivityItem: React.FC<ActivityItemProps> = ({ activity, isNew }) =
     <AnimatePresence>
       <motion.div 
         initial={isNew ? { scale: 0.95, opacity: 0 } : false}
-        animate={{ 
-          scale: 1, 
-          opacity: 1
-        }}
+        animate={{ scale: 1, opacity: 1 }}
         transition={{ 
           type: 'spring',
           stiffness: 500,
           damping: 30
         }}
         className={`
-          py-2 px-3 rounded-lg transition-colors duration-300
+          py-2 px-3 rounded-lg transition-colors
           ${isNew ? 'activity-flash' : ''}
         `}
       >

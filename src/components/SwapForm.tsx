@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { ArrowUpDown, Loader2 } from 'lucide-react';
 import { TokenSelect } from './TokenSelect';
 import { TOKENS } from '../data/tokens';
@@ -19,6 +19,7 @@ interface SwapFormProps {
 
 export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
   const prices = useRealtimePrices();
+  const { selectedToken } = useSwapContext();
   
   const {
     walletAddress,
@@ -41,13 +42,17 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
   } = useSwapForm(onOrderCreated);
 
   const {
-    selectedToken,
     isRxdToToken,
     rxdAmount,
     tokenAmount,
     transactionId,
     importedTx
   } = formState;
+
+  // Update form when selected token changes
+  useEffect(() => {
+    updateFormState({ selectedToken });
+  }, [selectedToken, updateFormState]);
 
   // Calculate USD values
   const calculateUSDValue = useCallback((amount: string, symbol: string) => {
