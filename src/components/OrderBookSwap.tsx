@@ -5,7 +5,6 @@ import { TransactionHistory } from './TransactionHistory';
 import { useOrders } from '../hooks/useOrders';
 import { useSwapContext } from '../contexts/SwapContext';
 import { SelectedTokenChart } from './charts/SelectedTokenChart';
-import { CollectionChart } from './CollectionChart';
 
 export const OrderBookSwap: React.FC = () => {
   const { orders, loading, error, onClaim, onCancel, fetchOrders } = useOrders();
@@ -29,12 +28,7 @@ export const OrderBookSwap: React.FC = () => {
           </div>
         )}
         
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-            {selectedToken.symbol} Price Chart
-          </h2>
-          <SelectedTokenChart />
-        </div>
+        <SelectedTokenChart />
 
         <OrderList
           orders={filteredOrders}
@@ -47,13 +41,6 @@ export const OrderBookSwap: React.FC = () => {
           transactions={[]}
           orders={orders}
         />
-
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-            RXD20 Token Chart
-          </h2>
-          <CollectionChart />
-        </div>
       </div>
     </div>
   );

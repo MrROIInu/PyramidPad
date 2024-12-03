@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TOKENS } from '../data/tokens';
 import { TokenCard } from '../components/TokenCard';
 import { CollectionChart } from '../components/CollectionChart';
+import { RXD_TOKEN } from '../constants/tokens';
 
 export const TokenList: React.FC = () => {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -38,9 +39,16 @@ export const TokenList: React.FC = () => {
         ))}
       </div>
 
-      <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-        RXD20 Glyph Token Chart
-      </h2>
+      <div className="flex items-center gap-2 mb-6">
+        <img 
+          src={RXD_TOKEN.imageUrl} 
+          alt="RXD" 
+          className="w-8 h-8 rounded-full"
+        />
+        <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800">
+          Radiant RXD20 Glyph Token Chart
+        </h2>
+      </div>
       <CollectionChart />
     </div>
   );

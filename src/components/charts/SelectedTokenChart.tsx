@@ -124,7 +124,7 @@ export const SelectedTokenChart: React.FC = () => {
   };
 
   return (
-    <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm">
+    <div className="bg-gradient-to-r from-amber-900/30 to-amber-900/30 rounded-xl p-6 backdrop-blur-sm mb-8">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <img 

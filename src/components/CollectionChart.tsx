@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { TOKENS } from '../data/tokens';
 import { formatPriceUSD, calculateRXDRatio } from '../lib/tokenPrices';
 import { getMiningData } from '../lib/tokenData';
@@ -7,6 +6,7 @@ import { useOrders } from '../hooks/useOrders';
 import { useSwapContext } from '../contexts/SwapContext';
 import { useRealtimePrices } from '../hooks/useRealtimePrices';
 import { usePriceHistory } from '../hooks/usePriceHistory';
+import { RXD_TOKEN } from '../constants/tokens';
 
 export const CollectionChart: React.FC = () => {
   const { updateSelectedToken } = useSwapContext();
@@ -45,7 +45,16 @@ export const CollectionChart: React.FC = () => {
   return (
     <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm overflow-x-auto">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-yellow-600">Radiant RXD20 Glyph Token Chart</h2>
+        <div className="flex items-center gap-2">
+          <img 
+            src={RXD_TOKEN.imageUrl} 
+            alt="RXD" 
+            className="w-6 h-6 rounded-full"
+          />
+          <h2 className="text-xl font-semibold text-yellow-600">
+            Radiant RXD20 Glyph Token Chart
+          </h2>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => setTimeframe('1d')}
