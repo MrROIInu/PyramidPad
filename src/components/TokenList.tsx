@@ -1,9 +1,65 @@
 import React, { useState } from 'react';
-import { Copy } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
-import { TOKEN_PRICES, formatPriceUSD, formatMarketCap } from '../lib/tokenPrices';
-import { getMiningData } from '../lib/tokenData';
-import { SocialIcons } from './SocialIcons';
+import { TokenCard } from '../components/TokenCard';
+import { CollectionChart } from '../components/CollectionChart';
+import { RXD_TOKEN } from '../constants/tokens';
+
+const PREMINTED_AMOUNTS: Record<string, number> = {
+  "RADCAT": 0,
+  "PILIM": 0,
+  "FUGAZI": 210000,
+  "GLYPH": 100000000,
+  "RAD": 0,
+  "KEKW": 0,
+  "PEPE": 0,
+  "DOGE": 0,
+  "φῶς": 27594,
+  "NEP": 0,
+  "DJANGO": 777777,
+  "BTC": 2100000,
+  "SERPENTX": 6025,
+  "COPIUM": 5000000,
+  "RADMALLOW": 0,
+  "MERI": 0,
+  "SPIN": 83080,
+  "DIABLO": 0,
+  "HOPIUM": 0,
+  "RGB": 2190000000,
+  "ENTITY": 696969,
+  "RANTX": 0,
+  "RXDASIC": 696969,
+  "DPR": 50000,
+  "BNET": 0,
+  "LAURA": 6900,
+  "BPM": 3555,
+  "LAMBO": 0,
+  "PIZZA": 0,
+  "BITQ": 0,
+  "R6": 0,
+  "TYS": 0,
+  "忍者": 0,
+  "BOI": 0,
+  "DEEZ": 0,
+  "RZBT": 0,
+  "KAKL": 30000,
+  "OP_CAT": 0,
+  "UȻME": 0,
+  "GOAT": 210,
+  "XD": 21000000000,
+  "GRAVITY": 210000,
+  "POW": 0,
+  "NEOX": 9900000,
+  "GODZ": 0,
+  "WOJAK": 0,
+  "Me me": 0,
+  "DAD": 4843872,
+  "RISI": 25000000000,
+  "SIR": 0,
+  "HAT": 0,
+  "π": 0,
+  "P2P": 0,
+  "RADCHAD": 0
+};
 
 export const TokenList: React.FC = () => {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -29,84 +85,29 @@ export const TokenList: React.FC = () => {
         RXD20 Token List
       </h1>
       
-      <div className="grid gap-4">
-        {sortedTokens.map((token, index) => {
-          const miningData = getMiningData(token.symbol);
-          
-          return (
-            <div 
-              key={token.symbol}
-              className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm"
-            >
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <div className="flex items-center gap-4">
-                  <img 
-                    src={token.imageUrl} 
-                    alt={token.symbol} 
-                    className="w-12 h-12 rounded-full"
-                  />
-                  <div>
-                    <h3 className="text-lg font-semibold">{token.symbol}</h3>
-                    <p className="text-yellow-600">{token.name}</p>
-                    <div className="mt-2">
-                      <SocialIcons 
-                        website={token.social?.website}
-                        x={token.social?.x}
-                        discord={token.social?.discord}
-                        telegram={token.social?.telegram}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="lg:col-span-2">
-                  <p className="text-sm text-yellow-600/80 break-all mb-2">
-                    Contract Address: {token.contractAddress}
-                  </p>
-                  <button
-                    onClick={() => handleCopy(token.contractAddress, index)}
-                    className="flex items-center gap-2 bg-yellow-600/20 text-yellow-600 px-4 py-2 rounded-lg hover:bg-yellow-600/30 transition-colors"
-                  >
-                    <Copy size={16} />
-                    {copiedIndex === index ? 'Copied!' : 'Copy Address'}
-                  </button>
-                </div>
-
-                <div className="grid gap-2">
-                  <div>
-                    <p className="text-sm text-yellow-600/80">Total Supply</p>
-                    <p className="font-medium">{token.totalSupply.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-yellow-600/80">Price</p>
-                    <p className="font-medium">{formatPriceUSD(TOKEN_PRICES[token.symbol])}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-yellow-600/80">Market Cap</p>
-                    <p className="font-medium">{formatMarketCap(TOKEN_PRICES[token.symbol], token.totalSupply)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-yellow-600/80">Mining Progress</p>
-                    <div className="flex items-center gap-2">
-                      <div className="w-full h-2 bg-black/30 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-yellow-600 to-amber-800"
-                          style={{ width: `${miningData.mined}%` }}
-                        />
-                      </div>
-                      <span className="text-sm whitespace-nowrap">{miningData.mined}%</span>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm text-yellow-600/80">Difficulty</p>
-                    <p className="font-medium">{miningData.difficulty}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      <div className="grid gap-4 mb-12">
+        {sortedTokens.map((token, index) => (
+          <TokenCard
+            key={token.symbol}
+            token={token}
+            onCopy={(text) => handleCopy(text, index)}
+            isCopied={copiedIndex === index}
+            premintedAmount={PREMINTED_AMOUNTS[token.symbol]}
+          />
+        ))}
       </div>
+
+      <div className="flex items-center gap-2 mb-6">
+        <img 
+          src={RXD_TOKEN.imageUrl} 
+          alt="RXD" 
+          className="w-8 h-8 rounded-full"
+        />
+        <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800">
+          Radiant RXD20 Glyph Token Chart
+        </h2>
+      </div>
+      <CollectionChart />
     </div>
   );
 };

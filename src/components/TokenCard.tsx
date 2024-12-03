@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Copy } from 'lucide-react';
 import { Token } from '../types';
 import { formatPriceUSD, calculateRXDRatio } from '../lib/tokenPrices';
@@ -70,7 +70,7 @@ export const TokenCard: React.FC<TokenCardProps> = ({ token, onCopy, isCopied })
           </div>
           <div>
             <p className="text-sm text-yellow-600/80">Preminted</p>
-            <p className="font-medium">{miningData.preminted}%</p>
+            <p className="font-medium">{miningData.premintedAmount.toLocaleString()}</p>
           </div>
           <div>
             <p className="text-sm text-yellow-600/80">Minted</p>
