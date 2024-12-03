@@ -17,7 +17,7 @@ interface ActivityItem {
 }
 
 export const LatestActivity: React.FC = () => {
-  const [activity, setActivity] = useState<ActivityItem | null>(null);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [flash, setFlash] = useState(false);
 
   useEffect(() => {
@@ -27,25 +27,25 @@ export const LatestActivity: React.FC = () => {
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(1);
+        .limit(3);
 
       if (error) {
         console.warn('Error fetching latest activity:', error);
         return;
       }
 
-      if (data && data.length > 0) {
-        const newActivity = {
-          id: `${data[0].id}-initial`,
-          type: data[0].claimed ? 'claim' : 'new_order',
-          fromToken: data[0].from_token,
-          toToken: data[0].to_token,
-          fromAmount: data[0].from_amount,
-          toAmount: data[0].to_amount,
-          timestamp: data[0].created_at,
-          orderId: data[0].id
-        };
-        setActivity(newActivity);
+      if (data) {
+        const activities = data.map(order => ({
+          id: `${order.id}-initial`,
+          type: order.claimed ? 'claim' : 'new_order',
+          fromToken: order.from_token,
+          toToken: order.to_token,
+          fromAmount: order.from_amount,
+          toAmount: order.to_amount,
+          timestamp: order.created_at,
+          orderId: order.id
+        }));
+        setActivity(activities);
       }
     };
 
@@ -68,15 +68,15 @@ export const LatestActivity: React.FC = () => {
             orderId: payload.new.id
           };
 
-          setActivity(newActivity);
+          setActivity(prev => [newActivity, ...prev.slice(0, 2)]);
           setFlash(true);
-          setTimeout(() => setFlash(false), 5000);
+          setTimeout(() => setFlash(false), 2500);
 
           // Trigger page shake animation
           document.body.classList.add('animate-shake');
           setTimeout(() => {
             document.body.classList.remove('animate-shake');
-          }, 1500);
+          }, 2500);
         }
       )
       .subscribe();
@@ -86,43 +86,16 @@ export const LatestActivity: React.FC = () => {
     };
   }, []);
 
-  const handleActivityClick = (orderId: number) => {
-    const orderElement = document.getElementById(`order-${orderId}`);
-    if (orderElement) {
-      orderElement.scrollIntoView({ behavior: 'smooth' });
-      orderElement.classList.add('highlight-order');
-      setTimeout(() => {
-        orderElement.classList.remove('highlight-order');
-      }, 3000);
-    }
-  };
-
   const getTokenImage = (symbol: string) => {
     const token = symbol === 'RXD' ? RXD_TOKEN : TOKENS.find(t => t.symbol === symbol);
     return token?.imageUrl || '';
   };
 
-  if (!activity) {
-    return (
-      <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Activity className="text-yellow-600" />
-          <h3 className="text-lg font-semibold text-yellow-600">Latest Activity</h3>
-        </div>
-        <div className="text-yellow-600/80 text-center py-4">
-          Waiting for activity...
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <motion.div 
-      className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm"
-      animate={flash ? {
-        backgroundColor: ['rgba(255, 215, 0, 0.5)', 'rgba(202, 138, 4, 0.3)'],
-      } : {}}
-      transition={{ duration: 0.3, repeat: 5, repeatType: 'reverse' }}
+    <div 
+      className={`bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm ${
+        flash ? 'activity-flash' : ''
+      }`}
     >
       <div className="flex items-center gap-2 mb-4">
         <Activity className="text-yellow-600" />
@@ -130,36 +103,43 @@ export const LatestActivity: React.FC = () => {
       </div>
 
       <AnimatePresence mode="sync">
-        <motion.div 
-          key={activity.id}
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          className="flex items-center gap-2 bg-black/20 rounded-lg p-2 cursor-pointer hover:bg-black/30 transition-colors"
-          onClick={() => handleActivityClick(activity.orderId)}
-        >
-          <div className="flex items-center gap-2">
-            <img 
-              src={getTokenImage(activity.fromToken)}
-              alt={activity.fromToken}
-              className="w-6 h-6 rounded-full"
-            />
-            <span>{activity.fromAmount} {activity.fromToken}</span>
-          </div>
-          <span className="text-yellow-600">➔</span>
-          <div className="flex items-center gap-2">
-            <img 
-              src={getTokenImage(activity.toToken)}
-              alt={activity.toToken}
-              className="w-6 h-6 rounded-full"
-            />
-            <span>{activity.toAmount} {activity.toToken}</span>
-          </div>
-          <span className={`ml-auto ${activity.type === 'new_order' ? 'text-green-500' : 'text-yellow-600'}`}>
-            {activity.type === 'new_order' ? '🔄 New Order' : '✅ New Claim'}
-          </span>
-        </motion.div>
+        {activity.map((item) => (
+          <motion.div 
+            key={item.id}
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="flex items-center gap-2 bg-black/20 rounded-lg p-2 mb-2"
+          >
+            <div className="flex items-center gap-2">
+              <img 
+                src={getTokenImage(item.fromToken)}
+                alt={item.fromToken}
+                className="w-6 h-6 rounded-full"
+              />
+              <span>{item.fromAmount} {item.fromToken}</span>
+            </div>
+            <span className="text-yellow-600">➔</span>
+            <div className="flex items-center gap-2">
+              <img 
+                src={getTokenImage(item.toToken)}
+                alt={item.toToken}
+                className="w-6 h-6 rounded-full"
+              />
+              <span>{item.toAmount} {item.toToken}</span>
+            </div>
+            <span className={`ml-auto ${item.type === 'new_order' ? 'text-green-500' : 'text-yellow-600'}`}>
+              {item.type === 'new_order' ? '🔄 New Order' : '✅ Claimed'}
+            </span>
+          </motion.div>
+        ))}
       </AnimatePresence>
-    </motion.div>
+
+      {activity.length === 0 && (
+        <div className="text-center text-yellow-600/80 py-4">
+          Waiting for activity...
+        </div>
+      )}
+    </div>
   );
 };

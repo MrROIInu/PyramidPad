@@ -9,7 +9,6 @@ import { useRealtimePrices } from '../hooks/useRealtimePrices';
 import { usePriceHistory } from '../hooks/usePriceHistory';
 
 export const CollectionChart: React.FC = () => {
-  const navigate = useNavigate();
   const { updateSelectedToken } = useSwapContext();
   const { orders } = useOrders();
   const prices = useRealtimePrices();
@@ -38,18 +37,15 @@ export const CollectionChart: React.FC = () => {
     return 'text-yellow-600';
   };
 
-  const handleTokenClick = (symbol: string) => {
-    const token = TOKENS.find(t => t.symbol === symbol);
-    if (token) {
-      updateSelectedToken(token);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+  const handleTokenClick = (token: typeof TOKENS[0]) => {
+    updateSelectedToken(token);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
     <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm overflow-x-auto">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-yellow-600">RXD20 Token Chart</h2>
+        <h2 className="text-xl font-semibold text-yellow-600">Radiant RXD20 Glyph Token Chart</h2>
         <div className="flex gap-2">
           <button
             onClick={() => setTimeframe('1d')}
@@ -96,7 +92,7 @@ export const CollectionChart: React.FC = () => {
             return (
               <tr 
                 key={token.symbol}
-                onClick={() => handleTokenClick(token.symbol)}
+                onClick={() => handleTokenClick(token)}
                 className="border-b border-yellow-600/10 hover:bg-yellow-600/5 cursor-pointer"
               >
                 <td className="px-4 py-3 whitespace-nowrap">{index + 1}</td>
