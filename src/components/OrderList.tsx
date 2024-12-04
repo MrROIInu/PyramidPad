@@ -76,6 +76,15 @@ export const OrderList: React.FC<OrderListProps> = ({
     );
   };
 
+  const canClaimOrder = (order: Order) => {
+    if (!isWalletValid) return false;
+    if (!walletAddress) return false;
+    if (order.wallet_address === walletAddress) return false;
+    if (order.claimed) return false;
+    if (order.status === 'cancelled') return false;
+    return true;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -132,7 +141,7 @@ export const OrderList: React.FC<OrderListProps> = ({
 
           const priceDeviation = calculatePriceDeviation(order);
           const canCancel = showCancelButton && order.wallet_address === (userWalletAddress || walletAddress);
-          const canClaim = isWalletValid || (userWalletAddress && userWalletAddress === order.wallet_address);
+          const canClaim = canClaimOrder(order);
           const isCancelled = cancelledOrders[order.id];
 
           return (

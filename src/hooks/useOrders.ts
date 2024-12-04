@@ -2,11 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { updateTokenPriceAfterClaim } from '../lib/priceManager';
 import { Order } from '../types';
+import { useWalletManager } from './useWalletManager';
 
 export const useOrders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { isWalletValid, walletAddress } = useWalletManager(true);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -30,6 +32,11 @@ export const useOrders = () => {
 
   const onClaim = useCallback(async (id: number) => {
     try {
+      if (!isWalletValid) {
+        setError('Your wallet is not authorized to claim orders');
+        return;
+      }
+
       setError(null);
       
       // Get order before updating
@@ -42,15 +49,25 @@ export const useOrders = () => {
       if (getError) throw getError;
 
       // Prevent claiming own orders
-      if (order && order.wallet_address === localStorage.getItem('walletAddress')) {
+      if (order && order.wallet_address === walletAddress) {
         setError('You cannot claim your own orders');
+        return;
+      }
+
+      // Prevent claiming already claimed orders
+      if (order && order.claimed) {
+        setError('This order has already been claimed');
         return;
       }
 
       // Update order status
       const { error: updateError } = await supabase
         .from('orders')
-        .update({ claimed: true })
+        .update({ 
+          claimed: true,
+          claimed_by: walletAddress,
+          claimed_at: new Date().toISOString()
+        })
         .eq('id', id);
 
       if (updateError) throw updateError;
@@ -65,14 +82,33 @@ export const useOrders = () => {
       console.warn('Error claiming order:', err);
       setError('Failed to claim order. Please try again.');
     }
-  }, [fetchOrders]);
+  }, [fetchOrders, isWalletValid, walletAddress]);
 
   const onCancel = useCallback(async (id: number) => {
     try {
       setError(null);
+
+      // Get order before cancelling
+      const { data: order, error: getError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (getError) throw getError;
+
+      // Only allow cancelling own orders
+      if (order && order.wallet_address !== walletAddress) {
+        setError('You can only cancel your own orders');
+        return;
+      }
+
       const { error: updateError } = await supabase
         .from('orders')
-        .update({ status: 'cancelled' })
+        .update({ 
+          status: 'cancelled',
+          cancelled_at: new Date().toISOString()
+        })
         .eq('id', id);
 
       if (updateError) throw updateError;
@@ -81,7 +117,7 @@ export const useOrders = () => {
       console.warn('Error cancelling order:', err);
       setError('Failed to cancel order. Please try again.');
     }
-  }, [fetchOrders]);
+  }, [fetchOrders, walletAddress]);
 
   useEffect(() => {
     fetchOrders();
