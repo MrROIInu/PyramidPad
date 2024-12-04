@@ -90,7 +90,9 @@ export const useOrders = () => {
       .channel('orders-channel')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'orders' },
-        fetchOrders
+        () => {
+          fetchOrders();
+        }
       )
       .subscribe();
 

@@ -51,7 +51,7 @@ export const OrderBookSwap: React.FC = () => {
             Radiant RXD20 Glyph Token Chart
           </h2>
         </div>
-        <CollectionChart />
+        <CollectionChart showTitle={false} />
       </div>
     </div>
   );

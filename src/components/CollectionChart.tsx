@@ -8,8 +8,13 @@ import { useSwapContext } from '../contexts/SwapContext';
 import { useRealtimePrices } from '../hooks/useRealtimePrices';
 import { usePriceHistory } from '../hooks/usePriceHistory';
 import { Token } from '../types';
+import { RXD_TOKEN } from '../constants/tokens';
 
-export const CollectionChart: React.FC = () => {
+interface CollectionChartProps {
+  showTitle?: boolean;
+}
+
+export const CollectionChart: React.FC<CollectionChartProps> = ({ showTitle = true }) => {
   const navigate = useNavigate();
   const { updateSelectedToken } = useSwapContext();
   const { orders } = useOrders();
@@ -46,6 +51,19 @@ export const CollectionChart: React.FC = () => {
 
   return (
     <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm overflow-x-auto">
+      {showTitle && (
+        <div className="flex items-center gap-2 mb-4">
+          <img 
+            src={RXD_TOKEN.imageUrl} 
+            alt="RXD" 
+            className="w-8 h-8 rounded-full"
+          />
+          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800">
+            Radiant RXD20 Glyph Token Chart
+          </h2>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-4">
         <div className="flex gap-2">
           <button

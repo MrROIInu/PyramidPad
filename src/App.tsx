@@ -10,7 +10,6 @@ import { LatestActivity } from './components/activity/LatestActivity';
 import { TopGainers } from './components/TopGainers';
 import { SwapProvider } from './contexts/SwapContext';
 import { Footer } from './components/Footer';
-import { CollectionChart } from './components/charts/CollectionChart';
 
 const App: React.FC = () => {
   return (
@@ -50,12 +49,6 @@ const App: React.FC = () => {
                     <TopGainers />
                   </div>
                   <OrderBookSwap />
-                  <div className="mt-12">
-                    <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-                      RXD20 Token Chart
-                    </h2>
-                    <CollectionChart />
-                  </div>
                 </div>
               } />
               <Route path="/tokens" element={<TokenList />} />

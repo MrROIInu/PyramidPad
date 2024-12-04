@@ -4,7 +4,6 @@ import { Order } from '../types';
 import axios from 'axios';
 import { TOKENS } from '../data/tokens';
 
-const FLOOR_PRICE = 0.000001202; // Base floor price for all tokens
 const PRICE_IMPACT_FACTOR = 0.001; // 0.1% price impact per order
 
 // Fetch RXD price from CoinGecko
@@ -27,9 +26,9 @@ export async function initializeTokenPrices() {
     const rxdPrice = await fetchRXDPrice();
     TOKEN_PRICES['RXD'] = rxdPrice;
 
-    // Set floor price for all tokens
+    // Set initial prices for all tokens at 1:1000 ratio with RXD
     const updates = TOKENS.map(token => {
-      const price = token.symbol === 'RXD' ? rxdPrice : FLOOR_PRICE;
+      const price = rxdPrice / 1000; // Initial price at 1:1000 ratio
       TOKEN_PRICES[token.symbol] = price;
       
       return {
@@ -89,14 +88,14 @@ function startRealtimePriceUpdates() {
 // Update token price after claim
 export async function updateTokenPriceAfterClaim(order: Order) {
   try {
-    const { from_token, to_token } = order;
+    const { from_token, to_token, from_amount, to_amount } = order;
     
     const updates = [];
     
     // Calculate price impact based on order size and direction
     if (from_token !== 'RXD') {
-      const currentPrice = TOKEN_PRICES[from_token] || FLOOR_PRICE;
-      const newPrice = Math.max(FLOOR_PRICE, currentPrice * (1 - PRICE_IMPACT_FACTOR));
+      const currentPrice = TOKEN_PRICES[from_token];
+      const newPrice = currentPrice * (1 - PRICE_IMPACT_FACTOR);
       TOKEN_PRICES[from_token] = newPrice;
       updates.push({
         symbol: from_token,
@@ -106,7 +105,7 @@ export async function updateTokenPriceAfterClaim(order: Order) {
     }
     
     if (to_token !== 'RXD') {
-      const currentPrice = TOKEN_PRICES[to_token] || FLOOR_PRICE;
+      const currentPrice = TOKEN_PRICES[to_token];
       const newPrice = currentPrice * (1 + PRICE_IMPACT_FACTOR);
       TOKEN_PRICES[to_token] = newPrice;
       updates.push({
