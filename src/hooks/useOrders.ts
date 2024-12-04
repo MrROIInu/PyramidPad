@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { priceManager } from '../lib/priceManager';
+import { updateTokenPriceAfterClaim } from '../lib/priceManager';
 import { Order } from '../types';
 
 export const useOrders = () => {
@@ -57,7 +57,7 @@ export const useOrders = () => {
 
       // Update token prices
       if (order) {
-        priceManager.handleOrderClaim(order);
+        await updateTokenPriceAfterClaim(order);
       }
 
       await fetchOrders();

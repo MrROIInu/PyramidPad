@@ -8,15 +8,14 @@ interface ClipboardData {
   transactionId: string;
 }
 
-export const useClipboard = (onClipboardData: (data: ClipboardData) => void) => {
+export const useClipboard = (callback: (data: ClipboardData) => void) => {
   useEffect(() => {
     const handleClipboardText = (text: string) => {
-      // Match the exact format with emojis and arrows
-      const match = text.match(/🔁\s*Swap:\s*(\d+)\s*([A-Z]+)\s*➔\s*(\d+)\s*([A-Z]+)\s*📋([^\s🟦]+)/);
+      const match = text.match(/🔁\s*Swap:\s*(\d+)\s*([A-Za-z0-9$]+)\s*➔\s*(\d+)\s*([A-Za-z0-9$]+)\s*📋([^\s🟦]+)/i);
       
       if (match) {
         const [, fromAmount, fromToken, toAmount, toToken, tx] = match;
-        onClipboardData({
+        callback({
           fromAmount,
           fromToken,
           toAmount,
@@ -33,24 +32,23 @@ export const useClipboard = (onClipboardData: (data: ClipboardData) => void) => 
       }
     };
 
-    // Listen for paste events
-    document.addEventListener('paste', handlePaste);
-
-    // Also check clipboard periodically
-    const checkClipboard = async () => {
+    const handleClipboardChange = async () => {
       try {
         const text = await navigator.clipboard.readText();
-        handleClipboardText(text);
+        if (text) {
+          handleClipboardText(text);
+        }
       } catch (error) {
         // Ignore clipboard read errors
       }
     };
 
-    const interval = setInterval(checkClipboard, 1000);
+    document.addEventListener('paste', handlePaste);
+    const interval = setInterval(handleClipboardChange, 1000);
 
     return () => {
       document.removeEventListener('paste', handlePaste);
       clearInterval(interval);
     };
-  }, [onClipboardData]);
+  }, [callback]);
 };

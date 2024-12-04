@@ -6,7 +6,6 @@ import { useOrders } from '../hooks/useOrders';
 import { useSwapContext } from '../contexts/SwapContext';
 import { RXD_TOKEN } from '../constants/tokens';
 import { CollectionChart } from './CollectionChart';
-import { LatestActivity } from './activity/LatestActivity';
 
 export const OrderBookSwap: React.FC = () => {
   const { orders, loading, error, onClaim, onCancel, fetchOrders } = useOrders();
@@ -29,16 +28,13 @@ export const OrderBookSwap: React.FC = () => {
             {error}
           </div>
         )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <OrderList
-            orders={filteredOrders}
-            onCancel={onCancel}
-            onClaim={onClaim}
-            loading={loading}
-          />
-          <LatestActivity />
-        </div>
+        
+        <OrderList
+          orders={filteredOrders}
+          onCancel={onCancel}
+          onClaim={onClaim}
+          loading={loading}
+        />
 
         <TransactionHistory 
           transactions={[]}
