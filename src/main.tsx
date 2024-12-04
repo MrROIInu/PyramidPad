@@ -4,12 +4,14 @@ import App from './App';
 import './index.css';
 import { initializeDatabase } from './lib/supabase';
 import { initializeTokenPrices } from './lib/priceManager';
-import { TOKENS } from './data/tokens';
 
-// Initialize database and token prices
+// Initialize database and token prices sequentially
 async function initialize() {
   try {
+    // First initialize database
     await initializeDatabase();
+    
+    // Then initialize token prices
     await initializeTokenPrices();
   } catch (error) {
     console.error('Initialization error:', error);

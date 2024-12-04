@@ -4,10 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { useOrders } from '../../hooks/useOrders';
 import { TOKENS } from '../../data/tokens';
 import { RXD_TOKEN } from '../../constants/tokens';
+import { useRealtimePrices } from '../../hooks/useRealtimePrices';
+import { formatPriceUSD } from '../../lib/tokenPrices';
 
 export const LatestActivity: React.FC = () => {
   const navigate = useNavigate();
   const { orders } = useOrders();
+  const prices = useRealtimePrices();
 
   // Get latest 3 orders or claims
   const latestActivity = orders
@@ -32,30 +35,52 @@ export const LatestActivity: React.FC = () => {
 
           if (!fromToken || !toToken) return null;
 
+          const fromValue = activity.from_amount * (prices[fromToken.symbol] || 0);
+          const toValue = activity.to_amount * (prices[toToken.symbol] || 0);
+
           return (
             <div 
               key={activity.id}
               onClick={() => handleActivityClick(activity)}
-              className="flex items-center justify-between p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition-colors"
+              className="flex flex-col p-3 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition-colors"
             >
-              <div className="flex items-center gap-2">
-                <img 
-                  src={fromToken.imageUrl} 
-                  alt={fromToken.symbol} 
-                  className="w-6 h-6 rounded-full"
-                />
-                <span>{activity.from_amount} {fromToken.symbol}</span>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <img 
+                    src={fromToken.imageUrl} 
+                    alt={fromToken.symbol} 
+                    className="w-6 h-6 rounded-full"
+                  />
+                  <div>
+                    <span>{activity.from_amount} {fromToken.symbol}</span>
+                    <div className="text-xs text-yellow-600/80">
+                      ≈ {formatPriceUSD(fromValue)}
+                    </div>
+                  </div>
+                </div>
                 <span className="text-yellow-600">➔</span>
-                <img 
-                  src={toToken.imageUrl} 
-                  alt={toToken.symbol} 
-                  className="w-6 h-6 rounded-full"
-                />
-                <span>{activity.to_amount} {toToken.symbol}</span>
+                <div className="flex items-center gap-2">
+                  <div className="text-right">
+                    <span>{activity.to_amount} {toToken.symbol}</span>
+                    <div className="text-xs text-yellow-600/80">
+                      ≈ {formatPriceUSD(toValue)}
+                    </div>
+                  </div>
+                  <img 
+                    src={toToken.imageUrl} 
+                    alt={toToken.symbol} 
+                    className="w-6 h-6 rounded-full"
+                  />
+                </div>
               </div>
-              <span className={activity.claimed ? 'text-yellow-600' : 'text-green-500'}>
-                {activity.claimed ? '✅ Claimed' : '🔄 New Order'}
-              </span>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-yellow-600/80">
+                  {new Date(activity.created_at).toLocaleTimeString()}
+                </span>
+                <span className={activity.claimed ? 'text-yellow-600' : 'text-green-500'}>
+                  {activity.claimed ? '✅ Claimed' : '🔄 New Order'}
+                </span>
+              </div>
             </div>
           );
         })}
