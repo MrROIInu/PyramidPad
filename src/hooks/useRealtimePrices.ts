@@ -7,8 +7,8 @@ export const useRealtimePrices = () => {
   const [prices, setPrices] = useState(TOKEN_PRICES);
 
   useEffect(() => {
-    // Function to fetch RXD price from CoinGecko
-    const fetchRXDPrice = async () => {
+    // Function to fetch RXD price and update all token prices
+    const updateAllPrices = async () => {
       try {
         const response = await axios.get(
           'https://api.coingecko.com/api/v3/simple/price?ids=radiant&vs_currencies=usd',
@@ -17,39 +17,56 @@ export const useRealtimePrices = () => {
         
         if (response.data?.radiant?.usd) {
           const rxdPrice = response.data.radiant.usd;
-          setPrices(prev => {
-            const newPrices = { ...prev };
-            // Update RXD price
-            newPrices.RXD = rxdPrice;
+          
+          // Update all token prices based on RXD price
+          const updates = Object.keys(prices).map(symbol => {
+            let newPrice;
+            if (symbol === 'RXD') {
+              newPrice = rxdPrice;
+            } else {
+              // Maintain the current ratio with RXD while updating absolute price
+              const currentRatio = prices[symbol] / prices.RXD;
+              newPrice = rxdPrice * currentRatio;
+            }
             
-            // Update all other token prices relative to RXD
-            Object.keys(newPrices).forEach(symbol => {
-              if (symbol !== 'RXD') {
-                const ratio = prev[symbol] / prev.RXD;
-                newPrices[symbol] = rxdPrice * ratio;
-              }
-            });
-            
-            return newPrices;
+            return {
+              symbol,
+              price_usd: newPrice
+            };
           });
+
+          // Update local state
+          const newPrices = { ...prices };
+          updates.forEach(({ symbol, price_usd }) => {
+            newPrices[symbol] = price_usd;
+          });
+          setPrices(newPrices);
+
+          // Update database
+          await supabase
+            .from('tokens')
+            .upsert(updates.map(update => ({
+              ...update,
+              last_updated: new Date().toISOString()
+            })));
         }
       } catch (error) {
-        console.warn('Error fetching RXD price:', error);
+        console.warn('Error updating prices:', error);
       }
     };
 
-    // Initial fetch
-    fetchRXDPrice();
+    // Initial update
+    updateAllPrices();
 
-    // Set up polling interval (every 30 seconds)
-    const interval = setInterval(fetchRXDPrice, 30000);
+    // Set up polling interval (every 15 seconds)
+    const priceInterval = setInterval(updateAllPrices, 15000);
 
-    // Subscribe to price updates
+    // Subscribe to price updates from other users
     const subscription = supabase
       .channel('token-prices')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'tokens' },
-        async (payload) => {
+        (payload) => {
           if (payload.new?.symbol && payload.new?.price_usd) {
             setPrices(prev => ({
               ...prev,
@@ -61,7 +78,7 @@ export const useRealtimePrices = () => {
       .subscribe();
 
     return () => {
-      clearInterval(interval);
+      clearInterval(priceInterval);
       subscription.unsubscribe();
     };
   }, []);

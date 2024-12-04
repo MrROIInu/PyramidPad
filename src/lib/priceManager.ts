@@ -13,10 +13,10 @@ export async function fetchRXDPrice(): Promise<number> {
       'https://api.coingecko.com/api/v3/simple/price?ids=radiant&vs_currencies=usd',
       { timeout: 5000 }
     );
-    return response.data?.radiant?.usd || 0.001202;
+    return response.data?.radiant?.usd || 0;
   } catch (error) {
     console.warn('Error fetching RXD price:', error);
-    return 0.001202;
+    return 0;
   }
 }
 
@@ -24,6 +24,8 @@ export async function fetchRXDPrice(): Promise<number> {
 export async function initializeTokenPrices() {
   try {
     const rxdPrice = await fetchRXDPrice();
+    if (!rxdPrice) return TOKEN_PRICES;
+
     TOKEN_PRICES['RXD'] = rxdPrice;
 
     // Set initial prices for all tokens at 1:1000 ratio with RXD
@@ -42,53 +44,24 @@ export async function initializeTokenPrices() {
     const { error } = await supabase
       .from('tokens')
       .upsert(updates, {
-        onConflict: 'symbol',
-        ignoreDuplicates: false
+        onConflict: 'symbol'
       });
 
     if (error) throw error;
 
-    // Start real-time price updates
-    startRealtimePriceUpdates();
-
     return { ...TOKEN_PRICES };
   } catch (error) {
     console.warn('Error initializing token prices:', error);
-    return { ...TOKEN_PRICES };
+    return TOKEN_PRICES;
   }
-}
-
-// Start real-time price updates
-function startRealtimePriceUpdates() {
-  // Update RXD price every minute
-  setInterval(async () => {
-    const rxdPrice = await fetchRXDPrice();
-    TOKEN_PRICES['RXD'] = rxdPrice;
-
-    // Update RXD price in database
-    await supabase
-      .from('tokens')
-      .upsert({
-        symbol: 'RXD',
-        price_usd: rxdPrice,
-        last_updated: new Date().toISOString()
-      });
-
-    // Update price history
-    await supabase
-      .from('token_price_history')
-      .insert({
-        symbol: 'RXD',
-        price_usd: rxdPrice,
-        timestamp: new Date().toISOString()
-      });
-  }, 60000);
 }
 
 // Update token price after claim
 export async function updateTokenPriceAfterClaim(order: Order) {
   try {
-    const { from_token, to_token, from_amount, to_amount } = order;
+    const { from_token, to_token } = order;
+    const rxdPrice = await fetchRXDPrice();
+    if (!rxdPrice) return TOKEN_PRICES;
     
     const updates = [];
     
@@ -136,6 +109,6 @@ export async function updateTokenPriceAfterClaim(order: Order) {
     return { ...TOKEN_PRICES };
   } catch (error) {
     console.warn('Error updating token prices:', error);
-    return { ...TOKEN_PRICES };
+    return TOKEN_PRICES;
   }
 }
