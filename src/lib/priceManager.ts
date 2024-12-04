@@ -27,30 +27,8 @@ export async function fetchRXDPrice(retries = 0): Promise<number> {
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
       return fetchRXDPrice(retries + 1);
     }
-    console.error('Error fetching RXD price:', error);
+    console.warn('Error fetching RXD price:', error);
     return 0.001202; // Fallback price if all retries fail
-  }
-}
-
-// Update database in chunks
-async function updateDatabase(updates: any[]) {
-  const chunkSize = 25;
-  for (let i = 0; i < updates.length; i += chunkSize) {
-    const chunk = updates.slice(i, i + chunkSize);
-    try {
-      await Promise.all([
-        supabase.from('tokens').upsert(chunk),
-        supabase.from('token_price_history').insert(
-          chunk.map(({ symbol, price_usd, last_updated }) => ({
-            symbol,
-            price_usd,
-            timestamp: last_updated
-          }))
-        )
-      ]);
-    } catch (error) {
-      console.warn('Error updating database chunk:', error);
-    }
   }
 }
 
@@ -85,11 +63,24 @@ export async function initializeTokenPrices() {
     });
 
     // Update database in chunks
-    await updateDatabase(updates);
+    const chunkSize = 25;
+    for (let i = 0; i < updates.length; i += chunkSize) {
+      const chunk = updates.slice(i, i + chunkSize);
+      await Promise.all([
+        supabase.from('tokens').upsert(chunk),
+        supabase.from('token_price_history').insert(
+          chunk.map(({ symbol, price_usd, last_updated }) => ({
+            symbol,
+            price_usd,
+            timestamp: last_updated
+          }))
+        )
+      ]);
+    }
 
     return { ...TOKEN_PRICES };
   } catch (error) {
-    console.error('Error initializing token prices:', error);
+    console.warn('Error initializing token prices:', error);
     return TOKEN_PRICES;
   }
 }
@@ -147,13 +138,25 @@ export async function updateTokenPriceAfterClaim(order: Order) {
       }
     }
 
-    if (updates.length > 0) {
-      await updateDatabase(updates);
+    // Update database in chunks
+    const chunkSize = 25;
+    for (let i = 0; i < updates.length; i += chunkSize) {
+      const chunk = updates.slice(i, i + chunkSize);
+      await Promise.all([
+        supabase.from('tokens').upsert(chunk),
+        supabase.from('token_price_history').insert(
+          chunk.map(({ symbol, price_usd, last_updated }) => ({
+            symbol,
+            price_usd,
+            timestamp: last_updated
+          }))
+        )
+      ]);
     }
 
     return { ...TOKEN_PRICES };
   } catch (error) {
-    console.error('Error updating token prices:', error);
+    console.warn('Error updating token prices:', error);
     return TOKEN_PRICES;
   }
 }

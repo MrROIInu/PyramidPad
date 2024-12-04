@@ -5,8 +5,8 @@ import './index.css';
 import { initializeDatabase } from './lib/supabase';
 import { initializeTokenPrices } from './lib/priceManager';
 
-// Initialize database and token prices sequentially
-async function initialize() {
+// Initialize database and token prices
+const initialize = async () => {
   try {
     // First initialize database
     await initializeDatabase();
@@ -14,12 +14,12 @@ async function initialize() {
     // Then initialize token prices
     await initializeTokenPrices();
   } catch (error) {
-    console.error('Initialization error:', error);
+    console.warn('Initialization error:', error);
   }
-}
+};
 
 // Run initialization
-initialize();
+initialize().catch(console.warn);
 
 const root = document.getElementById('root');
 if (root) {

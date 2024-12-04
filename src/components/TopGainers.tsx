@@ -3,12 +3,15 @@ import { TrendingUp } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
 import { useSwapContext } from '../contexts/SwapContext';
 import { usePriceHistory } from '../hooks/usePriceHistory';
+import { formatPriceUSD } from '../lib/tokenPrices';
+import { useRealtimePrices } from '../hooks/useRealtimePrices';
 
 export const TopGainers: React.FC = () => {
   const { updateSelectedToken } = useSwapContext();
   const { priceChanges } = usePriceHistory();
+  const prices = useRealtimePrices();
 
-  // Get top 3 tokens by price change percentage, excluding RXD
+  // Get top 6 tokens by price change percentage, excluding RXD
   const topTokens = [...TOKENS]
     .filter(token => token.symbol !== 'RXD')
     .sort((a, b) => {
@@ -16,7 +19,7 @@ export const TopGainers: React.FC = () => {
       const changeB = priceChanges[b.symbol] || 0;
       return changeB - changeA;
     })
-    .slice(0, 3);
+    .slice(0, 6);
 
   const handleTokenClick = (token: typeof TOKENS[0]) => {
     updateSelectedToken(token);
@@ -35,9 +38,11 @@ export const TopGainers: React.FC = () => {
         <TrendingUp className="text-yellow-600" />
         <h3 className="text-lg font-semibold text-yellow-600">Top Gainers</h3>
       </div>
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {topTokens.map((token, index) => {
           const priceChange = priceChanges[token.symbol] || 0;
+          const currentPrice = prices[token.symbol] || 0;
+          
           return (
             <div 
               key={token.symbol} 
@@ -47,9 +52,14 @@ export const TopGainers: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span className="text-yellow-600/80 w-6">{index + 1}</span>
                 <img src={token.imageUrl} alt={token.symbol} className="w-6 h-6 rounded-full" />
-                <span className="w-20">{token.symbol}</span>
+                <div className="flex flex-col">
+                  <span className="font-medium">{token.symbol}</span>
+                  <span className="text-xs text-yellow-600/80">
+                    {formatPriceUSD(currentPrice)}
+                  </span>
+                </div>
               </div>
-              <span className={`${getPriceChangeClass(priceChange)} font-mono whitespace-nowrap`}>
+              <span className={`${getPriceChangeClass(priceChange)} font-mono whitespace-nowrap text-sm`}>
                 {priceChange > 0 ? '+' : ''}{priceChange.toFixed(2)}%
               </span>
             </div>
