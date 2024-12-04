@@ -10,12 +10,14 @@ import { LatestActivity } from './components/activity/LatestActivity';
 import { TopGainers } from './components/TopGainers';
 import { SwapProvider } from './contexts/SwapContext';
 import { Footer } from './components/Footer';
+import { RadiantHeader } from './components/RadiantHeader';
 
 const App: React.FC = () => {
   return (
     <SwapProvider>
       <Router>
         <div className="min-h-screen flex flex-col">
+          <RadiantHeader />
           <div className="flex-grow">
             <div className="container mx-auto px-4 py-4">
               <div className="flex justify-between items-center mb-4">
