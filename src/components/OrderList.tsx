@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Copy, Loader2, ArrowUp, ArrowDown } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
@@ -12,7 +12,7 @@ import 'rc-slider/assets/index.css';
 interface OrderListProps {
   orders: Order[];
   onCancel: (id: number) => void;
-  onClaim: (id: number) => void;
+  onClaim: (id: number, walletAddress: string) => void;
   loading?: boolean;
   showCancelButton?: boolean;
   userWalletAddress?: string;
@@ -47,42 +47,17 @@ export const OrderList: React.FC<OrderListProps> = ({
     setCancelledOrders(prev => ({ ...prev, [id]: true }));
   };
 
+  const handleClaim = async (id: number) => {
+    if (!walletAddress || !isWalletValid) {
+      alert('Please connect a valid wallet first');
+      return;
+    }
+    await onClaim(id, walletAddress);
+  };
+
   const handleCopy = async (text: string) => {
     await navigator.clipboard.writeText(text);
     alert('TX copied to clipboard. Claim order when you have made swap in Photonic Wallet.');
-  };
-
-  const calculatePriceDeviation = (order: Order) => {
-    const fromPrice = TOKEN_PRICES[order.from_token] || 0;
-    const toPrice = TOKEN_PRICES[order.to_token] || 0;
-    
-    if (fromPrice === 0 || toPrice === 0) return 0;
-
-    const orderRate = order.to_amount / order.from_amount;
-    const marketRate = fromPrice / toPrice;
-    
-    return ((orderRate / marketRate) - 1) * 100;
-  };
-
-  const getDeviationDisplay = (deviation: number) => {
-    if (Math.abs(deviation) < 0.1) {
-      return "Trading at market price";
-    }
-    return (
-      <div className="flex items-center gap-1">
-        Trading {deviation > 0 ? 'above' : 'below'} market price by {Math.abs(deviation).toFixed(2)}%
-        {deviation > 0 ? <ArrowUp className="text-green-500" /> : <ArrowDown className="text-red-500" />}
-      </div>
-    );
-  };
-
-  const canClaimOrder = (order: Order) => {
-    if (!isWalletValid) return false;
-    if (!walletAddress) return false;
-    if (order.wallet_address === walletAddress) return false;
-    if (order.claimed) return false;
-    if (order.status === 'cancelled') return false;
-    return true;
   };
 
   if (loading) {
@@ -139,9 +114,8 @@ export const OrderList: React.FC<OrderListProps> = ({
 
           if (!fromToken || !toToken) return null;
 
-          const priceDeviation = calculatePriceDeviation(order);
           const canCancel = showCancelButton && order.wallet_address === (userWalletAddress || walletAddress);
-          const canClaim = canClaimOrder(order);
+          const canClaim = isWalletValid && order.wallet_address !== walletAddress;
           const isCancelled = cancelledOrders[order.id];
 
           return (
@@ -179,7 +153,7 @@ export const OrderList: React.FC<OrderListProps> = ({
                 <div className="flex gap-2">
                   {canClaim && !isCancelled && type === 'active' && (
                     <button
-                      onClick={() => onClaim(order.id)}
+                      onClick={() => handleClaim(order.id)}
                       className="px-4 py-2 bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg hover:from-yellow-500 hover:to-amber-700 transition-all"
                     >
                       Claim
@@ -199,10 +173,6 @@ export const OrderList: React.FC<OrderListProps> = ({
                     </span>
                   )}
                 </div>
-              </div>
-
-              <div className={`text-center mb-4 ${Math.abs(priceDeviation) >= 10 ? 'text-red-500 font-bold' : 'text-yellow-600'}`}>
-                {getDeviationDisplay(priceDeviation)}
               </div>
 
               {canClaim && !isCancelled && type === 'active' && (

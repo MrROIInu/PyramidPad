@@ -35,7 +35,7 @@ export const useWalletManager = (autoCheck: boolean = false) => {
 
   const copyFeeWallet = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(FEE_WALLET);
+      await navigator.clipboard.writeText('1LqoPnuUm3kdKvPJrELoe6JY3mJc9C7d1e');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {

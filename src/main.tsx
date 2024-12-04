@@ -19,7 +19,7 @@ const initialize = async () => {
 };
 
 // Run initialization
-initialize().catch(console.warn);
+initialize();
 
 const root = document.getElementById('root');
 if (root) {

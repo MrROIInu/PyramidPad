@@ -8,7 +8,7 @@ export async function isWalletAllowed(address: string): Promise<boolean> {
 
     const { data, error } = await supabase
       .from('wallet_addresses')
-      .select('*')
+      .select('address')
       .eq('address', address)
       .single();
 

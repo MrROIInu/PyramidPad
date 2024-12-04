@@ -2,13 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { updateTokenPriceAfterClaim } from '../lib/priceManager';
 import { Order } from '../types';
-import { useWalletManager } from './useWalletManager';
+import { isWalletAllowed } from '../lib/walletManager';
 
 export const useOrders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { isWalletValid, walletAddress } = useWalletManager(true);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -23,23 +22,25 @@ export const useOrders = () => {
       if (fetchError) throw fetchError;
       setOrders(data || []);
     } catch (err) {
-      console.warn('Error fetching orders:', err);
+      console.error('Error fetching orders:', err);
       setError('Failed to fetch orders. Please try again.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const onClaim = useCallback(async (id: number) => {
+  const onClaim = useCallback(async (id: number, claimingWalletAddress: string) => {
     try {
-      if (!isWalletValid) {
+      setError(null);
+
+      // Check if wallet is allowed to claim
+      const isAllowed = await isWalletAllowed(claimingWalletAddress);
+      if (!isAllowed) {
         setError('Your wallet is not authorized to claim orders');
         return;
       }
-
-      setError(null);
       
-      // Get order before updating
+      // Get order before claiming
       const { data: order, error: getError } = await supabase
         .from('orders')
         .select('*')
@@ -48,15 +49,24 @@ export const useOrders = () => {
 
       if (getError) throw getError;
 
-      // Prevent claiming own orders
-      if (order && order.wallet_address === walletAddress) {
-        setError('You cannot claim your own orders');
+      // Validate order
+      if (!order) {
+        setError('Order not found');
         return;
       }
 
-      // Prevent claiming already claimed orders
-      if (order && order.claimed) {
+      if (order.claimed) {
         setError('This order has already been claimed');
+        return;
+      }
+
+      if (order.status === 'cancelled') {
+        setError('This order has been cancelled');
+        return;
+      }
+
+      if (order.wallet_address === claimingWalletAddress) {
+        setError('You cannot claim your own orders');
         return;
       }
 
@@ -65,7 +75,7 @@ export const useOrders = () => {
         .from('orders')
         .update({ 
           claimed: true,
-          claimed_by: walletAddress,
+          claimed_by: claimingWalletAddress,
           claimed_at: new Date().toISOString()
         })
         .eq('id', id);
@@ -73,18 +83,16 @@ export const useOrders = () => {
       if (updateError) throw updateError;
 
       // Update token prices
-      if (order) {
-        await updateTokenPriceAfterClaim(order);
-      }
+      await updateTokenPriceAfterClaim(order);
 
       await fetchOrders();
     } catch (err) {
-      console.warn('Error claiming order:', err);
+      console.error('Error claiming order:', err);
       setError('Failed to claim order. Please try again.');
     }
-  }, [fetchOrders, isWalletValid, walletAddress]);
+  }, [fetchOrders]);
 
-  const onCancel = useCallback(async (id: number) => {
+  const onCancel = useCallback(async (id: number, walletAddress: string) => {
     try {
       setError(null);
 
@@ -97,8 +105,13 @@ export const useOrders = () => {
 
       if (getError) throw getError;
 
-      // Only allow cancelling own orders
-      if (order && order.wallet_address !== walletAddress) {
+      // Validate order
+      if (!order) {
+        setError('Order not found');
+        return;
+      }
+
+      if (order.wallet_address !== walletAddress) {
         setError('You can only cancel your own orders');
         return;
       }
@@ -114,10 +127,10 @@ export const useOrders = () => {
       if (updateError) throw updateError;
       await fetchOrders();
     } catch (err) {
-      console.warn('Error cancelling order:', err);
+      console.error('Error cancelling order:', err);
       setError('Failed to cancel order. Please try again.');
     }
-  }, [fetchOrders, walletAddress]);
+  }, [fetchOrders]);
 
   useEffect(() => {
     fetchOrders();
