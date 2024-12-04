@@ -38,7 +38,7 @@ export const TopGainers: React.FC = () => {
         <TrendingUp className="text-yellow-600" />
         <h3 className="text-lg font-semibold text-yellow-600">Top Gainers</h3>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="space-y-3">
         {topTokens.map((token, index) => {
           const priceChange = priceChanges[token.symbol] || 0;
           const currentPrice = prices[token.symbol] || 0;
@@ -49,7 +49,7 @@ export const TopGainers: React.FC = () => {
               className="flex items-center justify-between cursor-pointer hover:bg-yellow-600/10 p-2 rounded-lg transition-colors"
               onClick={() => handleTokenClick(token)}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <span className="text-yellow-600/80 w-6">{index + 1}</span>
                 <img src={token.imageUrl} alt={token.symbol} className="w-6 h-6 rounded-full" />
                 <div className="flex flex-col">
