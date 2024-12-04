@@ -11,7 +11,7 @@ export const TopGainers: React.FC = () => {
   const { priceChanges } = usePriceHistory();
   const prices = useRealtimePrices();
 
-  // Get top 6 tokens by price change percentage, excluding RXD
+  // Get top 4 tokens by price change percentage, excluding RXD
   const topTokens = [...TOKENS]
     .filter(token => token.symbol !== 'RXD')
     .sort((a, b) => {
@@ -19,7 +19,7 @@ export const TopGainers: React.FC = () => {
       const changeB = priceChanges[b.symbol] || 0;
       return changeB - changeA;
     })
-    .slice(0, 6);
+    .slice(0, 4);
 
   const handleTokenClick = (token: typeof TOKENS[0]) => {
     updateSelectedToken(token);
