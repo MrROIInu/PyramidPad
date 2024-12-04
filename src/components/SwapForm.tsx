@@ -12,6 +12,7 @@ import { TokenAmountInput } from './TokenAmountInput';
 import { useClipboard } from '../hooks/useClipboard';
 import { useMarketPrice } from '../hooks/useMarketPrice';
 import { useRealtimePrices } from '../hooks/useRealtimePrices';
+import { Token } from '../types';
 
 interface SwapFormProps {
   onOrderCreated: () => Promise<void>;
@@ -38,26 +39,28 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     error,
     updateFormState,
     handleSubmit: originalHandleSubmit,
-    handleClipboardData
+    handleClipboardData,
+    switchTokens
   } = useSwapForm(onOrderCreated);
 
   const {
-    isRxdToToken,
-    rxdAmount,
-    tokenAmount,
+    fromToken,
+    toToken,
+    fromAmount,
+    toAmount,
     transactionId,
     importedTx
   } = formState;
 
   // Update form when selected token changes
   useEffect(() => {
-    updateFormState({ selectedToken });
+    updateFormState({ fromToken: selectedToken });
   }, [selectedToken, updateFormState]);
 
   // Calculate USD values
-  const calculateUSDValue = useCallback((amount: string, symbol: string) => {
+  const calculateUSDValue = useCallback((amount: string, token: Token) => {
     const numAmount = parseFloat(amount) || 0;
-    const price = prices[symbol] || 0;
+    const price = prices[token.symbol] || 0;
     return formatPriceUSD(numAmount * price);
   }, [prices]);
 
@@ -66,10 +69,10 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
 
   // Calculate market price and deviation
   const { marketPrice, deviation, isMarketPrice, deviationClass } = useMarketPrice(
-    isRxdToToken ? 'RXD' : selectedToken.symbol,
-    isRxdToToken ? selectedToken.symbol : 'RXD',
-    isRxdToToken ? rxdAmount : tokenAmount,
-    isRxdToToken ? tokenAmount : rxdAmount
+    fromToken.symbol,
+    toToken.symbol,
+    fromAmount,
+    toAmount
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -80,6 +83,9 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     }
     await originalHandleSubmit(e, walletAddress);
   };
+
+  // Get all available tokens including RXD
+  const allTokens = [RXD_TOKEN, ...TOKENS];
 
   return (
     <form onSubmit={handleSubmit} className="mb-12">
@@ -100,52 +106,54 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
           onCopyFeeWallet={copyFeeWallet}
         />
 
-        <div className="mb-6">
-          <label className="block text-yellow-600 mb-2">Select Token</label>
-          <TokenSelect
-            tokens={TOKENS.filter(t => t.symbol !== 'RXD')}
-            selectedToken={selectedToken}
-            onChange={(token) => updateFormState({ selectedToken: token })}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 gap-6 mb-6">
           <div>
-            <label className="block text-yellow-600 mb-2">
-              {isRxdToToken ? 'RXD Amount' : `${selectedToken.symbol} Amount`}
-            </label>
-            <TokenAmountInput
-              amount={isRxdToToken ? rxdAmount : tokenAmount}
-              token={isRxdToToken ? RXD_TOKEN : selectedToken}
-              onChange={(value) => updateFormState(
-                isRxdToToken ? { rxdAmount: value } : { tokenAmount: value }
-              )}
-              usdValue={calculateUSDValue(
-                isRxdToToken ? rxdAmount : tokenAmount,
-                isRxdToToken ? 'RXD' : selectedToken.symbol
-              )}
-              showSlider={true}
-            />
+            <label className="block text-yellow-600 mb-2">From</label>
+            <div className="flex flex-col gap-4">
+              <TokenSelect
+                tokens={allTokens}
+                selectedToken={fromToken}
+                onChange={(token) => updateFormState({ fromToken: token })}
+              />
+              <TokenAmountInput
+                amount={fromAmount}
+                token={fromToken}
+                onChange={(value) => updateFormState({ fromAmount: value })}
+                usdValue={calculateUSDValue(fromAmount, fromToken)}
+                showSlider={true}
+              />
+            </div>
           </div>
 
+          <button
+            type="button"
+            onClick={switchTokens}
+            className="w-full flex items-center justify-center gap-2 bg-yellow-600/20 text-yellow-600 rounded-lg px-6 py-3 font-semibold hover:bg-yellow-600/30 transition-all"
+          >
+            <ArrowUpDown size={20} />
+            Switch Tokens
+          </button>
+
           <div>
-            <label className="block text-yellow-600 mb-2">You Will Receive</label>
-            <TokenAmountInput
-              amount={isRxdToToken ? tokenAmount : rxdAmount}
-              token={isRxdToToken ? selectedToken : RXD_TOKEN}
-              onChange={(value) => updateFormState(
-                isRxdToToken ? { tokenAmount: value } : { rxdAmount: value }
-              )}
-              usdValue={calculateUSDValue(
-                isRxdToToken ? tokenAmount : rxdAmount,
-                isRxdToToken ? selectedToken.symbol : 'RXD'
-              )}
-              showSlider={true}
-            />
+            <label className="block text-yellow-600 mb-2">To</label>
+            <div className="flex flex-col gap-4">
+              <TokenSelect
+                tokens={allTokens}
+                selectedToken={toToken}
+                onChange={(token) => updateFormState({ toToken: token })}
+              />
+              <TokenAmountInput
+                amount={toAmount}
+                token={toToken}
+                onChange={(value) => updateFormState({ toAmount: value })}
+                usdValue={calculateUSDValue(toAmount, toToken)}
+                showSlider={true}
+              />
+            </div>
           </div>
         </div>
 
-        {rxdAmount && tokenAmount && (
+        {fromAmount && toAmount && (
           <div className={`text-center mb-6 ${deviationClass}`}>
             {isMarketPrice ? (
               'Trading at market price'
@@ -154,15 +162,6 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
             )}
           </div>
         )}
-
-        <button
-          type="button"
-          onClick={() => updateFormState({ isRxdToToken: !isRxdToToken })}
-          className="w-full flex items-center justify-center gap-2 bg-yellow-600/20 text-yellow-600 rounded-lg px-6 py-3 font-semibold hover:bg-yellow-600/30 transition-all mb-6"
-        >
-          <ArrowUpDown size={20} />
-          Switch Direction
-        </button>
 
         <div className="mb-6">
           <label className="block text-yellow-600 mb-2">

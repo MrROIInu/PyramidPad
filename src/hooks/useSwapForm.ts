@@ -5,19 +5,19 @@ import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
 
 interface SwapFormState {
-  selectedToken: Token;
-  isRxdToToken: boolean;
-  rxdAmount: string;
-  tokenAmount: string;
+  fromToken: Token;
+  toToken: Token;
+  fromAmount: string;
+  toAmount: string;
   transactionId: string;
   importedTx: string;
 }
 
 const initialState: SwapFormState = {
-  selectedToken: TOKENS[0],
-  isRxdToToken: true,
-  rxdAmount: '',
-  tokenAmount: '',
+  fromToken: TOKENS[0],
+  toToken: RXD_TOKEN,
+  fromAmount: '',
+  toAmount: '',
   transactionId: '',
   importedTx: ''
 };
@@ -32,6 +32,16 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
     setError(null);
   }, []);
 
+  const switchTokens = useCallback(() => {
+    setFormState(prev => ({
+      ...prev,
+      fromToken: prev.toToken,
+      toToken: prev.fromToken,
+      fromAmount: prev.toAmount,
+      toAmount: prev.fromAmount
+    }));
+  }, []);
+
   const handleClipboardData = useCallback((data: { 
     fromAmount: string;
     fromToken: string;
@@ -39,17 +49,18 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
     toToken: string;
     transactionId: string;
   }) => {
-    const { fromToken, toToken } = data;
-    const isRxdFrom = fromToken === 'RXD';
-    const targetToken = isRxdFrom ? toToken : fromToken;
-    const selectedToken = TOKENS.find(t => t.symbol.toUpperCase() === targetToken.toUpperCase()) || RXD_TOKEN;
+    const { fromToken: fromSymbol, toToken: toSymbol } = data;
+    const fromToken = fromSymbol === 'RXD' ? RXD_TOKEN : 
+      TOKENS.find(t => t.symbol === fromSymbol) || RXD_TOKEN;
+    const toToken = toSymbol === 'RXD' ? RXD_TOKEN :
+      TOKENS.find(t => t.symbol === toSymbol) || RXD_TOKEN;
 
     setFormState(prev => ({
       ...prev,
-      selectedToken,
-      isRxdToToken: isRxdFrom,
-      rxdAmount: isRxdFrom ? data.fromAmount : data.toAmount,
-      tokenAmount: isRxdFrom ? data.toAmount : data.fromAmount,
+      fromToken,
+      toToken,
+      fromAmount: data.fromAmount,
+      toAmount: data.toAmount,
       transactionId: data.transactionId,
       importedTx: `🔁 Swap: ${data.fromAmount} ${data.fromToken} ➔ ${data.toAmount} ${data.toToken} 📋${data.transactionId}🟦`
     }));
@@ -59,7 +70,7 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
     e.preventDefault();
     setError(null);
     
-    if (!formState.rxdAmount || !formState.tokenAmount || !formState.transactionId) {
+    if (!formState.fromAmount || !formState.toAmount || !formState.transactionId) {
       setError('Please fill in all required fields');
       return;
     }
@@ -67,10 +78,10 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
     try {
       setLoading(true);
       const orderData = {
-        from_token: formState.isRxdToToken ? 'RXD' : formState.selectedToken.symbol,
-        to_token: formState.isRxdToToken ? formState.selectedToken.symbol : 'RXD',
-        from_amount: parseFloat(formState.isRxdToToken ? formState.rxdAmount : formState.tokenAmount),
-        to_amount: parseFloat(formState.isRxdToToken ? formState.tokenAmount : formState.rxdAmount),
+        from_token: formState.fromToken.symbol,
+        to_token: formState.toToken.symbol,
+        from_amount: parseFloat(formState.fromAmount),
+        to_amount: parseFloat(formState.toAmount),
         swap_tx: formState.transactionId,
         claimed: false,
         claim_count: 0,
@@ -106,6 +117,7 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
     updateFormState,
     handleSubmit,
     resetForm,
-    handleClipboardData
+    handleClipboardData,
+    switchTokens
   };
 };

@@ -4,7 +4,8 @@ import { OrderList } from './OrderList';
 import { TransactionHistory } from './TransactionHistory';
 import { useOrders } from '../hooks/useOrders';
 import { useSwapContext } from '../contexts/SwapContext';
-import { SelectedTokenChart } from './charts/SelectedTokenChart';
+import { RXD_TOKEN } from '../constants/tokens';
+import { CollectionChart } from './CollectionChart';
 
 export const OrderBookSwap: React.FC = () => {
   const { orders, loading, error, onClaim, onCancel, fetchOrders } = useOrders();
@@ -28,8 +29,6 @@ export const OrderBookSwap: React.FC = () => {
           </div>
         )}
         
-        <SelectedTokenChart />
-
         <OrderList
           orders={filteredOrders}
           onCancel={onCancel}
@@ -41,6 +40,18 @@ export const OrderBookSwap: React.FC = () => {
           transactions={[]}
           orders={orders}
         />
+
+        <div className="flex items-center gap-2 mb-6">
+          <img 
+            src={RXD_TOKEN.imageUrl} 
+            alt="RXD" 
+            className="w-8 h-8 rounded-full"
+          />
+          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800">
+            Radiant RXD20 Glyph Token Chart
+          </h2>
+        </div>
+        <CollectionChart />
       </div>
     </div>
   );

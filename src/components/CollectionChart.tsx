@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TOKENS } from '../data/tokens';
 import { formatPriceUSD, calculateRXDRatio } from '../lib/tokenPrices';
 import { getMiningData } from '../lib/tokenData';
@@ -6,9 +7,10 @@ import { useOrders } from '../hooks/useOrders';
 import { useSwapContext } from '../contexts/SwapContext';
 import { useRealtimePrices } from '../hooks/useRealtimePrices';
 import { usePriceHistory } from '../hooks/usePriceHistory';
-import { RXD_TOKEN } from '../constants/tokens';
+import { Token } from '../types';
 
 export const CollectionChart: React.FC = () => {
+  const navigate = useNavigate();
   const { updateSelectedToken } = useSwapContext();
   const { orders } = useOrders();
   const prices = useRealtimePrices();
@@ -37,7 +39,7 @@ export const CollectionChart: React.FC = () => {
     return 'text-yellow-600';
   };
 
-  const handleTokenClick = (token: typeof TOKENS[0]) => {
+  const handleTokenClick = (token: Token) => {
     updateSelectedToken(token);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -45,16 +47,6 @@ export const CollectionChart: React.FC = () => {
   return (
     <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm overflow-x-auto">
       <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
-          <img 
-            src={RXD_TOKEN.imageUrl} 
-            alt="RXD" 
-            className="w-6 h-6 rounded-full"
-          />
-          <h2 className="text-xl font-semibold text-yellow-600">
-            Radiant RXD20 Glyph Token Chart
-          </h2>
-        </div>
         <div className="flex gap-2">
           <button
             onClick={() => setTimeframe('1d')}
@@ -87,7 +79,6 @@ export const CollectionChart: React.FC = () => {
             <th className="px-4 py-3 text-left whitespace-nowrap min-w-[200px]">Price (USD)</th>
             <th className="px-4 py-3 text-left whitespace-nowrap min-w-[150px]">RXD Ratio</th>
             <th className="px-4 py-3 text-left whitespace-nowrap">Last {timeframe === '1d' ? '24h' : '7 Days'}</th>
-            <th className="px-4 py-3 text-left whitespace-nowrap">Premined</th>
             <th className="px-4 py-3 text-left whitespace-nowrap">Minted</th>
             <th className="px-4 py-3 text-left whitespace-nowrap">Orders</th>
           </tr>
@@ -120,7 +111,6 @@ export const CollectionChart: React.FC = () => {
                 <td className={`px-4 py-3 whitespace-nowrap ${getPriceChangeClass(priceChange)}`}>
                   {priceChange > 0 ? '+' : ''}{priceChange.toFixed(2)}%
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap">{miningData.preminted}%</td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     <div className="w-16 h-1.5 bg-black/30 rounded-full overflow-hidden">
