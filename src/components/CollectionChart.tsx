@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { TOKENS } from '../data/tokens';
 import { formatPriceUSD, calculateRXDRatio } from '../lib/tokenPrices';
 import { getMiningData } from '../lib/tokenData';
@@ -7,15 +6,8 @@ import { useOrders } from '../hooks/useOrders';
 import { useSwapContext } from '../contexts/SwapContext';
 import { useRealtimePrices } from '../hooks/useRealtimePrices';
 import { usePriceHistory } from '../hooks/usePriceHistory';
-import { Token } from '../types';
-import { RXD_TOKEN } from '../constants/tokens';
 
-interface CollectionChartProps {
-  showTitle?: boolean;
-}
-
-export const CollectionChart: React.FC<CollectionChartProps> = ({ showTitle = true }) => {
-  const navigate = useNavigate();
+export const CollectionChart: React.FC = () => {
   const { updateSelectedToken } = useSwapContext();
   const { orders } = useOrders();
   const prices = useRealtimePrices();
@@ -45,25 +37,23 @@ export const CollectionChart: React.FC<CollectionChartProps> = ({ showTitle = tr
   };
 
   const handleTokenClick = (token: Token) => {
+    // Update selected token for swap form and chart
     updateSelectedToken(token);
+    
+    // Update form state to use selected token
+    const formElement = document.querySelector('form');
+    if (formElement) {
+      const toTokenSelect = formElement.querySelector('[name="toToken"]');
+      if (toTokenSelect) {
+        (toTokenSelect as HTMLSelectElement).value = token.symbol;
+      }
+    }
+    
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
     <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm overflow-x-auto">
-      {showTitle && (
-        <div className="flex items-center gap-2 mb-4">
-          <img 
-            src={RXD_TOKEN.imageUrl} 
-            alt="RXD" 
-            className="w-8 h-8 rounded-full"
-          />
-          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800">
-            Radiant RXD20 Glyph Token Chart
-          </h2>
-        </div>
-      )}
-
       <div className="flex justify-between items-center mb-4">
         <div className="flex gap-2">
           <button

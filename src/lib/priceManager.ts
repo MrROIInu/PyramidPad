@@ -3,6 +3,7 @@ import { TOKEN_PRICES } from './tokenPrices';
 import { Order } from '../types';
 import axios from 'axios';
 import { TOKENS } from '../data/tokens';
+import { priceCache } from './priceCache';
 
 const PRICE_IMPACT_FACTOR = 0.001; // 0.1% price impact per order
 const BASE_RATIO = 1000; // Base ratio of 1:1000 for RXD to other tokens
@@ -18,17 +19,20 @@ export async function fetchRXDPrice(retries = 0): Promise<number> {
     );
     
     if (response.data?.radiant?.usd) {
-      return response.data.radiant.usd;
+      const price = response.data.radiant.usd;
+      priceCache.setPrice('RXD', price);
+      return price;
     }
     
-    throw new Error('Invalid RXD price response');
+    // Use cached price if API fails
+    return priceCache.getLastValidPrice('RXD');
   } catch (error) {
     if (retries < MAX_RETRIES) {
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
       return fetchRXDPrice(retries + 1);
     }
     console.warn('Error fetching RXD price:', error);
-    return 0.001202; // Fallback price if all retries fail
+    return priceCache.getLastValidPrice('RXD');
   }
 }
 
@@ -36,15 +40,13 @@ export async function fetchRXDPrice(retries = 0): Promise<number> {
 export async function initializeTokenPrices() {
   try {
     const rxdPrice = await fetchRXDPrice();
-    if (!rxdPrice) return TOKEN_PRICES;
-
-    // Set RXD price
     TOKEN_PRICES.RXD = rxdPrice;
 
     // Calculate and set prices for all other tokens
     const updates = TOKENS.map(token => {
       const price = rxdPrice / BASE_RATIO;
       TOKEN_PRICES[token.symbol] = price;
+      priceCache.setPrice(token.symbol, price);
       
       return {
         symbol: token.symbol,
@@ -62,21 +64,17 @@ export async function initializeTokenPrices() {
       last_updated: new Date().toISOString()
     });
 
-    // Update database in chunks
-    const chunkSize = 25;
-    for (let i = 0; i < updates.length; i += chunkSize) {
-      const chunk = updates.slice(i, i + chunkSize);
-      await Promise.all([
-        supabase.from('tokens').upsert(chunk),
-        supabase.from('token_price_history').insert(
-          chunk.map(({ symbol, price_usd, last_updated }) => ({
-            symbol,
-            price_usd,
-            timestamp: last_updated
-          }))
-        )
-      ]);
-    }
+    // Update database
+    await Promise.all([
+      supabase.from('tokens').upsert(updates),
+      supabase.from('token_price_history').insert(
+        updates.map(({ symbol, price_usd, last_updated }) => ({
+          symbol,
+          price_usd,
+          timestamp: last_updated
+        }))
+      )
+    ]);
 
     return { ...TOKEN_PRICES };
   } catch (error) {
@@ -89,26 +87,18 @@ export async function initializeTokenPrices() {
 export async function updateTokenPriceAfterClaim(order: Order) {
   try {
     const rxdPrice = await fetchRXDPrice();
-    if (!rxdPrice) return TOKEN_PRICES;
+    TOKEN_PRICES.RXD = rxdPrice;
 
     const { from_token, to_token } = order;
     const updates = [];
     
-    // Update RXD price first
-    TOKEN_PRICES.RXD = rxdPrice;
-    updates.push({
-      symbol: 'RXD',
-      price_usd: rxdPrice,
-      market_cap: rxdPrice * 21000000000,
-      last_updated: new Date().toISOString()
-    });
-
-    // Calculate price impact based on order size and direction
+    // Update prices based on order direction
     if (from_token !== 'RXD') {
       const basePrice = rxdPrice / BASE_RATIO;
       const currentPrice = TOKEN_PRICES[from_token] || basePrice;
       const newPrice = currentPrice * (1 - PRICE_IMPACT_FACTOR);
       TOKEN_PRICES[from_token] = newPrice;
+      priceCache.setPrice(from_token, newPrice);
       
       const token = TOKENS.find(t => t.symbol === from_token);
       if (token) {
@@ -126,6 +116,7 @@ export async function updateTokenPriceAfterClaim(order: Order) {
       const currentPrice = TOKEN_PRICES[to_token] || basePrice;
       const newPrice = currentPrice * (1 + PRICE_IMPACT_FACTOR);
       TOKEN_PRICES[to_token] = newPrice;
+      priceCache.setPrice(to_token, newPrice);
       
       const token = TOKENS.find(t => t.symbol === to_token);
       if (token) {
@@ -138,14 +129,12 @@ export async function updateTokenPriceAfterClaim(order: Order) {
       }
     }
 
-    // Update database in chunks
-    const chunkSize = 25;
-    for (let i = 0; i < updates.length; i += chunkSize) {
-      const chunk = updates.slice(i, i + chunkSize);
+    // Update database
+    if (updates.length > 0) {
       await Promise.all([
-        supabase.from('tokens').upsert(chunk),
+        supabase.from('tokens').upsert(updates),
         supabase.from('token_price_history').insert(
-          chunk.map(({ symbol, price_usd, last_updated }) => ({
+          updates.map(({ symbol, price_usd, last_updated }) => ({
             symbol,
             price_usd,
             timestamp: last_updated

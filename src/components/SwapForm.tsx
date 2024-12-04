@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { ArrowUpDown, Loader2 } from 'lucide-react';
 import { TokenSelect } from './TokenSelect';
 import { TOKENS } from '../data/tokens';
@@ -35,7 +35,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     loading,
     error,
     updateFormState,
-    handleSubmit: originalHandleSubmit,
+    handleSubmit: submitForm,
     handleClipboardData,
     switchTokens
   } = useSwapForm(onOrderCreated);
@@ -49,35 +49,17 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     importedTx
   } = formState;
 
-  // Calculate USD values
-  const calculateUSDValue = useCallback((amount: string, symbol: string) => {
-    const numAmount = parseFloat(amount) || 0;
-    const price = prices[symbol] || 0;
-    return formatPriceUSD(numAmount * price);
-  }, [prices]);
-
-  // Use clipboard hook
-  useClipboard(handleClipboardData);
-
-  // Calculate market price and deviation
-  const { deviation, isMarketPrice, deviationClass } = useMarketPrice(
-    fromToken.symbol,
-    toToken.symbol,
-    fromAmount,
-    toAmount
-  );
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isWalletChecked || !isWalletValid) {
       await checkWallet();
       return;
     }
-    await originalHandleSubmit(e, walletAddress);
+    await submitForm(e, walletAddress);
   };
 
-  // Get all available tokens including RXD
-  const allTokens = [RXD_TOKEN, ...TOKENS];
+  // Use clipboard hook
+  useClipboard(handleClipboardData);
 
   return (
     <form onSubmit={handleSubmit} className="mb-12">
@@ -102,20 +84,22 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
           <div>
             <label className="block text-yellow-600 mb-2">From</label>
             <TokenSelect
-              tokens={allTokens}
+              tokens={[RXD_TOKEN, ...TOKENS]}
               selectedToken={fromToken}
               onChange={(token) => updateFormState({ fromToken: token })}
               defaultToken={RXD_TOKEN}
+              isFromToken={true}
             />
           </div>
 
           <div>
             <label className="block text-yellow-600 mb-2">To</label>
             <TokenSelect
-              tokens={allTokens}
+              tokens={[RXD_TOKEN, ...TOKENS]}
               selectedToken={toToken}
               onChange={(token) => updateFormState({ toToken: token })}
-              defaultToken={TOKENS[0]} // RADCAT
+              defaultToken={TOKENS.find(t => t.symbol === 'RADCAT') || TOKENS[0]}
+              isFromToken={false}
             />
           </div>
         </div>
@@ -127,7 +111,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
               amount={fromAmount}
               token={fromToken}
               onChange={(value) => updateFormState({ fromAmount: value })}
-              usdValue={calculateUSDValue(fromAmount, fromToken.symbol)}
+              usdValue={formatPriceUSD(parseFloat(fromAmount) * (prices[fromToken.symbol] || 0))}
               showSlider={true}
             />
           </div>
@@ -138,21 +122,11 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
               amount={toAmount}
               token={toToken}
               onChange={(value) => updateFormState({ toAmount: value })}
-              usdValue={calculateUSDValue(toAmount, toToken.symbol)}
+              usdValue={formatPriceUSD(parseFloat(toAmount) * (prices[toToken.symbol] || 0))}
               showSlider={true}
             />
           </div>
         </div>
-
-        {fromAmount && toAmount && (
-          <div className={`text-center mb-6 ${deviationClass}`}>
-            {isMarketPrice ? (
-              'Trading at market price'
-            ) : (
-              `Trading ${deviation > 0 ? 'above' : 'below'} market price by ${Math.abs(deviation).toFixed(2)}%`
-            )}
-          </div>
-        )}
 
         <button
           type="button"
@@ -171,22 +145,11 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
             value={importedTx}
             onChange={(e) => {
               updateFormState({ importedTx: e.target.value });
-              const match = e.target.value.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([^\s🟦]+)/);
-              if (match) {
-                const [, fromAmount, fromToken, toAmount, toToken, tx] = match;
-                handleClipboardData({
-                  fromAmount,
-                  fromToken,
-                  toAmount,
-                  toToken,
-                  transactionId: tx
-                });
-              }
+              handleClipboardData(e.target.value);
             }}
             className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-2"
             placeholder="Example: 🔁 Swap: 1000 RXD ➔ 1000 DOGE 📋01000000015c🟦"
             rows={3}
-            style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.875rem' }}
           />
         </div>
 

@@ -13,8 +13,8 @@ import {
 import { Line } from 'react-chartjs-2';
 import { useSwapContext } from '../../contexts/SwapContext';
 import { useRealtimePrices } from '../../hooks/useRealtimePrices';
-import { usePriceHistory } from '../../hooks/usePriceHistory';
 import { formatPriceUSD } from '../../lib/tokenPrices';
+import { usePriceHistory } from '../../hooks/usePriceHistory';
 
 ChartJS.register(
   CategoryScale,

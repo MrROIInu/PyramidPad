@@ -12,9 +12,14 @@ export const LatestActivity: React.FC = () => {
   const { orders } = useOrders();
   const prices = useRealtimePrices();
 
-  // Get latest 3 orders or claims
+  // Get latest 3 orders or claims, including both new orders and claimed orders
   const latestActivity = orders
     .filter(order => !order.status || order.status !== 'cancelled')
+    .sort((a, b) => {
+      const aTime = a.claimed_at || a.created_at;
+      const bTime = b.claimed_at || b.created_at;
+      return new Date(bTime).getTime() - new Date(aTime).getTime();
+    })
     .slice(0, 3);
 
   const handleActivityClick = (order: any) => {
@@ -37,10 +42,11 @@ export const LatestActivity: React.FC = () => {
 
           const fromValue = activity.from_amount * (prices[fromToken.symbol] || 0);
           const toValue = activity.to_amount * (prices[toToken.symbol] || 0);
+          const timestamp = activity.claimed ? activity.claimed_at : activity.created_at;
 
           return (
             <div 
-              key={activity.id}
+              key={`${activity.id}-${activity.claimed ? 'claimed' : 'new'}`}
               onClick={() => handleActivityClick(activity)}
               className="flex flex-col p-3 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition-colors"
             >
@@ -75,7 +81,7 @@ export const LatestActivity: React.FC = () => {
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-yellow-600/80">
-                  {new Date(activity.created_at).toLocaleTimeString()}
+                  {new Date(timestamp).toLocaleTimeString()}
                 </span>
                 <span className={activity.claimed ? 'text-yellow-600' : 'text-green-500'}>
                   {activity.claimed ? '✅ Claimed' : '🔄 New Order'}

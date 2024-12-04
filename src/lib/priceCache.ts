@@ -40,7 +40,6 @@ class TokenPriceCache {
 
     const age = Date.now() - cached.timestamp;
     if (age > this.CACHE_DURATION) {
-      // Return latest historical price if cache is expired
       return cached.history[0] || null;
     }
 

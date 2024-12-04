@@ -1,8 +1,8 @@
-import React, { useState, useCallback } from 'react';
-import { Copy, Loader2, ArrowUp, ArrowDown } from 'lucide-react';
+import React, { useState } from 'react';
+import { Copy, Loader2 } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
-import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
+import { TOKEN_PRICES, formatPriceUSD, calculateRXDRatio } from '../lib/tokenPrices';
 import { Order } from '../types';
 import { WalletAddressInput } from './wallet/WalletAddressInput';
 import { useWalletManager } from '../hooks/useWalletManager';
@@ -58,6 +58,12 @@ export const OrderList: React.FC<OrderListProps> = ({
   const handleCopy = async (text: string) => {
     await navigator.clipboard.writeText(text);
     alert('TX copied to clipboard. Claim order when you have made swap in Photonic Wallet.');
+  };
+
+  const getRatio = (order: Order): string => {
+    const fromPrice = TOKEN_PRICES[order.from_token] || 0;
+    const toPrice = TOKEN_PRICES[order.to_token] || 0;
+    return calculateRXDRatio(fromPrice, toPrice);
   };
 
   if (loading) {
@@ -117,6 +123,7 @@ export const OrderList: React.FC<OrderListProps> = ({
           const canCancel = showCancelButton && order.wallet_address === (userWalletAddress || walletAddress);
           const canClaim = isWalletValid && order.wallet_address !== walletAddress;
           const isCancelled = cancelledOrders[order.id];
+          const ratio = getRatio(order);
 
           return (
             <div
@@ -173,6 +180,10 @@ export const OrderList: React.FC<OrderListProps> = ({
                     </span>
                   )}
                 </div>
+              </div>
+
+              <div className="text-center mb-4 text-yellow-600">
+                Swap Ratio: {ratio}
               </div>
 
               {canClaim && !isCancelled && type === 'active' && (

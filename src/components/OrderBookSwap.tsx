@@ -45,18 +45,8 @@ export const OrderBookSwap: React.FC = () => {
         {/* Show selected token chart */}
         <SelectedTokenChart />
 
-        {/* Show token chart with title */}
-        <div className="flex items-center gap-2 mb-6">
-          <img 
-            src={RXD_TOKEN.imageUrl} 
-            alt="RXD" 
-            className="w-8 h-8 rounded-full"
-          />
-          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800">
-            Radiant RXD20 Glyph Token Chart
-          </h2>
-        </div>
-        <CollectionChart showTitle={false} />
+        {/* Show collection chart */}
+        <CollectionChart />
       </div>
     </div>
   );
