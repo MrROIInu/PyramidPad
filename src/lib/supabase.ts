@@ -17,8 +17,18 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 // Initialize database tables
 export const initializeDatabase = async () => {
   try {
-    const { error } = await supabase.rpc('create_tables');
-    if (error) throw error;
+    // Create tokens table if it doesn't exist
+    const { error: tokensError } = await supabase.rpc('create_tokens_table');
+    if (tokensError) {
+      console.warn('Error creating tokens table:', tokensError);
+    }
+
+    // Create token_price_history table if it doesn't exist
+    const { error: historyError } = await supabase.rpc('create_price_history_table');
+    if (historyError) {
+      console.warn('Error creating price history table:', historyError);
+    }
+
     return true;
   } catch (error) {
     console.warn('Database initialization error:', error);
