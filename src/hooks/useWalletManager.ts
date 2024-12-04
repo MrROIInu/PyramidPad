@@ -1,7 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-
-export const FEE_WALLET = '1LqoPnuUm3kdKvPJrELoe6JY3mJc9C7d1e';
+import { isWalletAllowed } from '../lib/walletManager';
 
 export const useWalletManager = (autoCheck: boolean = false) => {
   const [walletAddress, setWalletAddress] = useState('');
@@ -12,22 +10,15 @@ export const useWalletManager = (autoCheck: boolean = false) => {
 
   const checkWallet = useCallback(async () => {
     if (!walletAddress) return false;
-    setIsLoading(true);
     
+    setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('wallet_addresses')
-        .select('*')
-        .eq('address', walletAddress)
-        .single();
-
-      if (error) throw error;
-
+      const isAllowed = await isWalletAllowed(walletAddress);
       setIsWalletChecked(true);
-      setIsWalletValid(!!data);
-      return !!data;
+      setIsWalletValid(isAllowed);
+      return isAllowed;
     } catch (error) {
-      console.warn('Error checking wallet:', error);
+      console.error('Error checking wallet:', error);
       setIsWalletChecked(true);
       setIsWalletValid(false);
       return false;
@@ -48,7 +39,7 @@ export const useWalletManager = (autoCheck: boolean = false) => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      console.warn('Failed to copy fee wallet address:', error);
+      console.error('Failed to copy fee wallet address:', error);
     }
   }, []);
 
