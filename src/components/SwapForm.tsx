@@ -76,8 +76,21 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     await originalHandleSubmit(e, walletAddress);
   };
 
-  // Get all available tokens including RXD
-  const allTokens = [RXD_TOKEN, ...TOKENS];
+  const handleImportedTxChange = (text: string) => {
+    updateFormState({ importedTx: text });
+    
+    const match = text.match(/🔁\s*Swap:\s*(\d+)\s*([A-Z]+)\s*➔\s*(\d+)\s*([A-Z]+)\s*📋([^\s🟦]+)/);
+    if (match) {
+      const [, fromAmount, fromToken, toAmount, toToken, tx] = match;
+      handleClipboardData({
+        fromAmount,
+        fromToken,
+        toAmount,
+        toToken,
+        transactionId: tx
+      });
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="mb-12">
@@ -100,25 +113,14 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
-            <label className="block text-yellow-600 mb-2">From</label>
+            <label className="block text-yellow-600 mb-2">From Token</label>
             <TokenSelect
-              tokens={allTokens}
+              tokens={[RXD_TOKEN, ...TOKENS]}
               selectedToken={fromToken}
               onChange={(token) => updateFormState({ fromToken: token })}
             />
           </div>
 
-          <div>
-            <label className="block text-yellow-600 mb-2">To</label>
-            <TokenSelect
-              tokens={allTokens}
-              selectedToken={toToken}
-              onChange={(token) => updateFormState({ toToken: token })}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <label className="block text-yellow-600 mb-2">Amount</label>
             <TokenAmountInput
@@ -127,6 +129,26 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
               onChange={(value) => updateFormState({ fromAmount: value })}
               usdValue={calculateUSDValue(fromAmount, fromToken.symbol)}
               showSlider={true}
+            />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={switchTokens}
+          className="w-full flex items-center justify-center gap-2 bg-yellow-600/20 text-yellow-600 rounded-lg px-6 py-3 font-semibold hover:bg-yellow-600/30 transition-all mb-6"
+        >
+          <ArrowUpDown size={20} />
+          Switch Direction
+        </button>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label className="block text-yellow-600 mb-2">To Token</label>
+            <TokenSelect
+              tokens={[RXD_TOKEN, ...TOKENS]}
+              selectedToken={toToken}
+              onChange={(token) => updateFormState({ toToken: token })}
             />
           </div>
 
@@ -152,34 +174,17 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={switchTokens}
-          className="w-full flex items-center justify-center gap-2 bg-yellow-600/20 text-yellow-600 rounded-lg px-6 py-3 font-semibold hover:bg-yellow-600/30 transition-all mb-6"
-        >
-          <ArrowUpDown size={20} />
-          Switch Direction
-        </button>
-
         <div className="mb-6">
           <label className="block text-yellow-600 mb-2">
             Import Transaction text from Photonic Wallet P2PSwap:
           </label>
           <textarea
             value={importedTx}
-            onChange={(e) => {
-              updateFormState({ importedTx: e.target.value });
-              const match = e.target.value.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([^\s🟦]+)/);
-              if (match) {
-                const [, fromAmount, fromToken, toAmount, toToken, tx] = match;
-                handleClipboardData({
-                  fromAmount,
-                  fromToken,
-                  toAmount,
-                  toToken,
-                  transactionId: tx
-                });
-              }
+            onChange={(e) => handleImportedTxChange(e.target.value)}
+            onPaste={(e) => {
+              e.preventDefault();
+              const text = e.clipboardData.getData('text');
+              handleImportedTxChange(text);
             }}
             className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-2"
             placeholder="Example: 🔁 Swap: 1000 RXD ➔ 1000 DOGE 📋01000000015c🟦"
