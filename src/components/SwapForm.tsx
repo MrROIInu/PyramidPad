@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { ArrowUpDown, Loader2 } from 'lucide-react';
 import { TokenSelect } from './TokenSelect';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
 import { useSwapForm } from '../hooks/useSwapForm';
-import { useSwapContext } from '../contexts/SwapContext';
 import { formatPriceUSD } from '../lib/tokenPrices';
 import { useWalletManager } from '../hooks/useWalletManager';
 import { WalletAddressInput } from './wallet/WalletAddressInput';
@@ -12,7 +11,6 @@ import { TokenAmountInput } from './TokenAmountInput';
 import { useClipboard } from '../hooks/useClipboard';
 import { useMarketPrice } from '../hooks/useMarketPrice';
 import { useRealtimePrices } from '../hooks/useRealtimePrices';
-import { Token } from '../types';
 
 interface SwapFormProps {
   onOrderCreated: () => Promise<void>;
@@ -20,7 +18,6 @@ interface SwapFormProps {
 
 export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
   const prices = useRealtimePrices();
-  const { selectedToken } = useSwapContext();
   
   const {
     walletAddress,
@@ -52,15 +49,10 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     importedTx
   } = formState;
 
-  // Update form when selected token changes
-  useEffect(() => {
-    updateFormState({ fromToken: selectedToken });
-  }, [selectedToken, updateFormState]);
-
   // Calculate USD values
-  const calculateUSDValue = useCallback((amount: string, token: Token) => {
+  const calculateUSDValue = useCallback((amount: string, symbol: string) => {
     const numAmount = parseFloat(amount) || 0;
-    const price = prices[token.symbol] || 0;
+    const price = prices[symbol] || 0;
     return formatPriceUSD(numAmount * price);
   }, [prices]);
 
@@ -68,7 +60,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
   useClipboard(handleClipboardData);
 
   // Calculate market price and deviation
-  const { marketPrice, deviation, isMarketPrice, deviationClass } = useMarketPrice(
+  const { deviation, isMarketPrice, deviationClass } = useMarketPrice(
     fromToken.symbol,
     toToken.symbol,
     fromAmount,
@@ -106,50 +98,47 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
           onCopyFeeWallet={copyFeeWallet}
         />
 
-        <div className="grid grid-cols-1 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <label className="block text-yellow-600 mb-2">From</label>
-            <div className="flex flex-col gap-4">
-              <TokenSelect
-                tokens={allTokens}
-                selectedToken={fromToken}
-                onChange={(token) => updateFormState({ fromToken: token })}
-              />
-              <TokenAmountInput
-                amount={fromAmount}
-                token={fromToken}
-                onChange={(value) => updateFormState({ fromAmount: value })}
-                usdValue={calculateUSDValue(fromAmount, fromToken)}
-                showSlider={true}
-              />
-            </div>
+            <TokenSelect
+              tokens={allTokens}
+              selectedToken={fromToken}
+              onChange={(token) => updateFormState({ fromToken: token })}
+            />
           </div>
-
-          <button
-            type="button"
-            onClick={switchTokens}
-            className="w-full flex items-center justify-center gap-2 bg-yellow-600/20 text-yellow-600 rounded-lg px-6 py-3 font-semibold hover:bg-yellow-600/30 transition-all"
-          >
-            <ArrowUpDown size={20} />
-            Switch Tokens
-          </button>
 
           <div>
             <label className="block text-yellow-600 mb-2">To</label>
-            <div className="flex flex-col gap-4">
-              <TokenSelect
-                tokens={allTokens}
-                selectedToken={toToken}
-                onChange={(token) => updateFormState({ toToken: token })}
-              />
-              <TokenAmountInput
-                amount={toAmount}
-                token={toToken}
-                onChange={(value) => updateFormState({ toAmount: value })}
-                usdValue={calculateUSDValue(toAmount, toToken)}
-                showSlider={true}
-              />
-            </div>
+            <TokenSelect
+              tokens={allTokens}
+              selectedToken={toToken}
+              onChange={(token) => updateFormState({ toToken: token })}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label className="block text-yellow-600 mb-2">Amount</label>
+            <TokenAmountInput
+              amount={fromAmount}
+              token={fromToken}
+              onChange={(value) => updateFormState({ fromAmount: value })}
+              usdValue={calculateUSDValue(fromAmount, fromToken.symbol)}
+              showSlider={true}
+            />
+          </div>
+
+          <div>
+            <label className="block text-yellow-600 mb-2">You Will Receive</label>
+            <TokenAmountInput
+              amount={toAmount}
+              token={toToken}
+              onChange={(value) => updateFormState({ toAmount: value })}
+              usdValue={calculateUSDValue(toAmount, toToken.symbol)}
+              showSlider={true}
+            />
           </div>
         </div>
 
@@ -163,13 +152,35 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
           </div>
         )}
 
+        <button
+          type="button"
+          onClick={switchTokens}
+          className="w-full flex items-center justify-center gap-2 bg-yellow-600/20 text-yellow-600 rounded-lg px-6 py-3 font-semibold hover:bg-yellow-600/30 transition-all mb-6"
+        >
+          <ArrowUpDown size={20} />
+          Switch Direction
+        </button>
+
         <div className="mb-6">
           <label className="block text-yellow-600 mb-2">
             Import Transaction text from Photonic Wallet P2PSwap:
           </label>
           <textarea
             value={importedTx}
-            onChange={(e) => updateFormState({ importedTx: e.target.value })}
+            onChange={(e) => {
+              updateFormState({ importedTx: e.target.value });
+              const match = e.target.value.match(/🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([^\s🟦]+)/);
+              if (match) {
+                const [, fromAmount, fromToken, toAmount, toToken, tx] = match;
+                handleClipboardData({
+                  fromAmount,
+                  fromToken,
+                  toAmount,
+                  toToken,
+                  transactionId: tx
+                });
+              }
+            }}
             className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-2"
             placeholder="Example: 🔁 Swap: 1000 RXD ➔ 1000 DOGE 📋01000000015c🟦"
             rows={3}

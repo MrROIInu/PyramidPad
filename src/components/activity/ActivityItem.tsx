@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TOKEN_PRICES } from '../../lib/tokenPrices';
+import { formatPriceUSD } from '../../lib/tokenPrices';
 
 interface ActivityItemProps {
   activity: {
@@ -14,6 +16,13 @@ interface ActivityItemProps {
 }
 
 export const ActivityItem: React.FC<ActivityItemProps> = ({ activity, isNew }) => {
+  const [showDetails, setShowDetails] = useState(false);
+
+  const fromTokenPrice = TOKEN_PRICES[activity.fromToken] || 0;
+  const toTokenPrice = TOKEN_PRICES[activity.toToken] || 0;
+  const fromValueUSD = activity.fromAmount * fromTokenPrice;
+  const toValueUSD = activity.toAmount * toTokenPrice;
+
   return (
     <AnimatePresence>
       <motion.div 
@@ -24,8 +33,10 @@ export const ActivityItem: React.FC<ActivityItemProps> = ({ activity, isNew }) =
           stiffness: 500,
           damping: 30
         }}
+        onClick={() => setShowDetails(!showDetails)}
         className={`
-          py-2 px-3 rounded-lg transition-colors
+          py-2 px-3 rounded-lg transition-colors cursor-pointer
+          hover:bg-yellow-600/10
           ${isNew ? 'activity-flash' : ''}
         `}
       >
@@ -53,6 +64,23 @@ export const ActivityItem: React.FC<ActivityItemProps> = ({ activity, isNew }) =
             <span className="font-medium">{activity.toAmount} {activity.toToken}</span>
           </div>
         </div>
+
+        <AnimatePresence>
+          {showDetails && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="mt-2 text-sm text-yellow-600/80"
+            >
+              <div className="space-y-1">
+                <div>From Value: {formatPriceUSD(fromValueUSD)}</div>
+                <div>To Value: {formatPriceUSD(toValueUSD)}</div>
+                <div>Rate: 1 {activity.fromToken} = {(activity.toAmount / activity.fromAmount).toFixed(6)} {activity.toToken}</div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </AnimatePresence>
   );

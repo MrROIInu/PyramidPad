@@ -1,7 +1,5 @@
 import { useEffect } from 'react';
 
-const SWAP_REGEX = /🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([^\s🟦]+)/;
-
 interface ClipboardData {
   fromAmount: string;
   fromToken: string;
@@ -10,10 +8,11 @@ interface ClipboardData {
   transactionId: string;
 }
 
-export function useClipboard(callback: (data: ClipboardData) => void) {
+export const useClipboard = (callback: (data: ClipboardData) => void) => {
   useEffect(() => {
-    const handleClipboardData = (text: string) => {
-      const match = text.match(SWAP_REGEX);
+    const handleClipboardText = (text: string) => {
+      const match = text.match(/🔁\s*Swap:\s*(\d+)\s*([A-Za-z0-9$]+)\s*➔\s*(\d+)\s*([A-Za-z0-9$]+)\s*📋([^\s🟦]+)/i);
+      
       if (match) {
         const [, fromAmount, fromToken, toAmount, toToken, tx] = match;
         callback({
@@ -26,19 +25,21 @@ export function useClipboard(callback: (data: ClipboardData) => void) {
       }
     };
 
-    const handleClipboardChange = async () => {
-      try {
-        const text = await navigator.clipboard.readText();
-        handleClipboardData(text);
-      } catch (error) {
-        // Ignore clipboard read errors
-      }
-    };
-
     const handlePaste = (e: ClipboardEvent) => {
       const text = e.clipboardData?.getData('text');
       if (text) {
-        handleClipboardData(text);
+        handleClipboardText(text);
+      }
+    };
+
+    const handleClipboardChange = async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          handleClipboardText(text);
+        }
+      } catch (error) {
+        // Ignore clipboard read errors
       }
     };
 
@@ -50,4 +51,4 @@ export function useClipboard(callback: (data: ClipboardData) => void) {
       clearInterval(interval);
     };
   }, [callback]);
-}
+};

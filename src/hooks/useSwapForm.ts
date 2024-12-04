@@ -13,6 +13,14 @@ interface SwapFormState {
   importedTx: string;
 }
 
+interface ClipboardData {
+  fromAmount: string;
+  fromToken: string;
+  toAmount: string;
+  toToken: string;
+  transactionId: string;
+}
+
 const initialState: SwapFormState = {
   fromToken: TOKENS[0],
   toToken: RXD_TOKEN,
@@ -27,33 +35,21 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const resetForm = useCallback(() => {
-    setFormState(initialState);
-    setError(null);
+  const findToken = useCallback((symbol: string): Token => {
+    const upperSymbol = symbol.toUpperCase();
+    if (upperSymbol === 'RXD') return RXD_TOKEN;
+    
+    const token = TOKENS.find(t => t.symbol.toUpperCase() === upperSymbol);
+    if (!token) {
+      console.warn(`Token not found: ${symbol}`);
+      return RXD_TOKEN;
+    }
+    return token;
   }, []);
 
-  const switchTokens = useCallback(() => {
-    setFormState(prev => ({
-      ...prev,
-      fromToken: prev.toToken,
-      toToken: prev.fromToken,
-      fromAmount: prev.toAmount,
-      toAmount: prev.fromAmount
-    }));
-  }, []);
-
-  const handleClipboardData = useCallback((data: { 
-    fromAmount: string;
-    fromToken: string;
-    toAmount: string;
-    toToken: string;
-    transactionId: string;
-  }) => {
-    const { fromToken: fromSymbol, toToken: toSymbol } = data;
-    const fromToken = fromSymbol === 'RXD' ? RXD_TOKEN : 
-      TOKENS.find(t => t.symbol === fromSymbol) || RXD_TOKEN;
-    const toToken = toSymbol === 'RXD' ? RXD_TOKEN :
-      TOKENS.find(t => t.symbol === toSymbol) || RXD_TOKEN;
+  const handleClipboardData = useCallback((data: ClipboardData) => {
+    const fromToken = findToken(data.fromToken);
+    const toToken = findToken(data.toToken);
 
     setFormState(prev => ({
       ...prev,
@@ -64,7 +60,7 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
       transactionId: data.transactionId,
       importedTx: `🔁 Swap: ${data.fromAmount} ${data.fromToken} ➔ ${data.toAmount} ${data.toToken} 📋${data.transactionId}🟦`
     }));
-  }, []);
+  }, [findToken]);
 
   const handleSubmit = async (e: React.FormEvent, walletAddress: string) => {
     e.preventDefault();
@@ -105,6 +101,21 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
     }
   };
 
+  const resetForm = useCallback(() => {
+    setFormState(initialState);
+    setError(null);
+  }, []);
+
+  const switchTokens = useCallback(() => {
+    setFormState(prev => ({
+      ...prev,
+      fromToken: prev.toToken,
+      toToken: prev.fromToken,
+      fromAmount: prev.toAmount,
+      toAmount: prev.fromAmount
+    }));
+  }, []);
+
   const updateFormState = useCallback((updates: Partial<SwapFormState>) => {
     setFormState(prev => ({ ...prev, ...updates }));
     setError(null);
@@ -117,7 +128,7 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
     updateFormState,
     handleSubmit,
     resetForm,
-    handleClipboardData,
-    switchTokens
+    switchTokens,
+    handleClipboardData
   };
 };
