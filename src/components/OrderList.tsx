@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { Copy, Loader2 } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
-import { TOKEN_PRICES, formatPriceUSD, calculateRXDRatio } from '../lib/tokenPrices';
+import { TOKEN_PRICES, formatPriceUSD } from '../lib/tokenPrices';
 import { Order } from '../types';
 import { WalletAddressInput } from './wallet/WalletAddressInput';
 import { useWalletManager } from '../hooks/useWalletManager';
+import { SwapRatioDisplay } from './SwapRatioDisplay';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 
@@ -60,12 +61,6 @@ export const OrderList: React.FC<OrderListProps> = ({
     alert('TX copied to clipboard. Claim order when you have made swap in Photonic Wallet.');
   };
 
-  const getRatio = (order: Order): string => {
-    const fromPrice = TOKEN_PRICES[order.from_token] || 0;
-    const toPrice = TOKEN_PRICES[order.to_token] || 0;
-    return calculateRXDRatio(fromPrice, toPrice);
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -74,15 +69,22 @@ export const OrderList: React.FC<OrderListProps> = ({
     );
   }
 
-  const title = type === 'active' ? 'Open Orders' : 
-                type === 'claimed' ? 'Claimed Orders' : 
-                'Cancelled Orders';
+  const getTitle = () => {
+    switch (type) {
+      case 'claimed':
+        return 'Claimed Orders';
+      case 'cancelled':
+        return 'Cancelled Orders';
+      default:
+        return 'Open Orders';
+    }
+  };
 
   if (orders.length === 0) {
     return (
       <div>
         <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-          {title}
+          {getTitle()}
         </h2>
         <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm text-center">
           <p className="text-yellow-600">No {type} orders</p>
@@ -94,7 +96,7 @@ export const OrderList: React.FC<OrderListProps> = ({
   return (
     <div>
       <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-amber-800 mb-6">
-        {title}
+        {getTitle()}
       </h2>
 
       {!userWalletAddress && type === 'active' && (
@@ -123,7 +125,6 @@ export const OrderList: React.FC<OrderListProps> = ({
           const canCancel = showCancelButton && order.wallet_address === (userWalletAddress || walletAddress);
           const canClaim = isWalletValid && order.wallet_address !== walletAddress;
           const isCancelled = cancelledOrders[order.id];
-          const ratio = getRatio(order);
 
           return (
             <div
@@ -182,9 +183,13 @@ export const OrderList: React.FC<OrderListProps> = ({
                 </div>
               </div>
 
-              <div className="text-center mb-4 text-yellow-600">
-                Swap Ratio: {ratio}
-              </div>
+              <SwapRatioDisplay
+                fromToken={order.from_token}
+                toToken={order.to_token}
+                fromAmount={order.from_amount}
+                toAmount={order.to_amount}
+                className="mb-4"
+              />
 
               {canClaim && !isCancelled && type === 'active' && (
                 <div className="relative">

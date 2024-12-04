@@ -3,6 +3,7 @@ import { Copy } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
 import { supabase } from '../lib/supabase';
 import { Order } from '../types';
+import { SwapRatioDisplay } from './SwapRatioDisplay';
 
 interface OrderCardProps {
   order: Order;
@@ -17,15 +18,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onClaim }) => {
   const toToken = TOKENS.find(t => t.symbol === order.to_token);
 
   if (!fromToken || !toToken) return null;
-
-  const ratio = (order.from_amount / fromToken.totalSupply) / (order.to_amount / toToken.totalSupply);
-  const displayRatio = ratio > 1 ? `1:${ratio.toFixed(2)}` : `${(1/ratio).toFixed(2)}:1`;
-
-  const getRatioColor = (ratio: number) => {
-    if (ratio >= 0.1 && ratio <= 5) return 'text-green-500';
-    if (ratio > 5 && ratio <= 9) return 'text-yellow-500';
-    return 'text-red-500';
-  };
 
   const handleCopy = async (text: string) => {
     try {
@@ -69,9 +61,13 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onClaim }) => {
         </div>
       </div>
 
-      <p className={`mb-4 ${getRatioColor(ratio)}`}>
-        Trade Ratio: {displayRatio}
-      </p>
+      <SwapRatioDisplay
+        fromToken={order.from_token}
+        toToken={order.to_token}
+        fromAmount={order.from_amount}
+        toAmount={order.to_amount}
+        className="mb-4"
+      />
 
       <div className="mb-4">
         <p className="text-yellow-600 mb-2">
