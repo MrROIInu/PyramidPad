@@ -105,6 +105,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
               tokens={allTokens}
               selectedToken={fromToken}
               onChange={(token) => updateFormState({ fromToken: token })}
+              defaultToken={RXD_TOKEN}
             />
           </div>
 
@@ -114,6 +115,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
               tokens={allTokens}
               selectedToken={toToken}
               onChange={(token) => updateFormState({ toToken: token })}
+              defaultToken={TOKENS[0]} // RADCAT
             />
           </div>
         </div>

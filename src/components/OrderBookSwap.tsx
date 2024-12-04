@@ -6,6 +6,7 @@ import { useOrders } from '../hooks/useOrders';
 import { useSwapContext } from '../contexts/SwapContext';
 import { RXD_TOKEN } from '../constants/tokens';
 import { CollectionChart } from './CollectionChart';
+import { SelectedTokenChart } from './charts/SelectedTokenChart';
 
 export const OrderBookSwap: React.FC = () => {
   const { orders, loading, error, onClaim, onCancel, fetchOrders } = useOrders();
@@ -41,6 +42,10 @@ export const OrderBookSwap: React.FC = () => {
           orders={orders}
         />
 
+        {/* Show selected token chart */}
+        <SelectedTokenChart />
+
+        {/* Show token chart with title */}
         <div className="flex items-center gap-2 mb-6">
           <img 
             src={RXD_TOKEN.imageUrl} 

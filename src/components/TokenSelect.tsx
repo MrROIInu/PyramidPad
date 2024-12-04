@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Token } from '../types';
+import { RXD_TOKEN } from '../constants/tokens';
 
 interface TokenSelectProps {
   tokens: Token[];
   selectedToken: Token;
   onChange: (token: Token) => void;
+  defaultToken?: Token;
   className?: string;
 }
 
@@ -12,19 +14,18 @@ export const TokenSelect: React.FC<TokenSelectProps> = ({
   tokens,
   selectedToken,
   onChange,
+  defaultToken,
   className = ''
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Sort tokens to ensure RADCAT is first
-  const sortedTokens = [...tokens]
-    .filter(token => token.symbol !== 'RXD')
-    .sort((a, b) => {
-      if (a.symbol === 'RADCAT') return -1;
-      if (b.symbol === 'RADCAT') return 1;
-      return a.symbol.localeCompare(b.symbol);
-    });
+  useEffect(() => {
+    // Set default token if provided and no token is selected
+    if (defaultToken && !selectedToken) {
+      onChange(defaultToken);
+    }
+  }, [defaultToken, selectedToken, onChange]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -36,6 +37,17 @@ export const TokenSelect: React.FC<TokenSelectProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Ensure RXD is first, then sort other tokens
+  const sortedTokens = [
+    RXD_TOKEN,
+    ...tokens.filter(token => token.symbol !== 'RXD')
+      .sort((a, b) => {
+        if (a.symbol === 'RADCAT') return -1;
+        if (b.symbol === 'RADCAT') return 1;
+        return a.symbol.localeCompare(b.symbol);
+      })
+  ];
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>

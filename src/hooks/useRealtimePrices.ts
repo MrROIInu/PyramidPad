@@ -1,119 +1,86 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { TOKEN_PRICES } from '../lib/tokenPrices';
 import axios from 'axios';
 import { TOKENS } from '../data/tokens';
+import { priceCache } from '../lib/priceCache';
 
-const BASE_RATIO = 1000; // Base ratio of 1:1000 for RXD to other tokens
-const POLLING_INTERVAL = 10000; // Poll every 10 seconds
-const PRICE_IMPACT_FACTOR = 0.001; // 0.1% price impact per order
+const POLLING_INTERVAL = 10000; // 10 seconds
+const BASE_RATIO = 1000; // 1:1000 base ratio
 
 export const useRealtimePrices = () => {
   const [prices, setPrices] = useState(TOKEN_PRICES);
-  const updatingRef = useRef(false);
-  const lastUpdateRef = useRef(Date.now());
-  const priceHistoryRef = useRef<Record<string, number[]>>({});
 
   const updatePrices = async () => {
-    if (updatingRef.current || Date.now() - lastUpdateRef.current < 5000) return;
-    updatingRef.current = true;
-
     try {
       const response = await axios.get(
         'https://api.coingecko.com/api/v3/simple/price?ids=radiant&vs_currencies=usd',
         { timeout: 5000 }
       );
-      
+
       if (response.data?.radiant?.usd) {
         const rxdPrice = response.data.radiant.usd;
+        priceCache.setPrice('RXD', rxdPrice);
+
         const newPrices = { RXD: rxdPrice };
         
-        // Update all token prices based on RXD price and order history
+        // Update all token prices based on RXD price
         TOKENS.forEach(token => {
-          const basePrice = rxdPrice / BASE_RATIO;
-          const history = priceHistoryRef.current[token.symbol] || [];
-          const impactMultiplier = history.length * PRICE_IMPACT_FACTOR;
-          newPrices[token.symbol] = basePrice * (1 + impactMultiplier);
+          const price = rxdPrice / BASE_RATIO;
+          newPrices[token.symbol] = price;
+          priceCache.setPrice(token.symbol, price);
         });
 
-        // Update local state immediately
         setPrices(newPrices);
-        lastUpdateRef.current = Date.now();
 
         // Update database
         const updates = Object.entries(newPrices).map(([symbol, price]) => ({
           symbol,
           price_usd: price,
-          market_cap: price * (symbol === 'RXD' ? 21000000000 : TOKENS.find(t => t.symbol === symbol)?.totalSupply || 0),
           last_updated: new Date().toISOString()
         }));
 
-        // Update in chunks to avoid timeouts
-        const chunkSize = 25;
-        for (let i = 0; i < updates.length; i += chunkSize) {
-          const chunk = updates.slice(i, i + chunkSize);
-          await Promise.all([
-            supabase.from('tokens').upsert(chunk),
-            supabase.from('token_price_history').insert(
-              chunk.map(({ symbol, price_usd, last_updated }) => ({
-                symbol,
-                price_usd,
-                timestamp: last_updated
-              }))
-            )
-          ]);
-        }
+        await supabase.from('tokens').upsert(updates);
+      } else {
+        // Use cached values if API fails
+        const newPrices = { RXD: priceCache.getLastValidPrice('RXD') };
+        TOKENS.forEach(token => {
+          newPrices[token.symbol] = priceCache.getLastValidPrice(token.symbol);
+        });
+        setPrices(newPrices);
       }
     } catch (error) {
-      console.warn('Error updating prices:', error);
-    } finally {
-      updatingRef.current = false;
+      // Use cached values on error
+      const newPrices = { RXD: priceCache.getLastValidPrice('RXD') };
+      TOKENS.forEach(token => {
+        newPrices[token.symbol] = priceCache.getLastValidPrice(token.symbol);
+      });
+      setPrices(newPrices);
     }
   };
 
   useEffect(() => {
+    // Load historical prices on mount
+    priceCache.loadHistoricalPrices();
+
     // Initial update
     updatePrices();
 
     // Set up polling
     const interval = setInterval(updatePrices, POLLING_INTERVAL);
 
-    // Subscribe to order updates
-    const orderSubscription = supabase
-      .channel('orders-channel')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'orders' },
-        (payload) => {
-          if (payload.new && payload.eventType === 'UPDATE' && payload.new.claimed) {
-            const { from_token, to_token } = payload.new;
-            
-            // Update price history
-            if (from_token !== 'RXD') {
-              const history = priceHistoryRef.current[from_token] || [];
-              priceHistoryRef.current[from_token] = [...history, Date.now()];
-            }
-            if (to_token !== 'RXD') {
-              const history = priceHistoryRef.current[to_token] || [];
-              priceHistoryRef.current[to_token] = [...history, Date.now()];
-            }
-
-            // Trigger price update
-            updatePrices();
-          }
-        }
-      )
-      .subscribe();
-
     // Subscribe to price updates
-    const priceSubscription = supabase
+    const subscription = supabase
       .channel('token-prices')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'tokens' },
         (payload) => {
           if (payload.new?.symbol && payload.new?.price_usd) {
+            const { symbol, price_usd } = payload.new;
+            priceCache.setPrice(symbol, price_usd);
             setPrices(prev => ({
               ...prev,
-              [payload.new.symbol]: payload.new.price_usd
+              [symbol]: price_usd
             }));
           }
         }
@@ -122,10 +89,17 @@ export const useRealtimePrices = () => {
 
     return () => {
       clearInterval(interval);
-      orderSubscription.unsubscribe();
-      priceSubscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
-  return prices;
+  // Return prices with fallback to cached values
+  return new Proxy(prices, {
+    get(target, prop) {
+      if (typeof prop === 'string') {
+        return target[prop] || priceCache.getLastValidPrice(prop);
+      }
+      return target[prop as any];
+    }
+  });
 };
