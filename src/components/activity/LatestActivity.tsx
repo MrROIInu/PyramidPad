@@ -1,16 +1,23 @@
 import React from 'react';
 import { Activity } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useOrders } from '../../hooks/useOrders';
 import { TOKENS } from '../../data/tokens';
 import { RXD_TOKEN } from '../../constants/tokens';
 
 export const LatestActivity: React.FC = () => {
+  const navigate = useNavigate();
   const { orders } = useOrders();
 
   // Get latest 3 orders
   const latestOrders = orders
     .filter(order => !order.status || order.status !== 'cancelled')
     .slice(0, 3);
+
+  const handleOrderClick = (order: any) => {
+    // Navigate to Latest Orders page with the order ID in the URL
+    navigate(`/latest?highlight=${order.id}`);
+  };
 
   return (
     <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm">
@@ -29,7 +36,8 @@ export const LatestActivity: React.FC = () => {
           return (
             <div 
               key={order.id}
-              className="flex items-center justify-between p-2 bg-black/20 rounded-lg"
+              onClick={() => handleOrderClick(order)}
+              className="flex items-center justify-between p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition-colors"
             >
               <div className="flex items-center gap-2">
                 <img 

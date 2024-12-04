@@ -1,14 +1,30 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { OrderList } from '../components/OrderList';
 import { useOrders } from '../hooks/useOrders';
 
 export const LatestOrders: React.FC = () => {
   const { orders, onClaim, onCancel } = useOrders();
+  const [searchParams] = useSearchParams();
+  const highlightOrderId = searchParams.get('highlight');
 
   // Get latest 30 orders
   const latestOrders = orders
     .filter(order => !order.claimed && order.status !== 'cancelled')
     .slice(0, 30);
+
+  useEffect(() => {
+    if (highlightOrderId) {
+      const element = document.getElementById(`order-${highlightOrderId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.add('highlight-order');
+        setTimeout(() => {
+          element.classList.remove('highlight-order');
+        }, 3000);
+      }
+    }
+  }, [highlightOrderId]);
 
   return (
     <div className="container mx-auto px-4 py-8">
