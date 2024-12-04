@@ -37,5 +37,5 @@ export const formatMarketCap = (marketCap: number): string => {
 export const calculateRXDRatio = (tokenPrice: number, rxdPrice: number): string => {
   if (!tokenPrice || !rxdPrice) return '1:0';
   const ratio = rxdPrice / tokenPrice;
-  return ratio > 1 ? `1:${ratio.toFixed(2)}` : `${(1/ratio).toFixed(2)}:1`;
+  return ratio > 1 ? `1:${Math.floor(ratio)}` : `${Math.floor(1/ratio)}:1`;
 };
