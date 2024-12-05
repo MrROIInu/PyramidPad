@@ -8,17 +8,13 @@ import { formatPriceUSD } from '../lib/tokenPrices';
 import { useWalletManager } from '../hooks/useWalletManager';
 import { WalletAddressInput } from './wallet/WalletAddressInput';
 import { TokenAmountInput } from './TokenAmountInput';
-import { useClipboard } from '../hooks/useClipboard';
-import { useMarketPrice } from '../hooks/useMarketPrice';
-import { useRealtimePrices } from '../hooks/useRealtimePrices';
+import { useTransactionImport } from '../hooks/useTransactionImport';
 
 interface SwapFormProps {
   onOrderCreated: () => Promise<void>;
 }
 
 export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
-  const prices = useRealtimePrices();
-  
   const {
     walletAddress,
     isWalletChecked,
@@ -36,7 +32,6 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     error,
     updateFormState,
     handleSubmit: submitForm,
-    handleClipboardData,
     switchTokens
   } = useSwapForm(onOrderCreated);
 
@@ -45,9 +40,18 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     toToken,
     fromAmount,
     toAmount,
-    transactionId,
-    importedTx
+    transactionId
   } = formState;
+
+  const { importedText, handleChange } = useTransactionImport((data) => {
+    updateFormState({
+      fromAmount: data.fromAmount,
+      toAmount: data.toAmount,
+      transactionId: data.transactionId,
+      fromToken: TOKENS.find(t => t.symbol === data.fromToken) || RXD_TOKEN,
+      toToken: TOKENS.find(t => t.symbol === data.toToken) || TOKENS[0]
+    });
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,9 +61,6 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
     }
     await submitForm(e, walletAddress);
   };
-
-  // Use clipboard hook
-  useClipboard(handleClipboardData);
 
   return (
     <form onSubmit={handleSubmit} className="mb-12">
@@ -98,7 +99,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
               tokens={[RXD_TOKEN, ...TOKENS]}
               selectedToken={toToken}
               onChange={(token) => updateFormState({ toToken: token })}
-              defaultToken={TOKENS.find(t => t.symbol === 'RADCAT') || TOKENS[0]}
+              defaultToken={TOKENS[0]}
               isFromToken={false}
             />
           </div>
@@ -111,7 +112,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
               amount={fromAmount}
               token={fromToken}
               onChange={(value) => updateFormState({ fromAmount: value })}
-              usdValue={formatPriceUSD(parseFloat(fromAmount) * (prices[fromToken.symbol] || 0))}
+              usdValue={formatPriceUSD(parseFloat(fromAmount) * (fromToken.price || 0))}
               showSlider={true}
             />
           </div>
@@ -122,7 +123,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
               amount={toAmount}
               token={toToken}
               onChange={(value) => updateFormState({ toAmount: value })}
-              usdValue={formatPriceUSD(parseFloat(toAmount) * (prices[toToken.symbol] || 0))}
+              usdValue={formatPriceUSD(parseFloat(toAmount) * (toToken.price || 0))}
               showSlider={true}
             />
           </div>
@@ -142,11 +143,8 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
             Import Transaction text from Photonic Wallet P2PSwap:
           </label>
           <textarea
-            value={importedTx}
-            onChange={(e) => {
-              updateFormState({ importedTx: e.target.value });
-              handleClipboardData(e.target.value);
-            }}
+            value={importedText}
+            onChange={(e) => handleChange(e.target.value)}
             className="w-full bg-black/30 border border-yellow-600/30 rounded-lg px-4 py-2 focus:outline-none focus:border-yellow-600 mb-2"
             placeholder="Example: 🔁 Swap: 1000 RXD ➔ 1000 DOGE 📋01000000015c🟦"
             rows={3}

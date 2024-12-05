@@ -1,7 +1,5 @@
-import { useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { TOKENS } from '../data/tokens';
-
-const SWAP_REGEX = /🔁 Swap: (\d+) ([A-Z]+) ➔ (\d+) ([A-Z]+) 📋([^\s🟦]+)/;
 
 interface TransactionData {
   fromAmount: string;
@@ -12,29 +10,56 @@ interface TransactionData {
 }
 
 export const useTransactionImport = (onImport: (data: TransactionData) => void) => {
+  const [importedText, setImportedText] = useState('');
+
   const parseTransaction = useCallback((text: string): TransactionData | null => {
-    const match = text.match(SWAP_REGEX);
+    const match = text.match(/🔁\s*Swap:\s*(\d+)\s*([A-Z]+)\s*➔\s*(\d+)\s*([A-Z]+)\s*📋([^\s🟦]+)/i);
     if (!match) return null;
 
-    const [, amount1, token1, amount2, token2, tx] = match;
+    const [, fromAmount, fromToken, toAmount, toToken, tx] = match;
     
     // Validate tokens exist
-    const isToken1Valid = token1 === 'RXD' || TOKENS.some(t => t.symbol === token1);
-    const isToken2Valid = token2 === 'RXD' || TOKENS.some(t => t.symbol === token2);
+    const isFromTokenValid = fromToken === 'RXD' || TOKENS.some(t => t.symbol === fromToken);
+    const isToTokenValid = toToken === 'RXD' || TOKENS.some(t => t.symbol === toToken);
     
-    if (!isToken1Valid || !isToken2Valid) return null;
+    if (!isFromTokenValid || !isToTokenValid) return null;
 
-    const data = {
-      fromAmount: amount1,
-      fromToken: token1,
-      toAmount: amount2,
-      toToken: token2,
+    return {
+      fromAmount,
+      fromToken,
+      toAmount,
+      toToken,
       transactionId: tx
     };
+  }, []);
 
-    onImport(data);
-    return data;
-  }, [onImport]);
+  const handlePaste = useCallback((e: ClipboardEvent) => {
+    e.preventDefault();
+    const text = e.clipboardData?.getData('text');
+    if (text) {
+      setImportedText(text);
+      const data = parseTransaction(text);
+      if (data) {
+        onImport(data);
+      }
+    }
+  }, [parseTransaction, onImport]);
 
-  return { parseTransaction };
+  const handleChange = useCallback((text: string) => {
+    setImportedText(text);
+    const data = parseTransaction(text);
+    if (data) {
+      onImport(data);
+    }
+  }, [parseTransaction, onImport]);
+
+  useEffect(() => {
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [handlePaste]);
+
+  return {
+    importedText,
+    handleChange
+  };
 };
