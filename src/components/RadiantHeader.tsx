@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { fetchCMCData } from '../lib/api/coinmarketcap';
+import { fetchCGData } from '../lib/api/coingecko';
+import { priceCache } from '../lib/api/priceCache';
 
 interface RadiantData {
   price: number;
@@ -15,26 +17,36 @@ export const RadiantHeader: React.FC = () => {
   });
 
   useEffect(() => {
-    const fetchRadiantData = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axios.get(
-          'https://api.coingecko.com/api/v3/simple/price?ids=radiant&vs_currencies=usd&include_market_cap=true&include_24hr_change=true'
-        );
-
-        if (response.data?.radiant) {
-          setData({
-            price: response.data.radiant.usd,
-            marketCap: response.data.radiant.usd_market_cap,
-            priceChange24h: response.data.radiant.usd_24h_change
-          });
+        // Try CoinMarketCap first
+        const cmcData = await fetchCMCData();
+        setData(cmcData);
+        priceCache.addPrice(cmcData);
+        return;
+      } catch (cmcError) {
+        console.warn('CoinMarketCap fetch failed, trying CoinGecko...');
+        
+        try {
+          // Try CoinGecko as fallback
+          const cgData = await fetchCGData();
+          setData(cgData);
+          priceCache.addPrice(cgData);
+          return;
+        } catch (cgError) {
+          console.warn('CoinGecko fetch failed, using cached data...');
+          
+          // Use cached data as last resort
+          const cachedData = priceCache.getLatestValidPrice();
+          if (cachedData) {
+            setData(cachedData);
+          }
         }
-      } catch (error) {
-        console.warn('Error fetching Radiant data:', error);
       }
     };
 
-    fetchRadiantData();
-    const interval = setInterval(fetchRadiantData, 30000);
+    fetchData();
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, []);
 

@@ -60,24 +60,26 @@ export const TokenCard: React.FC<TokenCardProps> = ({ token }) => {
       </div>
 
       {token.description && (
-        <p className="text-yellow-600/80 mb-4 line-clamp-2">{token.description}</p>
+        <div className="mb-6">
+          <p className="text-yellow-600/80">{token.description}</p>
+        </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-4 mb-6">
         <div>
-          <p className="text-yellow-600/80 text-sm">Price</p>
-          <p className="font-mono">{formatPriceUSD(prices[token.symbol] || 0)}</p>
+          <p className="text-yellow-600/80 text-sm mb-1">Price</p>
+          <p className="font-mono text-lg">{formatPriceUSD(prices[token.symbol] || 0)}</p>
         </div>
         <div>
-          <p className="text-yellow-600/80 text-sm">Total Supply</p>
-          <p className="font-mono">{token.totalSupply.toLocaleString()}</p>
+          <p className="text-yellow-600/80 text-sm mb-1">Total Supply</p>
+          <p className="font-mono text-lg">{token.totalSupply.toLocaleString()}</p>
         </div>
         <div>
-          <p className="text-yellow-600/80 text-sm">Preminted</p>
-          <p className="font-mono">{miningData.premintedAmount.toLocaleString()}</p>
+          <p className="text-yellow-600/80 text-sm mb-1">Preminted</p>
+          <p className="font-mono text-lg">{miningData.premintedAmount.toLocaleString()}</p>
         </div>
         <div>
-          <p className="text-yellow-600/80 text-sm">Minted</p>
+          <p className="text-yellow-600/80 text-sm mb-1">Minted</p>
           <div className="flex items-center gap-2">
             <div className="flex-grow h-2 bg-black/30 rounded-full overflow-hidden">
               <div 
@@ -85,12 +87,12 @@ export const TokenCard: React.FC<TokenCardProps> = ({ token }) => {
                 style={{ width: `${miningData.minted}%` }}
               />
             </div>
-            <span className="text-sm">{miningData.minted}%</span>
+            <span className="text-lg font-mono">{miningData.minted}%</span>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex gap-2">
           <SocialLink href={token.social?.website} icon={Globe} />
           <SocialLink href={token.social?.x} icon={Twitter} />
@@ -99,18 +101,23 @@ export const TokenCard: React.FC<TokenCardProps> = ({ token }) => {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 bg-black/30 rounded-lg p-3">
-        <code className="text-sm flex-1 break-all">{token.contractAddress}</code>
-        <button
-          onClick={handleCopy}
-          className={`px-3 py-1 rounded text-sm ${
-            copied
-              ? 'bg-green-500/20 text-green-500'
-              : 'bg-yellow-600/20 text-yellow-600 hover:bg-yellow-600/30'
-          }`}
-        >
-          {copied ? 'Copied!' : 'Copy'}
-        </button>
+      <div>
+        <p className="text-yellow-600/80 text-sm mb-2">
+          Contract Address (Radiant ID) - Copy to Photonic Wallet to make swap
+        </p>
+        <div className="flex items-center gap-2 bg-black/30 rounded-lg p-3">
+          <code className="text-sm flex-1 break-all">{token.contractAddress}</code>
+          <button
+            onClick={handleCopy}
+            className={`px-3 py-1 rounded text-sm ${
+              copied
+                ? 'bg-green-500/20 text-green-500'
+                : 'bg-yellow-600/20 text-yellow-600 hover:bg-yellow-600/30'
+            }`}
+          >
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
       </div>
     </div>
   );

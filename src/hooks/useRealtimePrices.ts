@@ -1,42 +1,49 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { TOKEN_PRICES } from '../lib/tokenPrices';
-import { updatePriceFromRecentClaims } from '../lib/claims/recentClaims';
+import { TOKEN_PRICES, getTokenPrice } from '../lib/prices/tokenPrices';
+import { TOKENS } from '../data/tokens';
+import { startPriceUpdates, stopPriceUpdates, initializePrices } from '../lib/prices/priceManager';
 
 export const useRealtimePrices = () => {
   const [prices, setPrices] = useState(TOKEN_PRICES);
 
   useEffect(() => {
-    const updatePrices = async () => {
-      const updates: Record<string, number> = { ...prices };
-
-      for (const symbol of Object.keys(TOKEN_PRICES)) {
-        const impact = await updatePriceFromRecentClaims(symbol);
-        const currentPrice = TOKEN_PRICES[symbol] || 0;
-        updates[symbol] = currentPrice * (1 + impact);
-      }
-
-      setPrices(updates);
+    const initialize = async () => {
+      await initializePrices();
+      setPrices({ ...TOKEN_PRICES });
     };
 
-    updatePrices();
-    const interval = setInterval(updatePrices, 30000);
+    initialize();
+    startPriceUpdates();
 
+    // Subscribe to price updates
     const subscription = supabase
       .channel('token-prices')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'orders' },
-        async () => {
-          await updatePrices();
+        { event: '*', schema: 'public', table: 'tokens' },
+        (payload) => {
+          if (payload.new?.symbol && payload.new?.price_usd) {
+            setPrices(prev => ({
+              ...prev,
+              [payload.new.symbol]: payload.new.price_usd
+            }));
+          }
         }
       )
       .subscribe();
 
     return () => {
-      clearInterval(interval);
+      stopPriceUpdates();
       subscription.unsubscribe();
     };
   }, []);
 
-  return prices;
+  return new Proxy(prices, {
+    get(target, prop) {
+      if (typeof prop === 'string') {
+        return getTokenPrice(prop);
+      }
+      return target[prop as any];
+    }
+  });
 };
