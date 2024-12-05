@@ -73,6 +73,16 @@ export const RadiantHeader: React.FC = () => {
           >
             RXD.LAND
           </a>
+          <span className="text-yellow-600/80">|</span>
+          <span className="whitespace-nowrap">Play RXD Faucet Games at </span>
+          <a 
+            href="https://faucetgames.rxddapps.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-yellow-600 hover:text-yellow-500 transition-colors whitespace-nowrap"
+          >
+            RXD DAPPS
+          </a>
         </div>
       </div>
     </div>

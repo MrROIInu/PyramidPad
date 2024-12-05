@@ -8,6 +8,8 @@ import { LatestOrders } from './pages/LatestOrders';
 import { MyOrders } from './pages/MyOrders';
 import { Bubbles } from './pages/Bubbles';
 import { RadiantHeader } from './components/RadiantHeader';
+import { LatestActivity } from './components/activity/LatestActivity';
+import { TopGainers } from './components/TopGainers';
 import { SwapProvider } from './contexts/SwapContext';
 import { Footer } from './components/Footer';
 
@@ -27,6 +29,10 @@ const App: React.FC = () => {
               <Route path="/" element={
                 <div className="container mx-auto px-4">
                   <GlyphSwapLogo />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                    <LatestActivity />
+                    <TopGainers />
+                  </div>
                   <OrderBookSwap />
                 </div>
               } />

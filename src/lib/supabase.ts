@@ -16,14 +16,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   },
   global: {
     headers: {
-      'Content-Type': 'application/json'
-    },
-    fetch: (...args) => {
-      // @ts-ignore
-      return fetch(...args).catch(err => {
-        console.warn('Supabase fetch error:', err);
-        throw err;
-      });
+      'Cache-Control': 'no-cache'
     }
   }
 });
@@ -31,29 +24,19 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 // Initialize database tables
 export const initializeDatabase = async () => {
   try {
-    // Create tables if they don't exist
-    const { error } = await supabase.rpc('create_tables');
-    if (error) throw error;
+    const { error } = await supabase
+      .from('orders')
+      .select('count')
+      .limit(1);
 
-    // Initialize test data
-    await supabase.from('wallet_addresses').upsert([
-      { address: '1PhM4yjL9PXGoJxo6qfx8JbaEM3NPaF5Bt', is_active: true },
-      { address: '1CiKtAE6Zf3tniKmPBhv1e7pBRezZM433N', is_active: true },
-      { address: '1LqoPnuUm3kdKvPJrELoe6JY3mJc9C7d1e', is_active: true }
-    ], { onConflict: 'address' });
+    if (error) {
+      console.warn('Database connection test failed:', error);
+      return false;
+    }
 
     return true;
   } catch (error) {
     console.warn('Database initialization error:', error);
     return false;
   }
-};
-
-// Utility function to handle Supabase errors
-export const handleSupabaseError = (error: any, fallback: any = null) => {
-  if (error) {
-    console.warn('Supabase error:', error.message || error);
-    return fallback;
-  }
-  return null;
 };

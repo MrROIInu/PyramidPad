@@ -1,23 +1,66 @@
 import React, { useEffect, useRef } from 'react';
 import { TOKENS } from '../data/tokens';
-import { usePriceChanges } from '../hooks/usePriceChanges';
+import { usePriceHistory } from '../hooks/usePriceHistory';
 import { useNavigate } from 'react-router-dom';
 
 export const Bubbles: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const priceChanges = usePriceChanges();
+  const { priceChanges } = usePriceHistory();
 
   // Filter out RXD and sort by price change
   const sortedTokens = TOKENS
     .filter(token => token.symbol !== 'RXD')
     .sort((a, b) => {
-      const changeA = Math.abs(priceChanges[a.symbol]?.change7d || 0);
-      const changeB = Math.abs(priceChanges[b.symbol]?.change7d || 0);
+      const changeA = Math.abs(priceChanges[a.symbol] || 0);
+      const changeB = Math.abs(priceChanges[b.symbol] || 0);
       return changeB - changeA;
     });
 
-  // ... rest of the component implementation ...
+  const handleBubbleClick = (symbol: string) => {
+    navigate(`/tokens?highlight=${symbol}`);
+  };
+
+  const getBubbleSize = (change: number) => {
+    const absChange = Math.abs(change);
+    const minSize = 80;
+    const maxSize = 200;
+    return minSize + (absChange / 100) * (maxSize - minSize);
+  };
+
+  const getBubbleColor = (change: number) => {
+    if (change > 0) {
+      const intensity = Math.min(change / 100, 1);
+      return `rgba(34, 197, 94, ${0.3 + intensity * 0.7})`; // green-500
+    } else {
+      const intensity = Math.min(Math.abs(change) / 100, 1);
+      return `rgba(239, 68, 68, ${0.3 + intensity * 0.7})`; // red-500
+    }
+  };
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateBubblePositions = () => {
+      const bubbles = container.getElementsByClassName('bubble') as HTMLCollectionOf<HTMLElement>;
+      const containerRect = container.getBoundingClientRect();
+      
+      Array.from(bubbles).forEach((bubble) => {
+        const size = parseFloat(bubble.style.width);
+        const maxX = containerRect.width - size;
+        const maxY = containerRect.height - size;
+        
+        bubble.style.left = `${Math.random() * maxX}px`;
+        bubble.style.top = `${Math.random() * maxY}px`;
+      });
+    };
+
+    updateBubblePositions();
+    window.addEventListener('resize', updateBubblePositions);
+
+    return () => window.removeEventListener('resize', updateBubblePositions);
+  }, [sortedTokens]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -25,9 +68,12 @@ export const Bubbles: React.FC = () => {
         Token Bubbles
       </h1>
 
-      <div ref={containerRef} className="relative w-full h-[800px] bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl backdrop-blur-sm overflow-hidden">
+      <div 
+        ref={containerRef}
+        className="relative w-full h-[800px] bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl backdrop-blur-sm overflow-hidden"
+      >
         {sortedTokens.map((token) => {
-          const change = priceChanges[token.symbol]?.change7d || 0;
+          const change = priceChanges[token.symbol] || 0;
           const size = getBubbleSize(change);
           const color = getBubbleColor(change);
 

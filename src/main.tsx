@@ -3,13 +3,16 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { initializeDatabase } from './lib/supabase';
-import { startPriceUpdates } from './lib/prices/rxdPriceManager';
+import { initializeTokenPrices } from './lib/priceManager';
 
-// Initialize database and start price updates
+// Initialize database and token prices
 const initialize = async () => {
   try {
+    // First initialize database
     await initializeDatabase();
-    startPriceUpdates();
+    
+    // Then initialize token prices
+    await initializeTokenPrices();
   } catch (error) {
     console.warn('Initialization error:', error);
   }
