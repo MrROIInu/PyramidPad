@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Token } from '../types';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
+import { validatePriceDeviation } from '../lib/prices/priceValidation';
 
 interface SwapFormState {
   fromToken: Token;
@@ -68,6 +69,19 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
     
     if (!formState.fromAmount || !formState.toAmount || !formState.transactionId) {
       setError('Please fill in all required fields');
+      return;
+    }
+
+    // Validate price deviation
+    const { isValid, deviation } = validatePriceDeviation(
+      formState.fromToken.symbol,
+      formState.toToken.symbol,
+      parseFloat(formState.fromAmount),
+      parseFloat(formState.toAmount)
+    );
+
+    if (!isValid) {
+      setError(`Price deviation of ${Math.abs(deviation).toFixed(2)}% exceeds the maximum allowed (300%). Please adjust your order.`);
       return;
     }
 
