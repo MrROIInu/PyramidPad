@@ -65,21 +65,24 @@ export const TokenCard: React.FC<TokenCardProps> = ({ token }) => {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-x-6 gap-y-4 mb-6">
+      <div className="space-y-4 mb-6">
         <div>
-          <p className="text-yellow-600/80 text-sm mb-1">Price</p>
+          <p className="text-yellow-600/80 text-sm">Current Price</p>
           <p className="font-mono text-lg">{formatPriceUSD(prices[token.symbol] || 0)}</p>
         </div>
+
         <div>
-          <p className="text-yellow-600/80 text-sm mb-1">Total Supply</p>
+          <p className="text-yellow-600/80 text-sm">Total Supply</p>
           <p className="font-mono text-lg">{token.totalSupply.toLocaleString()}</p>
         </div>
+
         <div>
-          <p className="text-yellow-600/80 text-sm mb-1">Preminted</p>
+          <p className="text-yellow-600/80 text-sm">Preminted</p>
           <p className="font-mono text-lg">{miningData.premintedAmount.toLocaleString()}</p>
         </div>
+
         <div>
-          <p className="text-yellow-600/80 text-sm mb-1">Minted</p>
+          <p className="text-yellow-600/80 text-sm">Mining Progress</p>
           <div className="flex items-center gap-2">
             <div className="flex-grow h-2 bg-black/30 rounded-full overflow-hidden">
               <div 
