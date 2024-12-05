@@ -8,6 +8,10 @@ export const useOrders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -85,6 +89,12 @@ export const useOrders = () => {
       // Update token prices
       await updateTokenPriceAfterClaim(order);
 
+      // Show success notification
+      setNotification({
+        type: 'success',
+        message: `Successfully claimed ${order.from_amount} ${order.from_token} ➔ ${order.to_amount} ${order.to_token}`
+      });
+
       await fetchOrders();
     } catch (err) {
       console.error('Error claiming order:', err);
@@ -154,8 +164,10 @@ export const useOrders = () => {
     orders,
     loading,
     error,
+    notification,
     onClaim,
     onCancel,
-    fetchOrders
+    fetchOrders,
+    clearNotification: () => setNotification(null)
   };
 };

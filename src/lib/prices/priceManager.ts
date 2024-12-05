@@ -6,17 +6,14 @@ import { PRICE_IMPACT_FACTOR, BASE_RATIO } from './constants';
 import { getClaimsForToken } from '../claims/claimsTracker';
 
 export const updatePriceFromClaims = async (symbol: string): Promise<void> => {
-  const { count, volume } = await getClaimsForToken(symbol);
+  const { count } = await getClaimsForToken(symbol);
   const basePrice = TOKEN_PRICES[symbol] || 0;
   
   if (basePrice === 0 || count === 0) return;
 
   // Calculate cumulative impact from claims
   const impactMultiplier = 1 + (count * PRICE_IMPACT_FACTOR);
-  // Volume impact: 0.01% per 1000 tokens
-  const volumeImpact = (volume / 1000) * 0.0001;
-  
-  const newPrice = basePrice * (impactMultiplier + volumeImpact);
+  const newPrice = basePrice * impactMultiplier;
   setTokenPrice(symbol, newPrice);
 
   // Update database
@@ -45,14 +42,28 @@ export const initializePrices = async (): Promise<void> => {
   const rxdPrice = rxdData?.price_usd || 0.001202;
   setTokenPrice('RXD', rxdPrice);
 
-  // Initialize other token prices
+  // Initialize other token prices with 1:1000 ratio
   for (const token of TOKENS) {
     const basePrice = rxdPrice / BASE_RATIO;
     setTokenPrice(token.symbol, basePrice);
-    
-    // Update prices based on claims
-    await updatePriceFromClaims(token.symbol);
   }
+
+  // Reset price history
+  await supabase
+    .from('token_price_history')
+    .delete()
+    .neq('symbol', 'RXD');
+
+  // Insert initial price history points
+  const initialHistory = TOKENS.map(token => ({
+    symbol: token.symbol,
+    price_usd: rxdPrice / BASE_RATIO,
+    timestamp: new Date().toISOString()
+  }));
+
+  await supabase
+    .from('token_price_history')
+    .insert(initialHistory);
 };
 
 let updateInterval: NodeJS.Timeout;
