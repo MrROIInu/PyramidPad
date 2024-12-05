@@ -37,23 +37,24 @@ export const CollectionChart: React.FC = () => {
   };
 
   const handleTokenClick = (token: Token) => {
+    // Update selected token for swap form and chart
     updateSelectedToken(token);
+    
+    // Update form state to use selected token
+    const formElement = document.querySelector('form');
+    if (formElement) {
+      const toTokenSelect = formElement.querySelector('[name="toToken"]');
+      if (toTokenSelect) {
+        (toTokenSelect as HTMLSelectElement).value = token.symbol;
+      }
+    }
+    
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
     <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-4 backdrop-blur-sm overflow-x-auto">
       <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-4">
-          <img 
-            src="https://static.wixstatic.com/media/c0fd9f_33dd965b95d54dfe9af12ed99fe5c43a~mv2.png"
-            alt="Radiant"
-            className="w-8 h-8 rounded-full"
-          />
-          <h2 className="text-xl font-semibold text-yellow-600">
-            Radiant RXD20 Glyph Token Chart
-          </h2>
-        </div>
         <div className="flex gap-2">
           <button
             onClick={() => setTimeframe('1d')}
