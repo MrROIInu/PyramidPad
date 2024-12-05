@@ -41,6 +41,10 @@ class PriceCache {
 
     return validCache || this.cache[0];
   }
+
+  clearCache() {
+    this.cache = [];
+  }
 }
 
 export const priceCache = PriceCache.getInstance();

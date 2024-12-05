@@ -46,13 +46,52 @@
 }
 
 @keyframes activity-flash {
-  0%, 100% { background-color: rgba(202, 138, 4, 0); }
-  50% { background-color: rgba(202, 138, 4, 0.3); }
+  0% { 
+    background-color: rgba(202, 138, 4, 0.4);
+    transform: scale(1.02);
+  }
+  50% { 
+    background-color: rgba(202, 138, 4, 0.2);
+    transform: scale(1.01);
+  }
+  100% { 
+    background-color: transparent;
+    transform: scale(1);
+  }
 }
 
 .activity-flash {
-  animation: activity-flash 0.5s ease-in-out;
-  animation-iteration-count: 5;
+  animation: activity-flash 1.5s ease-out forwards;
+}
+
+@keyframes slide-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-in {
+  animation: slide-in 0.3s ease-out forwards;
+}
+
+@keyframes fade-out {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+.fade-out {
+  animation: fade-out 0.3s ease-out forwards;
 }
 
 .highlight-order {
@@ -75,4 +114,26 @@
 
 .price-warning {
   @apply text-red-500 font-bold;
+}
+
+/* Order transitions */
+.order-enter {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.order-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.order-exit {
+  opacity: 1;
+}
+
+.order-exit-active {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 300ms, transform 300ms;
 }

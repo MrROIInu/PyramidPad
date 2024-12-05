@@ -23,8 +23,8 @@ interface ClipboardData {
 }
 
 const initialState: SwapFormState = {
-  fromToken: TOKENS[0],
-  toToken: RXD_TOKEN,
+  fromToken: RXD_TOKEN,
+  toToken: TOKENS[0],
   fromAmount: '',
   toAmount: '',
   transactionId: '',
@@ -36,7 +36,9 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const findToken = useCallback((symbol: string): Token => {
+  const findToken = useCallback((symbol: string | undefined): Token => {
+    if (!symbol) return RXD_TOKEN;
+    
     const upperSymbol = symbol.toUpperCase();
     if (upperSymbol === 'RXD') return RXD_TOKEN;
     
@@ -56,10 +58,12 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
       ...prev,
       fromToken,
       toToken,
-      fromAmount: data.fromAmount,
-      toAmount: data.toAmount,
-      transactionId: data.transactionId,
-      importedTx: `🔁 Swap: ${data.fromAmount} ${data.fromToken} ➔ ${data.toAmount} ${data.toToken} 📋${data.transactionId}🟦`
+      fromAmount: data.fromAmount || '',
+      toAmount: data.toAmount || '',
+      transactionId: data.transactionId || '',
+      importedTx: data.transactionId ? 
+        `🔁 Swap: ${data.fromAmount} ${data.fromToken} ➔ ${data.toAmount} ${data.toToken} 📋${data.transactionId}🟦` : 
+        ''
     }));
   }, [findToken]);
 

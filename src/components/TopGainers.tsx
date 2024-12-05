@@ -48,6 +48,7 @@ export const TopGainers: React.FC = () => {
               key={token.symbol} 
               className="flex items-center justify-between cursor-pointer hover:bg-yellow-600/10 p-2 rounded-lg transition-colors"
               onClick={() => handleTokenClick(token)}
+              data-token={token.symbol}
             >
               <div className="flex items-center gap-3">
                 <span className="text-yellow-600/80 w-6">{index + 1}</span>
@@ -59,7 +60,7 @@ export const TopGainers: React.FC = () => {
                   </span>
                 </div>
               </div>
-              <span className={`${getPriceChangeClass(priceChange)} font-mono whitespace-nowrap text-sm`}>
+              <span className={`${getPriceChangeClass(priceChange)} font-mono whitespace-nowrap text-sm transition-all duration-300`}>
                 {priceChange > 0 ? '+' : ''}{priceChange.toFixed(2)}%
               </span>
             </div>

@@ -94,7 +94,8 @@ export const CollectionChart: React.FC = () => {
               <tr 
                 key={token.symbol}
                 onClick={() => handleTokenClick(token)}
-                className="border-b border-yellow-600/10 hover:bg-yellow-600/5 cursor-pointer"
+                className="border-b border-yellow-600/10 hover:bg-yellow-600/5 cursor-pointer transition-all"
+                data-token={token.symbol}
               >
                 <td className="px-4 py-3 whitespace-nowrap">{index + 1}</td>
                 <td className="px-4 py-3 whitespace-nowrap">
@@ -117,7 +118,7 @@ export const CollectionChart: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <div className="w-16 h-1.5 bg-black/30 rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-gradient-to-r from-yellow-600 to-amber-800"
+                        className="h-full bg-gradient-to-r from-yellow-600 to-amber-800 transition-all duration-300"
                         style={{ width: `${miningData.minted}%` }}
                       />
                     </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -32,10 +32,11 @@ export const SelectedTokenChart: React.FC = () => {
   const prices = useRealtimePrices();
   const { priceHistory } = usePriceHistory();
   const [timeframe, setTimeframe] = useState<'1d' | '7d'>('7d');
+  const [chartInstance, setChartInstance] = useState<ChartJS | null>(null);
 
   const chartData = React.useMemo(() => {
     const history = priceHistory[selectedToken.symbol] || [];
-    const dataPoints = timeframe === '1d' ? 24 : 168; // 24 hours or 7 days
+    const dataPoints = timeframe === '1d' ? 24 : 168;
     const relevantHistory = history.slice(-dataPoints);
     
     const timestamps = relevantHistory.map((_, index) => {
@@ -76,6 +77,10 @@ export const SelectedTokenChart: React.FC = () => {
   const options = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: {
+      duration: 750,
+      easing: 'easeInOutQuart'
+    },
     interaction: {
       intersect: false,
       mode: 'index' as const
@@ -123,8 +128,19 @@ export const SelectedTokenChart: React.FC = () => {
     }
   };
 
+  // Update chart when prices change
+  useEffect(() => {
+    if (chartInstance) {
+      chartInstance.data = chartData;
+      chartInstance.update('none');
+    }
+  }, [prices, chartInstance, chartData]);
+
   return (
-    <div className="bg-gradient-to-r from-amber-900/30 to-amber-900/30 rounded-xl p-6 backdrop-blur-sm mb-8">
+    <div 
+      className="bg-gradient-to-r from-amber-900/30 to-amber-900/30 rounded-xl p-6 backdrop-blur-sm mb-8"
+      data-token={selectedToken.symbol}
+    >
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <img 
@@ -161,7 +177,15 @@ export const SelectedTokenChart: React.FC = () => {
         </div>
       </div>
       <div style={{ height: '400px' }}>
-        <Line data={chartData} options={options} />
+        <Line 
+          data={chartData} 
+          options={options}
+          ref={(ref) => {
+            if (ref) {
+              setChartInstance(ref);
+            }
+          }}
+        />
       </div>
     </div>
   );

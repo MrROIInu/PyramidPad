@@ -32,3 +32,9 @@ export interface Order {
   wallet_address?: string;
   created_at: string;
 }
+
+export interface PriceData {
+  price: number;
+  marketCap: number;
+  priceChange24h: number;
+}

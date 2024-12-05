@@ -1,99 +1,102 @@
 import { supabase } from '../supabase';
-import { TOKEN_PRICES, setTokenPrice } from './tokenPrices';
 import { TOKENS } from '../../data/tokens';
 import { Order } from '../../types';
-import { PRICE_IMPACT_FACTOR, BASE_RATIO } from './constants';
-import { getClaimsForToken } from '../claims/claimsTracker';
 
-export const updatePriceFromClaims = async (symbol: string): Promise<void> => {
+const PRICE_IMPACT_FACTOR = 0.001; // 0.1% price impact per order
+const CLAIM_IMPACT_MULTIPLIER = 1.5; // 50% more impact for claims
+
+export const updatePriceAfterClaim = async (order: Order) => {
   try {
-    const { count, volume } = await getClaimsForToken(symbol);
-    const basePrice = TOKEN_PRICES[symbol] || 0;
-    
-    if (basePrice === 0) return;
+    const timestamp = new Date().toISOString();
+    const updates = [];
 
-    // Calculate cumulative impact from claims
-    const impactMultiplier = 1 + (count * PRICE_IMPACT_FACTOR);
-    // Volume impact: 0.01% per 1000 tokens
-    const volumeImpact = (volume / 1000) * 0.0001;
-    
-    const newPrice = basePrice * (impactMultiplier + volumeImpact);
-    setTokenPrice(symbol, newPrice);
+    // Update from_token price (decrease)
+    if (order.from_token !== 'RXD') {
+      const { data: fromToken } = await supabase
+        .from('tokens')
+        .select('price_usd')
+        .eq('symbol', order.from_token)
+        .single();
 
-    try {
-      // Update database
-      await Promise.all([
-        supabase.from('tokens').upsert({
-          symbol,
+      if (fromToken) {
+        const newPrice = fromToken.price_usd * (1 - (PRICE_IMPACT_FACTOR * CLAIM_IMPACT_MULTIPLIER));
+        const token = TOKENS.find(t => t.symbol === order.from_token);
+        
+        updates.push({
+          symbol: order.from_token,
           price_usd: newPrice,
-          last_updated: new Date().toISOString()
-        }),
-        supabase.from('token_price_history').insert({
-          symbol,
-          price_usd: newPrice,
-          timestamp: new Date().toISOString()
-        })
-      ]);
-    } catch (dbError) {
-      console.warn('Error updating price in database:', dbError);
-      // Continue execution even if database update fails
+          market_cap: newPrice * (token?.totalSupply || 0),
+          last_updated: timestamp
+        });
+      }
     }
+
+    // Update to_token price (increase)
+    if (order.to_token !== 'RXD') {
+      const { data: toToken } = await supabase
+        .from('tokens')
+        .select('price_usd')
+        .eq('symbol', order.to_token)
+        .single();
+
+      if (toToken) {
+        const newPrice = toToken.price_usd * (1 + (PRICE_IMPACT_FACTOR * CLAIM_IMPACT_MULTIPLIER));
+        const token = TOKENS.find(t => t.symbol === order.to_token);
+        
+        updates.push({
+          symbol: order.to_token,
+          price_usd: newPrice,
+          market_cap: newPrice * (token?.totalSupply || 0),
+          last_updated: timestamp
+        });
+      }
+    }
+
+    if (updates.length > 0) {
+      // Update current prices
+      const { error: updateError } = await supabase
+        .from('tokens')
+        .upsert(updates, { onConflict: 'symbol' });
+
+      if (updateError) throw updateError;
+
+      // Add to price history
+      const historyData = updates.map(update => ({
+        symbol: update.symbol,
+        price_usd: update.price_usd,
+        timestamp: update.last_updated
+      }));
+
+      await supabase
+        .from('token_price_history')
+        .insert(historyData);
+    }
+
+    return true;
   } catch (error) {
-    console.warn('Error updating price from claims:', error);
-    // Keep existing price on error
+    console.error('Error updating prices after claim:', error);
+    return false;
   }
 };
 
-export const initializePrices = async (): Promise<void> => {
+export const calculatePriceChange = async (symbol: string) => {
   try {
-    // Get RXD price from database
-    const { data: rxdData } = await supabase
-      .from('tokens')
-      .select('price_usd')
-      .eq('symbol', 'RXD')
-      .single();
+    const { data: history } = await supabase
+      .from('token_price_history')
+      .select('price_usd, timestamp')
+      .eq('symbol', symbol)
+      .order('timestamp', { ascending: false })
+      .limit(24);
 
-    const rxdPrice = rxdData?.price_usd || 0.001202;
-    setTokenPrice('RXD', rxdPrice);
+    if (!history?.length) return 0;
 
-    // Initialize other token prices
-    for (const token of TOKENS) {
-      const basePrice = rxdPrice / BASE_RATIO;
-      setTokenPrice(token.symbol, basePrice);
-      
-      // Update prices based on claims
-      await updatePriceFromClaims(token.symbol).catch(error => {
-        console.warn(`Error updating price for ${token.symbol}:`, error);
-      });
-    }
+    const latestPrice = history[0].price_usd;
+    const oldestPrice = history[history.length - 1].price_usd;
+
+    if (!oldestPrice) return 0;
+    return ((latestPrice - oldestPrice) / oldestPrice) * 100;
   } catch (error) {
-    console.warn('Error initializing prices:', error);
-    // Set default prices if initialization fails
-    setTokenPrice('RXD', 0.001202);
-    TOKENS.forEach(token => {
-      setTokenPrice(token.symbol, 0.001202 / BASE_RATIO);
-    });
-  }
-};
-
-let updateInterval: NodeJS.Timeout;
-
-export const startPriceUpdates = (): void => {
-  if (updateInterval) {
-    clearInterval(updateInterval);
-  }
-
-  updateInterval = setInterval(async () => {
-    for (const token of TOKENS) {
-      await updatePriceFromClaims(token.symbol).catch(error => {
-        console.warn(`Error updating price for ${token.symbol}:`, error);
-      });
-    }
-  }, 30000); // Update every 30 seconds
-};
-
-export const stopPriceUpdates = (): void => {
-  if (updateInterval) {
-    clearInterval(updateInterval);
+    console.error('Error calculating price change:', error);
+    return 0;
   }
 };

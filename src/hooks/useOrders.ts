@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { updateTokenPriceAfterClaim } from '../lib/priceManager';
 import { Order } from '../types';
 import { isWalletAllowed } from '../lib/walletManager';
+import { updatePriceAfterClaim } from '../lib/prices/priceManager';
 
 export const useOrders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -33,14 +33,12 @@ export const useOrders = () => {
     try {
       setError(null);
 
-      // Check if wallet is allowed to claim
       const isAllowed = await isWalletAllowed(claimingWalletAddress);
       if (!isAllowed) {
         setError('Your wallet is not authorized to claim orders');
         return;
       }
-      
-      // Get order before claiming
+
       const { data: order, error: getError } = await supabase
         .from('orders')
         .select('*')
@@ -48,8 +46,6 @@ export const useOrders = () => {
         .single();
 
       if (getError) throw getError;
-
-      // Validate order
       if (!order) {
         setError('Order not found');
         return;
@@ -60,17 +56,6 @@ export const useOrders = () => {
         return;
       }
 
-      if (order.status === 'cancelled') {
-        setError('This order has been cancelled');
-        return;
-      }
-
-      if (order.wallet_address === claimingWalletAddress) {
-        setError('You cannot claim your own orders');
-        return;
-      }
-
-      // Update order status
       const { error: updateError } = await supabase
         .from('orders')
         .update({ 
@@ -82,67 +67,29 @@ export const useOrders = () => {
 
       if (updateError) throw updateError;
 
-      // Update token prices
-      await updateTokenPriceAfterClaim(order);
+      // Update token prices after successful claim
+      await updatePriceAfterClaim(order);
 
+      // Refresh orders
       await fetchOrders();
+
     } catch (err) {
       console.error('Error claiming order:', err);
       setError('Failed to claim order. Please try again.');
     }
   }, [fetchOrders]);
 
-  const onCancel = useCallback(async (id: number, walletAddress: string) => {
-    try {
-      setError(null);
-
-      // Get order before cancelling
-      const { data: order, error: getError } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (getError) throw getError;
-
-      // Validate order
-      if (!order) {
-        setError('Order not found');
-        return;
-      }
-
-      if (order.wallet_address !== walletAddress) {
-        setError('You can only cancel your own orders');
-        return;
-      }
-
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({ 
-          status: 'cancelled',
-          cancelled_at: new Date().toISOString()
-        })
-        .eq('id', id);
-
-      if (updateError) throw updateError;
-      await fetchOrders();
-    } catch (err) {
-      console.error('Error cancelling order:', err);
-      setError('Failed to cancel order. Please try again.');
-    }
-  }, [fetchOrders]);
-
   useEffect(() => {
     fetchOrders();
 
+    // Subscribe to real-time changes
     const subscription = supabase
-      .channel('orders-channel')
+      .channel('orders-changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'orders' },
         () => {
           fetchOrders();
-        }
-      )
+        })
       .subscribe();
 
     return () => {
@@ -155,7 +102,6 @@ export const useOrders = () => {
     loading,
     error,
     onClaim,
-    onCancel,
     fetchOrders
   };
 };

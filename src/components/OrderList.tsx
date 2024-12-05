@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Copy, Loader2 } from 'lucide-react';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
@@ -40,12 +40,15 @@ export const OrderList: React.FC<OrderListProps> = ({
     copyFeeWallet
   } = useWalletManager(false);
 
-  const [cancelledOrders, setCancelledOrders] = useState<Record<number, boolean>>({});
+  const [processingOrders, setProcessingOrders] = useState<Record<number, boolean>>({});
   const [visibleOrders, setVisibleOrders] = useState(3);
+  const [animatingOrders, setAnimatingOrders] = useState<Record<number, 'enter' | 'exit'>>({});
 
   const handleCancel = async (id: number) => {
+    setProcessingOrders(prev => ({ ...prev, [id]: true }));
+    setAnimatingOrders(prev => ({ ...prev, [id]: 'exit' }));
     await onCancel(id);
-    setCancelledOrders(prev => ({ ...prev, [id]: true }));
+    setProcessingOrders(prev => ({ ...prev, [id]: false }));
   };
 
   const handleClaim = async (id: number) => {
@@ -53,13 +56,31 @@ export const OrderList: React.FC<OrderListProps> = ({
       alert('Please connect a valid wallet first');
       return;
     }
+    setProcessingOrders(prev => ({ ...prev, [id]: true }));
+    setAnimatingOrders(prev => ({ ...prev, [id]: 'exit' }));
     await onClaim(id, walletAddress);
+    setProcessingOrders(prev => ({ ...prev, [id]: false }));
   };
 
   const handleCopy = async (text: string) => {
     await navigator.clipboard.writeText(text);
     alert('TX copied to clipboard. Claim order when you have made swap in Photonic Wallet.');
   };
+
+  useEffect(() => {
+    orders.forEach(order => {
+      if (!animatingOrders[order.id]) {
+        setAnimatingOrders(prev => ({ ...prev, [order.id]: 'enter' }));
+        setTimeout(() => {
+          setAnimatingOrders(prev => {
+            const newState = { ...prev };
+            delete newState[order.id];
+            return newState;
+          });
+        }, 300);
+      }
+    });
+  }, [orders]);
 
   if (loading) {
     return (
@@ -124,13 +145,19 @@ export const OrderList: React.FC<OrderListProps> = ({
 
           const canCancel = showCancelButton && order.wallet_address === (userWalletAddress || walletAddress);
           const canClaim = isWalletValid && order.wallet_address !== walletAddress;
-          const isCancelled = cancelledOrders[order.id];
+          const isProcessing = processingOrders[order.id];
+          const animationState = animatingOrders[order.id];
 
           return (
             <div
               key={order.id}
               id={`order-${order.id}`}
-              className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm"
+              className={`
+                bg-gradient-to-r from-amber-900/30 to-yellow-900/30 rounded-xl p-6 backdrop-blur-sm
+                transition-all duration-300
+                ${animationState === 'enter' ? 'slide-in' : ''}
+                ${animationState === 'exit' ? 'fade-out' : ''}
+              `}
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
@@ -159,26 +186,21 @@ export const OrderList: React.FC<OrderListProps> = ({
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  {canClaim && !isCancelled && type === 'active' && (
+                  {canClaim && !isProcessing && type === 'active' && (
                     <button
                       onClick={() => handleClaim(order.id)}
                       className="px-4 py-2 bg-gradient-to-r from-yellow-600 to-amber-800 text-white rounded-lg hover:from-yellow-500 hover:to-amber-700 transition-all"
                     >
-                      Claim
+                      {isProcessing ? 'Processing...' : 'Claim'}
                     </button>
                   )}
-                  {canCancel && !isCancelled && type === 'active' && (
+                  {canCancel && !isProcessing && type === 'active' && (
                     <button
                       onClick={() => handleCancel(order.id)}
                       className="px-4 py-2 bg-red-600/20 text-red-500 rounded-lg hover:bg-red-600/30 transition-colors"
                     >
                       Cancel
                     </button>
-                  )}
-                  {isCancelled && (
-                    <span className="px-4 py-2 bg-red-600/20 text-red-500 rounded-lg">
-                      Order Cancelled
-                    </span>
                   )}
                 </div>
               </div>
@@ -191,7 +213,7 @@ export const OrderList: React.FC<OrderListProps> = ({
                 className="mb-4"
               />
 
-              {canClaim && !isCancelled && type === 'active' && (
+              {canClaim && !isProcessing && type === 'active' && (
                 <div className="relative">
                   <p className="text-yellow-600 mb-2">Copy TX to Photonic Wallet. Claim after P2PSwap is done.</p>
                   <div 

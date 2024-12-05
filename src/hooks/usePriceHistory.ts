@@ -1,86 +1,67 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { TOKEN_PRICES } from '../lib/tokenPrices';
 import { TOKENS } from '../data/tokens';
-
-interface PriceHistory {
-  [key: string]: number[];
-}
-
-interface PriceChanges {
-  [key: string]: number;
-}
+import { calculatePriceChange } from '../lib/prices/priceManager';
 
 export const usePriceHistory = () => {
-  const [priceHistory, setPriceHistory] = useState<PriceHistory>({});
-  const [priceChanges, setPriceChanges] = useState<PriceChanges>({});
+  const [priceHistory, setPriceHistory] = useState<Record<string, number[]>>({});
+  const [priceChanges, setPriceChanges] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    // Initialize price history
-    const fetchInitialPrices = async () => {
-      const { data, error } = await supabase
+    const loadPriceHistory = async () => {
+      // Get last 7 days of price history for all tokens
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 7);
+
+      const { data: history } = await supabase
         .from('token_price_history')
         .select('*')
+        .gte('timestamp', start.toISOString())
+        .lte('timestamp', end.toISOString())
         .order('timestamp', { ascending: true });
 
-      if (!error && data) {
-        const history: PriceHistory = {};
-        const changes: PriceChanges = {};
+      if (history) {
+        const historyMap: Record<string, number[]> = {};
+        const changesMap: Record<string, number> = {};
 
-        TOKENS.forEach(token => {
-          const tokenPrices = data
-            .filter(p => p.symbol === token.symbol)
-            .map(p => p.price_usd);
+        // Calculate price changes for all tokens
+        await Promise.all(TOKENS.map(async token => {
+          const tokenHistory = history.filter(h => h.symbol === token.symbol);
+          historyMap[token.symbol] = tokenHistory.map(h => h.price_usd);
+          changesMap[token.symbol] = await calculatePriceChange(token.symbol);
+        }));
 
-          history[token.symbol] = tokenPrices;
-
-          // Calculate price change
-          if (tokenPrices.length >= 2) {
-            const oldPrice = tokenPrices[0];
-            const newPrice = tokenPrices[tokenPrices.length - 1];
-            changes[token.symbol] = ((newPrice - oldPrice) / oldPrice) * 100;
-          } else {
-            changes[token.symbol] = 0;
-          }
-        });
-
-        setPriceHistory(history);
-        setPriceChanges(changes);
+        setPriceHistory(historyMap);
+        setPriceChanges(changesMap);
       }
     };
 
-    fetchInitialPrices();
+    loadPriceHistory();
 
     // Subscribe to price updates
     const subscription = supabase
       .channel('token-prices')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'tokens' },
-        (payload) => {
-          if (payload.new?.symbol && payload.new?.price_usd) {
-            const symbol = payload.new.symbol;
-            const newPrice = payload.new.price_usd;
+        async (payload) => {
+          if (payload.new?.symbol) {
+            const { symbol } = payload.new;
+            
+            // Update price history
+            setPriceHistory(prev => ({
+              ...prev,
+              [symbol]: [...(prev[symbol] || []), payload.new.price_usd]
+            }));
 
-            setPriceHistory(prev => {
-              const prices = [...(prev[symbol] || []), newPrice];
-              return {
-                ...prev,
-                [symbol]: prices.slice(-168) // Keep last 7 days worth of data points
-              };
-            });
-
-            setPriceChanges(prev => {
-              const prices = priceHistory[symbol] || [];
-              if (prices.length > 0) {
-                const oldPrice = prices[0];
-                const change = ((newPrice - oldPrice) / oldPrice) * 100;
-                return { ...prev, [symbol]: change };
-              }
-              return prev;
-            });
+            // Calculate and update price change
+            const change = await calculatePriceChange(symbol);
+            setPriceChanges(prev => ({
+              ...prev,
+              [symbol]: change
+            }));
           }
-        }
-      )
+        })
       .subscribe();
 
     return () => {
