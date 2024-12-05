@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply text-gray-100 pt-12;
+    @apply text-gray-100 pt-[84px];
     background-image: url('https://static.wixstatic.com/media/c0fd9f_784dc242d5e444b298c27a89741f6a5c~mv2.jpg');
     background-size: cover;
     background-position: center;

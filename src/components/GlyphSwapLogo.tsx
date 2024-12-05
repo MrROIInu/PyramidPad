@@ -17,6 +17,9 @@ export const GlyphSwapLogo: React.FC = () => {
             <span className="text-3xl font-normal italic">
               Swap
             </span>
+            <span className="ml-2 bg-red-600/20 text-red-500 px-2 py-0.5 rounded-full text-xs font-semibold border border-red-500/30">
+              TEST
+            </span>
           </div>
           <p className="text-sm text-yellow-600/80 mt-1">
             Radiant RXD20 Glyph Token P2P On-Chain Swaps
