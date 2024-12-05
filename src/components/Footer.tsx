@@ -7,7 +7,7 @@ export const Footer: React.FC = () => {
         <p className="text-yellow-600">
           ©GlyphSwap 2024. Support:{' '}
           <a 
-            href="https://discord.gg/pwBMDDzWWG" 
+            href="https://discord.gg/9yTeXYVmE9" 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-yellow-500 hover:text-yellow-400 transition-colors"
