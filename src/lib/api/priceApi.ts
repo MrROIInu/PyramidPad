@@ -5,45 +5,25 @@ import { PriceData } from '../../types';
 
 let lastUpdate: Date | null = null;
 const UPDATE_INTERVAL = 15 * 60 * 1000; // 15 minutes
-const DEFAULT_RXD_PRICE = 0.001202;
 
 export const fetchRXDPrice = async (): Promise<PriceData> => {
   try {
-    // Check if we need to update
-    const now = new Date();
-    if (lastUpdate && (now.getTime() - lastUpdate.getTime()) < UPDATE_INTERVAL) {
-      // Get latest price from database
-      const { data } = await supabase
-        .from('tokens')
-        .select('price_usd, market_cap, price_change_24h')
-        .eq('symbol', 'RXD')
-        .single();
-
-      if (data?.price_usd) {
-        return {
-          price: data.price_usd,
-          marketCap: data.market_cap || data.price_usd * 21000000000,
-          priceChange24h: data.price_change_24h || 0
-        };
-      }
-    }
-
-    // Try CoinMarketCap first
+    // Try CoinGecko first
     try {
-      const cmcData = await fetchCMCData();
-      await savePrice(cmcData);
-      return cmcData;
-    } catch (cmcError) {
-      console.warn('CoinMarketCap fetch failed, trying CoinGecko...');
+      const cgData = await fetchCGData();
+      await savePrice(cgData);
+      return cgData;
+    } catch (cgError) {
+      console.warn('CoinGecko fetch failed, trying CoinMarketCap...');
       
-      // Fallback to CoinGecko
+      // Fallback to CoinMarketCap
       try {
-        const cgData = await fetchCGData();
-        await savePrice(cgData);
-        return cgData;
-      } catch (cgError) {
-        console.warn('CoinGecko fetch failed, using last saved price...');
-        throw cgError;
+        const cmcData = await fetchCMCData();
+        await savePrice(cmcData);
+        return cmcData;
+      } catch (cmcError) {
+        console.warn('CoinMarketCap fetch failed, using last saved price...');
+        throw cmcError;
       }
     }
   } catch (error) {
@@ -62,10 +42,10 @@ export const fetchRXDPrice = async (): Promise<PriceData> => {
       };
     }
 
-    // Fallback to default values if no saved price
+    // Fallback to default values
     return {
-      price: DEFAULT_RXD_PRICE,
-      marketCap: DEFAULT_RXD_PRICE * 21000000000,
+      price: 0.001202,
+      marketCap: 0.001202 * 21000000000,
       priceChange24h: 0
     };
   }
@@ -74,6 +54,7 @@ export const fetchRXDPrice = async (): Promise<PriceData> => {
 const savePrice = async (data: PriceData) => {
   try {
     const timestamp = new Date().toISOString();
+    lastUpdate = new Date();
 
     // Save to tokens table
     await supabase
@@ -94,8 +75,6 @@ const savePrice = async (data: PriceData) => {
         price_usd: data.price,
         timestamp
       });
-
-    lastUpdate = new Date();
   } catch (error) {
     console.error('Error saving price:', error);
   }
