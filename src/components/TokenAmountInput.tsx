@@ -2,6 +2,8 @@ import React from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
+import { formatPriceUSD } from '../lib/prices/priceFormatter';
+import { useRealtimePrices } from '../hooks/useRealtimePrices';
 
 interface TokenAmountInputProps {
   amount: string;
@@ -10,7 +12,6 @@ interface TokenAmountInputProps {
     imageUrl: string;
   };
   onChange: (value: string) => void;
-  usdValue: string;
   disabled?: boolean;
   readOnly?: boolean;
   showSlider?: boolean;
@@ -20,38 +21,43 @@ export const TokenAmountInput: React.FC<TokenAmountInputProps> = ({
   amount,
   token,
   onChange,
-  usdValue,
   disabled = false,
   readOnly = false,
   showSlider = false
 }) => {
+  const prices = useRealtimePrices();
   const currentValue = parseInt(amount) || 0;
+  const tokenPrice = prices[token.symbol] || 0;
+  const usdValue = currentValue * tokenPrice;
 
   const handleIncrease = () => {
-    onChange((currentValue + 1).toString());
+    if (disabled || readOnly) return;
+    const newValue = currentValue + 1;
+    onChange(newValue.toString());
   };
 
   const handleDecrease = () => {
-    if (currentValue > 1) {
-      onChange((currentValue - 1).toString());
-    }
+    if (disabled || readOnly || currentValue <= 1) return;
+    const newValue = currentValue - 1;
+    onChange(newValue.toString());
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (readOnly) return;
     
     const value = e.target.value;
-    // Only allow positive integers
     if (/^\d*$/.test(value)) {
       const numValue = parseInt(value) || 0;
-      if (numValue >= 1 || value === '') {
+      if (numValue >= 0) {
         onChange(value);
       }
     }
   };
 
-  const handleSliderChange = (value: number) => {
-    onChange(value.toString());
+  const handleSliderChange = (value: number | number[]) => {
+    if (typeof value === 'number') {
+      onChange(value.toString());
+    }
   };
 
   return (
@@ -88,7 +94,7 @@ export const TokenAmountInput: React.FC<TokenAmountInputProps> = ({
             <button
               type="button"
               onClick={handleDecrease}
-              disabled={disabled || !amount || parseInt(amount) <= 1}
+              disabled={disabled || currentValue <= 1}
               className="px-2 py-1 hover:bg-yellow-600/20 transition-colors disabled:opacity-50 border-t border-yellow-600/30"
             >
               <ChevronDown size={20} />
@@ -113,7 +119,7 @@ export const TokenAmountInput: React.FC<TokenAmountInputProps> = ({
         </div>
       )}
       <div className="text-sm text-yellow-600/80 px-2">
-        ≈ {usdValue}
+        ≈ {formatPriceUSD(usdValue)}
       </div>
     </div>
   );

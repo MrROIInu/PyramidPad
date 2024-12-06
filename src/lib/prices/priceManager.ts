@@ -3,23 +3,44 @@ import { TOKENS } from '../../data/tokens';
 import { Order } from '../../types';
 
 const PRICE_IMPACT_FACTOR = 0.001; // 0.1% price impact per order
-const CLAIM_IMPACT_MULTIPLIER = 1.5; // 50% more impact for claims
+
+export const calculatePriceChange = async (symbol: string): Promise<number> => {
+  try {
+    const { data: history } = await supabase
+      .from('token_price_history')
+      .select('price_usd, timestamp')
+      .eq('symbol', symbol)
+      .order('timestamp', { ascending: false })
+      .limit(2);
+
+    if (!history || history.length < 2) return 0;
+
+    const [current, previous] = history;
+    return ((current.price_usd - previous.price_usd) / previous.price_usd) * 100;
+  } catch (error) {
+    console.error('Error calculating price change:', error);
+    return 0;
+  }
+};
 
 export const updatePriceAfterClaim = async (order: Order) => {
   try {
     const timestamp = new Date().toISOString();
     const updates = [];
 
-    // Update from_token price (decrease)
-    if (order.from_token !== 'RXD') {
-      const { data: fromToken } = await supabase
-        .from('tokens')
-        .select('price_usd')
-        .eq('symbol', order.from_token)
-        .single();
+    // Get current prices
+    const { data: currentPrices } = await supabase
+      .from('tokens')
+      .select('symbol, price_usd')
+      .in('symbol', [order.from_token, order.to_token]);
 
+    if (!currentPrices?.length) return false;
+
+    // Update from_token price (decrease by 0.1%)
+    if (order.from_token !== 'RXD') {
+      const fromToken = currentPrices.find(t => t.symbol === order.from_token);
       if (fromToken) {
-        const newPrice = fromToken.price_usd * (1 - (PRICE_IMPACT_FACTOR * CLAIM_IMPACT_MULTIPLIER));
+        const newPrice = fromToken.price_usd * (1 - PRICE_IMPACT_FACTOR);
         const token = TOKENS.find(t => t.symbol === order.from_token);
         
         updates.push({
@@ -31,16 +52,11 @@ export const updatePriceAfterClaim = async (order: Order) => {
       }
     }
 
-    // Update to_token price (increase)
+    // Update to_token price (increase by 0.1%)
     if (order.to_token !== 'RXD') {
-      const { data: toToken } = await supabase
-        .from('tokens')
-        .select('price_usd')
-        .eq('symbol', order.to_token)
-        .single();
-
+      const toToken = currentPrices.find(t => t.symbol === order.to_token);
       if (toToken) {
-        const newPrice = toToken.price_usd * (1 + (PRICE_IMPACT_FACTOR * CLAIM_IMPACT_MULTIPLIER));
+        const newPrice = toToken.price_usd * (1 + PRICE_IMPACT_FACTOR);
         const token = TOKENS.find(t => t.symbol === order.to_token);
         
         updates.push({
@@ -54,22 +70,18 @@ export const updatePriceAfterClaim = async (order: Order) => {
 
     if (updates.length > 0) {
       // Update current prices
-      const { error: updateError } = await supabase
+      await supabase
         .from('tokens')
-        .upsert(updates, { onConflict: 'symbol' });
-
-      if (updateError) throw updateError;
+        .upsert(updates);
 
       // Add to price history
-      const historyData = updates.map(update => ({
-        symbol: update.symbol,
-        price_usd: update.price_usd,
-        timestamp: update.last_updated
-      }));
-
       await supabase
         .from('token_price_history')
-        .insert(historyData);
+        .insert(updates.map(update => ({
+          symbol: update.symbol,
+          price_usd: update.price_usd,
+          timestamp: update.last_updated
+        })));
     }
 
     return true;
@@ -79,24 +91,16 @@ export const updatePriceAfterClaim = async (order: Order) => {
   }
 };
 
-export const calculatePriceChange = async (symbol: string) => {
-  try {
-    const { data: history } = await supabase
-      .from('token_price_history')
-      .select('price_usd, timestamp')
-      .eq('symbol', symbol)
-      .order('timestamp', { ascending: false })
-      .limit(24);
+export const validatePriceDeviation = (fromAmount: number, toAmount: number, fromPrice: number, toPrice: number): boolean => {
+  if (!fromAmount || !toAmount || !fromPrice || !toPrice) return false;
 
-    if (!history?.length) return 0;
+  // Calculate expected rate based on current prices
+  const expectedRate = fromPrice / toPrice;
+  const actualRate = fromAmount / toAmount;
+  
+  // Calculate deviation percentage
+  const deviation = ((actualRate / expectedRate) - 1) * 100;
 
-    const latestPrice = history[0].price_usd;
-    const oldestPrice = history[history.length - 1].price_usd;
-
-    if (!oldestPrice) return 0;
-    return ((latestPrice - oldestPrice) / oldestPrice) * 100;
-  } catch (error) {
-    console.error('Error calculating price change:', error);
-    return 0;
-  }
+  // Maximum allowed deviation is 100%
+  return Math.abs(deviation) <= 100;
 };

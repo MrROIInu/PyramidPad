@@ -3,12 +3,13 @@ import { TOKENS } from '../../data/tokens';
 import { fetchRXDPrice } from '../api/priceApi';
 
 const BASE_RATIO = 1000; // Base ratio between RXD and other tokens
+const MIN_PRICE = 0.000001; // Minimum allowed price
 
 export const initializeTokenPrices = async () => {
   try {
     // First get RXD price
     const rxdData = await fetchRXDPrice();
-    const rxdPrice = rxdData.price;
+    const rxdPrice = Math.max(rxdData.price, MIN_PRICE);
 
     // Prepare token data for all tokens including RXD
     const tokenData = [
@@ -22,7 +23,7 @@ export const initializeTokenPrices = async () => {
       },
       // Other tokens
       ...TOKENS.map(token => {
-        const tokenPrice = rxdPrice / BASE_RATIO;
+        const tokenPrice = Math.max(rxdPrice / BASE_RATIO, MIN_PRICE);
         return {
           symbol: token.symbol,
           price_usd: tokenPrice,
@@ -53,9 +54,20 @@ export const initializeTokenPrices = async () => {
       .from('token_price_history')
       .insert(historyData);
 
-    return true;
+    // Return the initialized prices
+    return tokenData.reduce((acc, token) => ({
+      ...acc,
+      [token.symbol]: token.price_usd
+    }), {});
   } catch (error) {
     console.error('Error initializing token prices:', error);
-    return false;
+    // Return default minimum prices if initialization fails
+    return {
+      RXD: MIN_PRICE,
+      ...TOKENS.reduce((acc, token) => ({
+        ...acc,
+        [token.symbol]: MIN_PRICE
+      }), {})
+    };
   }
 };

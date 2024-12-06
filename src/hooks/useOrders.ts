@@ -70,14 +70,11 @@ export const useOrders = () => {
       // Update token prices after successful claim
       await updatePriceAfterClaim(order);
 
-      // Refresh orders
-      await fetchOrders();
-
     } catch (err) {
       console.error('Error claiming order:', err);
       setError('Failed to claim order. Please try again.');
     }
-  }, [fetchOrders]);
+  }, []);
 
   useEffect(() => {
     fetchOrders();

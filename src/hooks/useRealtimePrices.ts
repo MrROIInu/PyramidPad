@@ -1,35 +1,35 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { initializeTokenPrices } from '../lib/prices/initializePrices';
-import { updateTokenPrices } from '../lib/prices/updatePrices';
 
 export const useRealtimePrices = () => {
   const [prices, setPrices] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const loadPrices = async () => {
-      // First try to get prices from database
+      // Get latest prices from database
       const { data: tokenPrices } = await supabase
         .from('tokens')
-        .select('symbol, price_usd');
+        .select('symbol, price_usd')
+        .order('last_updated', { ascending: false });
 
-      if (!tokenPrices?.length) {
-        // If no prices exist, initialize them
-        await initializeTokenPrices();
-      } else {
-        // Update state with existing prices
+      if (tokenPrices?.length) {
         const priceMap = tokenPrices.reduce((acc, token) => ({
           ...acc,
           [token.symbol]: token.price_usd
         }), {});
         setPrices(priceMap);
+      } else {
+        // Initialize prices if none exist
+        const initialPrices = await initializeTokenPrices();
+        setPrices(initialPrices);
       }
     };
 
     loadPrices();
 
     // Subscribe to price updates
-    const priceSubscription = supabase
+    const subscription = supabase
       .channel('token-prices')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'tokens' },
@@ -39,16 +39,21 @@ export const useRealtimePrices = () => {
               ...prev,
               [payload.new.symbol]: payload.new.price_usd
             }));
+
+            // Add visual feedback for price changes
+            const elements = document.querySelectorAll(`[data-token="${payload.new.symbol}"]`);
+            elements.forEach(element => {
+              element.classList.add('price-update');
+              setTimeout(() => {
+                element.classList.remove('price-update');
+              }, 1000);
+            });
           }
         })
       .subscribe();
 
-    // Update prices periodically
-    const updateInterval = setInterval(updateTokenPrices, 30000);
-
     return () => {
-      priceSubscription.unsubscribe();
-      clearInterval(updateInterval);
+      subscription.unsubscribe();
     };
   }, []);
 
