@@ -1,17 +1,14 @@
-// Base ratio between RXD and other tokens
-export const BASE_RATIO = 1000; // 1:1000 base ratio
+// Base ratio between RXD and other tokens (1:1000)
+export const BASE_RATIO = 1000;
 
-// Price impact percentage per order (0.1%)
-export const PRICE_IMPACT_FACTOR = 0.001;
+// Price impact percentage per claim (0.1%)
+export const PRICE_IMPACT = 0.001;
 
-// Price update interval in milliseconds
-export const PRICE_UPDATE_INTERVAL = 10000; // 10 seconds
+// Maximum allowed price deviation (100%)
+export const MAX_DEVIATION = 1;
 
-// Maximum number of retries for price fetching
-export const MAX_RETRIES = 3;
+// Minimum token price
+export const MIN_PRICE = 0.000001;
 
-// Delay between retries in milliseconds
-export const RETRY_DELAY = 2000; // 2 seconds
-
-// Default fallback price if all else fails
-export const DEFAULT_PRICE = 0.001202;
+// Price update interval (15 minutes)
+export const UPDATE_INTERVAL = 15 * 60 * 1000;

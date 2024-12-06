@@ -1,14 +1,11 @@
 import { supabase } from '../supabase';
 import { TOKENS } from '../../data/tokens';
 import { Order } from '../../types';
-
-const PRICE_IMPACT_FACTOR = 0.001; // Exactly 0.1% price impact per order
-const MAX_PRICE_CHANGE = 1; // Maximum 100% price change allowed
+import { BASE_RATIO, PRICE_IMPACT, MAX_DEVIATION, MIN_PRICE } from './constants';
 
 export const updatePriceAfterClaim = async (order: Order) => {
   try {
     const timestamp = new Date().toISOString();
-    const updates = [];
 
     // Get current prices
     const { data: currentPrices } = await supabase
@@ -18,11 +15,13 @@ export const updatePriceAfterClaim = async (order: Order) => {
 
     if (!currentPrices?.length) return false;
 
+    const updates = [];
+
     // Update from_token price (decrease by exactly 0.1%)
     if (order.from_token !== 'RXD') {
       const fromToken = currentPrices.find(t => t.symbol === order.from_token);
       if (fromToken) {
-        const newPrice = fromToken.price_usd * (1 - PRICE_IMPACT_FACTOR);
+        const newPrice = Math.max(fromToken.price_usd * (1 - PRICE_IMPACT), MIN_PRICE);
         const token = TOKENS.find(t => t.symbol === order.from_token);
         
         updates.push({
@@ -38,7 +37,7 @@ export const updatePriceAfterClaim = async (order: Order) => {
     if (order.to_token !== 'RXD') {
       const toToken = currentPrices.find(t => t.symbol === order.to_token);
       if (toToken) {
-        const newPrice = toToken.price_usd * (1 + PRICE_IMPACT_FACTOR);
+        const newPrice = toToken.price_usd * (1 + PRICE_IMPACT);
         const token = TOKENS.find(t => t.symbol === order.to_token);
         
         updates.push({
@@ -81,10 +80,10 @@ export const validatePriceDeviation = (fromAmount: number, toAmount: number, fro
   const actualRate = fromAmount / toAmount;
   
   // Calculate deviation percentage
-  const deviation = Math.abs(((actualRate / expectedRate) - 1) * 100);
+  const deviation = Math.abs(((actualRate / expectedRate) - 1));
 
   // Maximum allowed deviation is 100%
-  return deviation <= MAX_PRICE_CHANGE * 100;
+  return deviation <= MAX_DEVIATION;
 };
 
 export const calculatePriceChange = async (symbol: string): Promise<number> => {

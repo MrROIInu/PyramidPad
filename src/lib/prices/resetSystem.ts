@@ -3,23 +3,27 @@ import { TOKENS } from '../../data/tokens';
 import { fetchRXDPrice } from '../api/priceApi';
 import { BASE_RATIO, MIN_PRICE } from './constants';
 
-export const resetTokenPrices = async () => {
+export const resetPricingSystem = async () => {
   try {
-    // First clear all price history except RXD
-    await supabase
-      .from('token_price_history')
-      .delete()
-      .neq('symbol', 'RXD');
+    // Step 1: Clear existing data
+    await supabase.rpc('reset_pricing_system');
 
-    // Get current RXD price
+    // Step 2: Get current RXD price
     const rxdData = await fetchRXDPrice();
     const rxdPrice = Math.max(rxdData.price, MIN_PRICE);
     const timestamp = new Date().toISOString();
 
-    // Calculate base price for other tokens (1:1000 ratio with RXD)
-    const baseTokenPrice = rxdPrice / BASE_RATIO;
+    // Step 3: Initialize RXD token
+    const rxdToken = {
+      symbol: 'RXD',
+      price_usd: rxdPrice,
+      market_cap: rxdPrice * 21000000000,
+      price_change_24h: 0,
+      last_updated: timestamp
+    };
 
-    // Prepare token data
+    // Step 4: Initialize other tokens at 1:1000 ratio
+    const baseTokenPrice = rxdPrice / BASE_RATIO;
     const tokenData = TOKENS.map(token => ({
       symbol: token.symbol,
       price_usd: baseTokenPrice,
@@ -28,15 +32,15 @@ export const resetTokenPrices = async () => {
       last_updated: timestamp
     }));
 
-    // Update token prices
+    // Step 5: Insert all token data
     await supabase
       .from('tokens')
-      .upsert(tokenData, { onConflict: 'symbol' });
+      .upsert([rxdToken, ...tokenData]);
 
-    // Add initial price history entries
+    // Step 6: Insert initial price history
     await supabase
       .from('token_price_history')
-      .insert(tokenData.map(token => ({
+      .insert([rxdToken, ...tokenData].map(token => ({
         symbol: token.symbol,
         price_usd: token.price_usd,
         timestamp
@@ -44,7 +48,7 @@ export const resetTokenPrices = async () => {
 
     return true;
   } catch (error) {
-    console.error('Error resetting token prices:', error);
+    console.error('Error resetting pricing system:', error);
     return false;
   }
 };
