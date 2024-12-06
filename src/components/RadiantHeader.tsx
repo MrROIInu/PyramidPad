@@ -48,10 +48,9 @@ export const RadiantHeader: React.FC = () => {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50">
-      {/* Scroller section */}
-      <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 py-2 overflow-hidden">
-        <div className="flex justify-end">
-          <div className="animate-scroll-smooth flex items-center gap-4 px-4">
+      <div className="bg-gradient-to-r from-amber-900/30 to-yellow-900/30 py-2">
+        <div className="container mx-auto px-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <img 
               src="https://static.wixstatic.com/media/c0fd9f_33dd965b95d54dfe9af12ed99fe5c43a~mv2.png"
               alt="Radiant"
@@ -65,6 +64,9 @@ export const RadiantHeader: React.FC = () => {
             }`}>
               {data.priceChange24h > 0 ? '+' : ''}{data.priceChange24h.toFixed(2)}%
             </span>
+          </div>
+
+          <div className="flex items-center gap-4">
             <a 
               href="https://radiantblockchain.org/"
               target="_blank"
@@ -74,7 +76,6 @@ export const RadiantHeader: React.FC = () => {
               Visit Radiant Website
             </a>
             <span className="text-yellow-600/80">|</span>
-            <span className="whitespace-nowrap">Buy Radiant Merch at </span>
             <a 
               href="https://rxd.land/"
               target="_blank"
@@ -84,7 +85,6 @@ export const RadiantHeader: React.FC = () => {
               RXD.LAND
             </a>
             <span className="text-yellow-600/80">|</span>
-            <span className="whitespace-nowrap">Play RXD Faucet Games at </span>
             <a 
               href="https://faucetgames.rxddapps.com"
               target="_blank"
@@ -97,10 +97,8 @@ export const RadiantHeader: React.FC = () => {
         </div>
       </div>
 
-      {/* 5px spacing */}
       <div className="h-[5px]"></div>
 
-      {/* Wallet button */}
       <div className="container mx-auto px-4 flex justify-end">
         <WalletButton />
       </div>
