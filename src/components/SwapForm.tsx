@@ -4,17 +4,20 @@ import { TokenSelect } from './TokenSelect';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
 import { useSwapForm } from '../hooks/useSwapForm';
-import { formatPriceUSD } from '../lib/tokenPrices';
+import { formatPriceUSD } from '../lib/prices/priceFormatter';
 import { useWalletManager } from '../hooks/useWalletManager';
 import { WalletAddressInput } from './wallet/WalletAddressInput';
 import { TokenAmountInput } from './TokenAmountInput';
 import { useTransactionImport } from '../hooks/useTransactionImport';
+import { useRealtimePrices } from '../hooks/useRealtimePrices';
 
 interface SwapFormProps {
   onOrderCreated: () => Promise<void>;
 }
 
 export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
+  const prices = useRealtimePrices();
+  
   const {
     walletAddress,
     isWalletChecked,
@@ -45,11 +48,11 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
 
   const { importedText, handleChange } = useTransactionImport((data) => {
     updateFormState({
+      fromToken: data.fromToken,
+      toToken: data.toToken,
       fromAmount: data.fromAmount,
       toAmount: data.toAmount,
-      transactionId: data.transactionId,
-      fromToken: TOKENS.find(t => t.symbol === data.fromToken) || RXD_TOKEN,
-      toToken: TOKENS.find(t => t.symbol === data.toToken) || TOKENS[0]
+      transactionId: data.transactionId
     });
   });
 
@@ -112,7 +115,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
               amount={fromAmount}
               token={fromToken}
               onChange={(value) => updateFormState({ fromAmount: value })}
-              usdValue={formatPriceUSD(parseFloat(fromAmount) * (fromToken.price || 0))}
+              disabled={loading}
               showSlider={true}
             />
           </div>
@@ -123,7 +126,7 @@ export const SwapForm: React.FC<SwapFormProps> = ({ onOrderCreated }) => {
               amount={toAmount}
               token={toToken}
               onChange={(value) => updateFormState({ toAmount: value })}
-              usdValue={formatPriceUSD(parseFloat(toAmount) * (toToken.price || 0))}
+              disabled={loading}
               showSlider={true}
             />
           </div>

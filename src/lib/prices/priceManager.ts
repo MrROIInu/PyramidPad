@@ -5,25 +5,6 @@ import { Order } from '../../types';
 const PRICE_IMPACT_FACTOR = 0.001; // Exactly 0.1% price impact per order
 const MAX_PRICE_CHANGE = 1; // Maximum 100% price change allowed
 
-export const calculatePriceChange = async (symbol: string): Promise<number> => {
-  try {
-    const { data: history } = await supabase
-      .from('token_price_history')
-      .select('price_usd, timestamp')
-      .eq('symbol', symbol)
-      .order('timestamp', { ascending: false })
-      .limit(2);
-
-    if (!history || history.length < 2) return 0;
-
-    const [current, previous] = history;
-    return ((current.price_usd - previous.price_usd) / previous.price_usd) * 100;
-  } catch (error) {
-    console.error('Error calculating price change:', error);
-    return 0;
-  }
-};
-
 export const updatePriceAfterClaim = async (order: Order) => {
   try {
     const timestamp = new Date().toISOString();
@@ -104,4 +85,23 @@ export const validatePriceDeviation = (fromAmount: number, toAmount: number, fro
 
   // Maximum allowed deviation is 100%
   return deviation <= MAX_PRICE_CHANGE * 100;
+};
+
+export const calculatePriceChange = async (symbol: string): Promise<number> => {
+  try {
+    const { data: history } = await supabase
+      .from('token_price_history')
+      .select('price_usd, timestamp')
+      .eq('symbol', symbol)
+      .order('timestamp', { ascending: false })
+      .limit(2);
+
+    if (!history || history.length < 2) return 0;
+
+    const [current, previous] = history;
+    return ((current.price_usd - previous.price_usd) / previous.price_usd) * 100;
+  } catch (error) {
+    console.error('Error calculating price change:', error);
+    return 0;
+  }
 };
