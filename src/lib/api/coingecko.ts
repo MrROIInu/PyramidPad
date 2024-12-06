@@ -1,13 +1,11 @@
-import axios from 'axios';
-import axiosRetry from 'axios-retry';
 import { PriceData } from '../../types';
+import { createRetryAxios } from './retryAxios';
 
-const axiosInstance = axios.create();
-axiosRetry(axiosInstance, { 
+const axiosInstance = createRetryAxios({
   retries: 3,
-  retryDelay: (retryCount) => retryCount * 2000,
-  retryCondition: (error) => {
-    return axiosRetry.isNetworkOrIdempotentRequestError(error) || error.response?.status === 429;
+  retryDelay: 2000,
+  shouldRetry: (error) => {
+    return error.response?.status === 429 || !error.response;
   }
 });
 
@@ -22,8 +20,7 @@ export const fetchCGData = async (): Promise<PriceData> => {
           include_market_cap: true,
           include_24h_vol: true,
           include_24h_change: true
-        },
-        timeout: 5000
+        }
       }
     );
 

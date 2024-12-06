@@ -1,13 +1,11 @@
-import axios from 'axios';
-import axiosRetry from 'axios-retry';
 import { PriceData } from '../../types';
+import { createRetryAxios } from './retryAxios';
 
-const axiosInstance = axios.create();
-axiosRetry(axiosInstance, { 
+const axiosInstance = createRetryAxios({
   retries: 3,
-  retryDelay: (retryCount) => retryCount * 2000,
-  retryCondition: (error) => {
-    return axiosRetry.isNetworkOrIdempotentRequestError(error) || error.response?.status === 429;
+  retryDelay: 2000,
+  shouldRetry: (error) => {
+    return error.response?.status === 429 || !error.response;
   }
 });
 
@@ -22,8 +20,7 @@ export const fetchCMCData = async (): Promise<PriceData> => {
         },
         headers: {
           'X-CMC_PRO_API_KEY': '0fe637c3-a9ba-4db3-be12-4f4ae7c68006'
-        },
-        timeout: 5000
+        }
       }
     );
 

@@ -1,68 +1,58 @@
 import { supabase } from '../supabase';
 import { TOKENS } from '../../data/tokens';
 import { Order } from '../../types';
-import { BASE_RATIO, PRICE_IMPACT, MAX_DEVIATION, MIN_PRICE } from './constants';
+import { PRICE_IMPACT } from './constants';
 
 export const updatePriceAfterClaim = async (order: Order) => {
   try {
     const timestamp = new Date().toISOString();
 
-    // Get current prices
-    const { data: currentPrices } = await supabase
-      .from('tokens')
-      .select('symbol, price_usd')
-      .in('symbol', [order.from_token, order.to_token]);
-
-    if (!currentPrices?.length) return false;
-
-    const updates = [];
-
     // Update from_token price (decrease by exactly 0.1%)
     if (order.from_token !== 'RXD') {
-      const fromToken = currentPrices.find(t => t.symbol === order.from_token);
+      const { data: fromToken } = await supabase
+        .from('rxd20_token_prices')
+        .select('price_usd, market_cap')
+        .eq('symbol', order.from_token)
+        .single();
+
       if (fromToken) {
-        const newPrice = Math.max(fromToken.price_usd * (1 - PRICE_IMPACT), MIN_PRICE);
+        const newPrice = fromToken.price_usd * (1 - PRICE_IMPACT);
         const token = TOKENS.find(t => t.symbol === order.from_token);
-        
-        updates.push({
-          symbol: order.from_token,
-          price_usd: newPrice,
-          market_cap: newPrice * (token?.totalSupply || 0),
-          last_updated: timestamp
-        });
+        const newMarketCap = newPrice * (token?.totalSupply || 0);
+
+        await supabase.from('rxd20_token_prices')
+          .upsert({
+            symbol: order.from_token,
+            price_usd: newPrice,
+            market_cap: newMarketCap,
+            last_updated: timestamp,
+            last_trade_at: timestamp
+          });
       }
     }
 
     // Update to_token price (increase by exactly 0.1%)
     if (order.to_token !== 'RXD') {
-      const toToken = currentPrices.find(t => t.symbol === order.to_token);
+      const { data: toToken } = await supabase
+        .from('rxd20_token_prices')
+        .select('price_usd, market_cap')
+        .eq('symbol', order.to_token)
+        .single();
+
       if (toToken) {
         const newPrice = toToken.price_usd * (1 + PRICE_IMPACT);
         const token = TOKENS.find(t => t.symbol === order.to_token);
-        
-        updates.push({
-          symbol: order.to_token,
-          price_usd: newPrice,
-          market_cap: newPrice * (token?.totalSupply || 0),
-          last_updated: timestamp
-        });
+        const newMarketCap = newPrice * (token?.totalSupply || 0);
+
+        await supabase.from('rxd20_token_prices')
+          .upsert({
+            symbol: order.to_token,
+            price_usd: newPrice,
+            market_cap: newMarketCap,
+            last_updated: timestamp,
+            last_trade_at: timestamp
+          });
       }
-    }
-
-    if (updates.length > 0) {
-      // Update current prices
-      await supabase
-        .from('tokens')
-        .upsert(updates);
-
-      // Add to price history
-      await supabase
-        .from('token_price_history')
-        .insert(updates.map(update => ({
-          symbol: update.symbol,
-          price_usd: update.price_usd,
-          timestamp: update.last_updated
-        })));
     }
 
     return true;
@@ -83,22 +73,21 @@ export const validatePriceDeviation = (fromAmount: number, toAmount: number, fro
   const deviation = Math.abs(((actualRate / expectedRate) - 1));
 
   // Maximum allowed deviation is 100%
-  return deviation <= MAX_DEVIATION;
+  return deviation <= 1;
 };
 
 export const calculatePriceChange = async (symbol: string): Promise<number> => {
   try {
-    const { data: history } = await supabase
-      .from('token_price_history')
-      .select('price_usd, timestamp')
+    const { data: stats } = await supabase
+      .from('rxd20_market_stats')
+      .select('open_price, close_price')
       .eq('symbol', symbol)
-      .order('timestamp', { ascending: false })
-      .limit(2);
+      .eq('interval', '24h')
+      .single();
 
-    if (!history || history.length < 2) return 0;
+    if (!stats || !stats.open_price) return 0;
 
-    const [current, previous] = history;
-    return ((current.price_usd - previous.price_usd) / previous.price_usd) * 100;
+    return ((stats.close_price - stats.open_price) / stats.open_price) * 100;
   } catch (error) {
     console.error('Error calculating price change:', error);
     return 0;
