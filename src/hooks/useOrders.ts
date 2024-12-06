@@ -56,6 +56,16 @@ export const useOrders = () => {
         return;
       }
 
+      if (order.status === 'cancelled') {
+        setError('This order has been cancelled');
+        return;
+      }
+
+      if (order.wallet_address === claimingWalletAddress) {
+        setError('You cannot claim your own orders');
+        return;
+      }
+
       const { error: updateError } = await supabase
         .from('orders')
         .update({ 
@@ -70,11 +80,14 @@ export const useOrders = () => {
       // Update token prices after successful claim
       await updatePriceAfterClaim(order);
 
+      // Fetch updated orders
+      await fetchOrders();
+
     } catch (err) {
       console.error('Error claiming order:', err);
       setError('Failed to claim order. Please try again.');
     }
-  }, []);
+  }, [fetchOrders]);
 
   useEffect(() => {
     fetchOrders();

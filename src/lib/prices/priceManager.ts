@@ -2,7 +2,8 @@ import { supabase } from '../supabase';
 import { TOKENS } from '../../data/tokens';
 import { Order } from '../../types';
 
-const PRICE_IMPACT_FACTOR = 0.001; // 0.1% price impact per order
+const PRICE_IMPACT_FACTOR = 0.001; // Exactly 0.1% price impact per order
+const MAX_PRICE_CHANGE = 1; // Maximum 100% price change allowed
 
 export const calculatePriceChange = async (symbol: string): Promise<number> => {
   try {
@@ -36,7 +37,7 @@ export const updatePriceAfterClaim = async (order: Order) => {
 
     if (!currentPrices?.length) return false;
 
-    // Update from_token price (decrease by 0.1%)
+    // Update from_token price (decrease by exactly 0.1%)
     if (order.from_token !== 'RXD') {
       const fromToken = currentPrices.find(t => t.symbol === order.from_token);
       if (fromToken) {
@@ -52,7 +53,7 @@ export const updatePriceAfterClaim = async (order: Order) => {
       }
     }
 
-    // Update to_token price (increase by 0.1%)
+    // Update to_token price (increase by exactly 0.1%)
     if (order.to_token !== 'RXD') {
       const toToken = currentPrices.find(t => t.symbol === order.to_token);
       if (toToken) {
@@ -99,8 +100,8 @@ export const validatePriceDeviation = (fromAmount: number, toAmount: number, fro
   const actualRate = fromAmount / toAmount;
   
   // Calculate deviation percentage
-  const deviation = ((actualRate / expectedRate) - 1) * 100;
+  const deviation = Math.abs(((actualRate / expectedRate) - 1) * 100);
 
   // Maximum allowed deviation is 100%
-  return Math.abs(deviation) <= 100;
+  return deviation <= MAX_PRICE_CHANGE * 100;
 };
