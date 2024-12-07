@@ -2,9 +2,9 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import './index.css';
-import { initializeDatabase } from './lib/database/initializeDatabase';
+import { initializeDatabase } from './lib/database/initialize';
 
-// Initialize database and token prices
+// Initialize database
 const initialize = async () => {
   try {
     await initializeDatabase();

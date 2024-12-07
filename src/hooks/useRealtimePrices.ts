@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../supabase';
 import { initializeTokenPrices } from '../lib/prices/initializePrices';
 
 export const useRealtimePrices = () => {
@@ -9,7 +9,7 @@ export const useRealtimePrices = () => {
     const loadPrices = async () => {
       // Get latest prices from database
       const { data: tokenPrices } = await supabase
-        .from('tokens')
+        .from('rxd20_token_prices')
         .select('symbol, price_usd')
         .order('last_updated', { ascending: false });
 
@@ -32,7 +32,7 @@ export const useRealtimePrices = () => {
     const subscription = supabase
       .channel('token-prices')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'tokens' },
+        { event: '*', schema: 'public', table: 'rxd20_token_prices' },
         payload => {
           if (payload.new?.symbol && payload.new?.price_usd) {
             setPrices(prev => ({

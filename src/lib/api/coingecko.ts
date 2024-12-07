@@ -1,4 +1,4 @@
-import { PriceData } from '../../types';
+import axios from 'axios';
 import { createRetryAxios } from './retryAxios';
 
 const axiosInstance = createRetryAxios({
@@ -9,7 +9,7 @@ const axiosInstance = createRetryAxios({
   }
 });
 
-export const fetchCGData = async (): Promise<PriceData> => {
+export const fetchCGData = async () => {
   try {
     const response = await axiosInstance.get(
       'https://api.coingecko.com/api/v3/simple/price',
@@ -30,7 +30,6 @@ export const fetchCGData = async (): Promise<PriceData> => {
 
     return {
       price: response.data.radiant.usd,
-      marketCap: response.data.radiant.usd_market_cap || 0,
       priceChange24h: response.data.radiant.usd_24h_change || 0
     };
   } catch (error) {

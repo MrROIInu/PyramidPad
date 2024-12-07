@@ -1,5 +1,4 @@
-import { supabase } from '../supabase';
-import { TOKENS } from '../../data/tokens';
+import { supabase } from '../../supabase';
 import { Order } from '../../types';
 import { PRICE_IMPACT } from './constants';
 
@@ -11,22 +10,27 @@ export const updatePriceAfterClaim = async (order: Order) => {
     if (order.from_token !== 'RXD') {
       const { data: fromToken } = await supabase
         .from('rxd20_token_prices')
-        .select('price_usd, market_cap')
+        .select('price_usd')
         .eq('symbol', order.from_token)
         .single();
 
       if (fromToken) {
         const newPrice = fromToken.price_usd * (1 - PRICE_IMPACT);
-        const token = TOKENS.find(t => t.symbol === order.from_token);
-        const newMarketCap = newPrice * (token?.totalSupply || 0);
 
         await supabase.from('rxd20_token_prices')
           .upsert({
             symbol: order.from_token,
             price_usd: newPrice,
-            market_cap: newMarketCap,
             last_updated: timestamp,
             last_trade_at: timestamp
+          });
+
+        // Add price history entry
+        await supabase.from('rxd20_price_history')
+          .insert({
+            symbol: order.from_token,
+            price_usd: newPrice,
+            timestamp
           });
       }
     }
@@ -35,22 +39,27 @@ export const updatePriceAfterClaim = async (order: Order) => {
     if (order.to_token !== 'RXD') {
       const { data: toToken } = await supabase
         .from('rxd20_token_prices')
-        .select('price_usd, market_cap')
+        .select('price_usd')
         .eq('symbol', order.to_token)
         .single();
 
       if (toToken) {
         const newPrice = toToken.price_usd * (1 + PRICE_IMPACT);
-        const token = TOKENS.find(t => t.symbol === order.to_token);
-        const newMarketCap = newPrice * (token?.totalSupply || 0);
 
         await supabase.from('rxd20_token_prices')
           .upsert({
             symbol: order.to_token,
             price_usd: newPrice,
-            market_cap: newMarketCap,
             last_updated: timestamp,
             last_trade_at: timestamp
+          });
+
+        // Add price history entry
+        await supabase.from('rxd20_price_history')
+          .insert({
+            symbol: order.to_token,
+            price_usd: newPrice,
+            timestamp
           });
       }
     }
