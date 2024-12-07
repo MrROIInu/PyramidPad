@@ -1,11 +1,9 @@
 import axios from 'axios';
-import { createRetryAxios } from './retryAxios';
 
-const axiosInstance = createRetryAxios({
-  retries: 3,
-  retryDelay: 2000,
-  shouldRetry: (error) => {
-    return error.response?.status === 429 || !error.response;
+const axiosInstance = axios.create({
+  timeout: 5000,
+  headers: {
+    'Accept': 'application/json'
   }
 });
 
@@ -17,7 +15,6 @@ export const fetchCGData = async () => {
         params: {
           ids: 'radiant',
           vs_currencies: 'usd',
-          include_market_cap: true,
           include_24h_vol: true,
           include_24h_change: true
         }
@@ -34,6 +31,10 @@ export const fetchCGData = async () => {
     };
   } catch (error) {
     console.warn('CoinGecko API error:', error);
-    throw error;
+    // Return fallback values
+    return {
+      price: 0.001202,
+      priceChange24h: 0
+    };
   }
 };

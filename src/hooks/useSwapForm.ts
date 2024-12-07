@@ -60,8 +60,8 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
         swap_tx: formState.transactionId,
         claimed: false,
         claim_count: 0,
-        status: 'active',
-        wallet_address: walletAddress
+        wallet_address: walletAddress,
+        created_at: new Date().toISOString()
       };
 
       const { error: supabaseError } = await supabase

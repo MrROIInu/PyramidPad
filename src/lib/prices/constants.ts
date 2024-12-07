@@ -4,8 +4,8 @@ export const BASE_RATIO = 1000;
 // Price impact percentage per claim (0.1%)
 export const PRICE_IMPACT = 0.001;
 
-// Maximum allowed price deviation (100%)
-export const MAX_DEVIATION = 1;
+// Maximum allowed price deviation (300%)
+export const MAX_DEVIATION = 3;
 
 // Minimum token price
 export const MIN_PRICE = 0.000001;

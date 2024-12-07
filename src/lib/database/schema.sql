@@ -4,13 +4,11 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Drop existing tables
 DROP TABLE IF EXISTS public.rxd20_token_prices CASCADE;
 DROP TABLE IF EXISTS public.rxd20_price_history CASCADE;
-DROP TABLE IF EXISTS public.rxd20_market_stats CASCADE;
 DROP TABLE IF EXISTS public.orders CASCADE;
 
 -- Create token prices table
 CREATE TABLE IF NOT EXISTS public.rxd20_token_prices (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    symbol TEXT UNIQUE NOT NULL,
+    symbol TEXT PRIMARY KEY,
     price_usd NUMERIC NOT NULL DEFAULT 0,
     price_change_24h NUMERIC DEFAULT 0,
     volume_24h NUMERIC DEFAULT 0,
@@ -20,7 +18,7 @@ CREATE TABLE IF NOT EXISTS public.rxd20_token_prices (
 
 -- Create price history table
 CREATE TABLE IF NOT EXISTS public.rxd20_price_history (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id BIGSERIAL PRIMARY KEY,
     symbol TEXT NOT NULL,
     price_usd NUMERIC NOT NULL,
     timestamp TIMESTAMPTZ DEFAULT now()
@@ -28,7 +26,7 @@ CREATE TABLE IF NOT EXISTS public.rxd20_price_history (
 
 -- Create orders table
 CREATE TABLE IF NOT EXISTS public.orders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id BIGSERIAL PRIMARY KEY,
     from_token TEXT NOT NULL,
     to_token TEXT NOT NULL,
     from_amount NUMERIC NOT NULL,

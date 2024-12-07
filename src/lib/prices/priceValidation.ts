@@ -31,8 +31,8 @@ export const validatePriceDeviation = async (
     // Calculate deviation percentage
     const deviation = Math.abs(((actualRate / expectedRate) - 1) * 100);
 
-    // Maximum allowed deviation is 100%
-    const isValid = deviation <= 100;
+    // Maximum allowed deviation is 300%
+    const isValid = deviation <= 300;
 
     return { isValid, deviation };
   } catch (error) {

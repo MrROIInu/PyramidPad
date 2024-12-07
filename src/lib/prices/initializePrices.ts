@@ -1,72 +1,78 @@
-import { supabase } from '../supabase';
+import { supabase } from '../../supabase';
 import { TOKENS } from '../../data/tokens';
-import { fetchRXDPrice } from '../api/priceApi';
+import { RXD_TOKEN } from '../../constants/tokens';
+import { fetchCGData } from '../api/coingecko';
 
-const BASE_RATIO = 1000; // Base ratio between RXD and other tokens
-const MIN_PRICE = 0.000001; // Minimum allowed price
+const BASE_RATIO = 1000; // 1 RXD = 1000 other tokens
+const MIN_PRICE = 0.000001;
 
 export const initializeTokenPrices = async () => {
   try {
-    // First get RXD price
-    const rxdData = await fetchRXDPrice();
+    // Get RXD price from CoinGecko
+    const rxdData = await fetchCGData();
     const rxdPrice = Math.max(rxdData.price, MIN_PRICE);
+    const timestamp = new Date().toISOString();
 
-    // Prepare token data for all tokens including RXD
+    // Calculate base price for other tokens
+    const baseTokenPrice = rxdPrice / BASE_RATIO;
+
+    // Prepare token data
     const tokenData = [
       // RXD token
       {
-        symbol: 'RXD',
+        symbol: RXD_TOKEN.symbol,
         price_usd: rxdPrice,
-        market_cap: rxdPrice * 21000000000,
         price_change_24h: rxdData.priceChange24h,
-        last_updated: new Date().toISOString()
+        volume_24h: 0,
+        last_trade_at: timestamp,
+        last_updated: timestamp
       },
       // Other tokens
-      ...TOKENS.map(token => {
-        const tokenPrice = Math.max(rxdPrice / BASE_RATIO, MIN_PRICE);
-        return {
-          symbol: token.symbol,
-          price_usd: tokenPrice,
-          market_cap: tokenPrice * token.totalSupply,
-          price_change_24h: 0,
-          last_updated: new Date().toISOString()
-        };
-      })
+      ...TOKENS.map(token => ({
+        symbol: token.symbol,
+        price_usd: baseTokenPrice,
+        price_change_24h: 0,
+        volume_24h: 0,
+        last_trade_at: timestamp,
+        last_updated: timestamp
+      }))
     ];
 
     // Update or insert token prices
-    const { error } = await supabase
-      .from('tokens')
-      .upsert(tokenData, { onConflict: 'symbol' });
+    const { error: pricesError } = await supabase
+      .from('rxd20_token_prices')
+      .upsert(tokenData, {
+        onConflict: 'symbol',
+        ignoreDuplicates: false
+      });
 
-    if (error) {
-      throw error;
-    }
+    if (pricesError) throw pricesError;
 
-    // Also insert initial price history
+    // Add price history entries
     const historyData = tokenData.map(token => ({
       symbol: token.symbol,
       price_usd: token.price_usd,
-      timestamp: token.last_updated
+      timestamp
     }));
 
-    await supabase
-      .from('token_price_history')
+    const { error: historyError } = await supabase
+      .from('rxd20_price_history')
       .insert(historyData);
 
-    // Return the initialized prices
+    if (historyError) throw historyError;
+
+    // Return initialized prices
     return tokenData.reduce((acc, token) => ({
       ...acc,
       [token.symbol]: token.price_usd
     }), {});
   } catch (error) {
     console.error('Error initializing token prices:', error);
-    // Return default minimum prices if initialization fails
     return {
       RXD: MIN_PRICE,
       ...TOKENS.reduce((acc, token) => ({
         ...acc,
-        [token.symbol]: MIN_PRICE
+        [token.symbol]: MIN_PRICE / BASE_RATIO
       }), {})
     };
   }

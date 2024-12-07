@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../supabase';
 
 export const FEE_WALLET = '1LqoPnuUm3kdKvPJrELoe6JY3mJc9C7d1e';
 
@@ -8,9 +8,9 @@ export async function isWalletAllowed(address: string): Promise<boolean> {
 
     const { data, error } = await supabase
       .from('wallet_addresses')
-      .select('address')
+      .select('*')
       .eq('address', address)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error checking wallet:', error);
