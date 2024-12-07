@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../supabase';
 import { Token } from '../types';
 import { TOKENS } from '../data/tokens';
 import { RXD_TOKEN } from '../constants/tokens';
-import { validatePriceDeviation } from '../lib/prices/priceManager';
+import { validatePriceDeviation } from '../lib/prices/priceValidation';
 
 interface SwapFormState {
   fromToken: Token;
@@ -36,32 +36,22 @@ export const useSwapForm = (onOrderCreated: () => Promise<void>) => {
       return;
     }
 
-    // Get current prices
-    const { data: prices } = await supabase
-      .from('tokens')
-      .select('symbol, price_usd')
-      .in('symbol', [formState.fromToken.symbol, formState.toToken.symbol]);
-
-    if (!prices?.length) {
-      setError('Unable to validate prices. Please try again.');
-      return;
-    }
-
-    const fromPrice = prices.find(p => p.symbol === formState.fromToken.symbol)?.price_usd || 0;
-    const toPrice = prices.find(p => p.symbol === formState.toToken.symbol)?.price_usd || 0;
-
-    if (!fromPrice || !toPrice) {
-      setError('Token prices not available. Please try again.');
-      return;
-    }
-
-    if (!validatePriceDeviation(fromAmount, toAmount, fromPrice, toPrice)) {
-      setError('Price deviation exceeds 100%. Please adjust your order.');
-      return;
-    }
-
     try {
       setLoading(true);
+
+      // Validate price deviation
+      const { isValid, deviation } = await validatePriceDeviation(
+        formState.fromToken.symbol,
+        formState.toToken.symbol,
+        fromAmount,
+        toAmount
+      );
+
+      if (!isValid) {
+        setError(`Price deviation of ${deviation.toFixed(2)}% exceeds maximum allowed (100%)`);
+        return;
+      }
+
       const orderData = {
         from_token: formState.fromToken.symbol,
         to_token: formState.toToken.symbol,

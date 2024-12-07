@@ -1,29 +1,42 @@
-import { TOKEN_PRICES } from './tokenPrices';
+import { supabase } from '../../supabase';
 
-export const validatePriceDeviation = (
+export const validatePriceDeviation = async (
   fromToken: string,
   toToken: string,
   fromAmount: number,
   toAmount: number
-): { isValid: boolean; deviation: number } => {
-  const MAX_DEVIATION = 300; // 300%
-  
-  const fromPrice = TOKEN_PRICES[fromToken] || 0;
-  const toPrice = TOKEN_PRICES[toToken] || 0;
+): Promise<{ isValid: boolean; deviation: number }> => {
+  try {
+    // Get current prices from database
+    const { data: prices } = await supabase
+      .from('rxd20_token_prices')
+      .select('symbol, price_usd')
+      .in('symbol', [fromToken, toToken]);
 
-  if (!fromPrice || !toPrice || !fromAmount || !toAmount) {
+    if (!prices?.length) {
+      return { isValid: false, deviation: 0 };
+    }
+
+    const fromPrice = prices.find(p => p.symbol === fromToken)?.price_usd || 0;
+    const toPrice = prices.find(p => p.symbol === toToken)?.price_usd || 0;
+
+    if (!fromPrice || !toPrice) {
+      return { isValid: false, deviation: 0 };
+    }
+
+    // Calculate expected rate based on current prices
+    const expectedRate = fromPrice / toPrice;
+    const actualRate = fromAmount / toAmount;
+    
+    // Calculate deviation percentage
+    const deviation = Math.abs(((actualRate / expectedRate) - 1) * 100);
+
+    // Maximum allowed deviation is 100%
+    const isValid = deviation <= 100;
+
+    return { isValid, deviation };
+  } catch (error) {
+    console.error('Error validating price deviation:', error);
     return { isValid: false, deviation: 0 };
   }
-
-  // Calculate market rate (how many toTokens should you get for one fromToken)
-  const marketRate = fromPrice / toPrice;
-  const expectedToAmount = fromAmount * marketRate;
-  
-  // Calculate deviation percentage
-  const deviation = ((toAmount - expectedToAmount) / expectedToAmount) * 100;
-  
-  // Check if deviation is within acceptable range
-  const isValid = Math.abs(deviation) <= MAX_DEVIATION;
-
-  return { isValid, deviation };
 };
